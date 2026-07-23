@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+* {
+    font-family: "Google Sans", sans-serif;
+}
+
+button,
+textarea,
+select {
+    cursor: pointer;
+}
