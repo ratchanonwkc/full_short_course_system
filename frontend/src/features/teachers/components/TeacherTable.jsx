@@ -3,6 +3,7 @@ import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 import { Pencil, Trash2 } from "lucide-react";
 import Swal from "sweetalert2";
+import { thaiDateValueFormatter } from "../../../utils/dateUtils";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -34,6 +35,9 @@ function FullNameRenderer({ data }) {
  * `prefix_name`, `position_name`, `sub_position_name` are expected to come
  * already joined from the API/view; if not, resolve them from the
  * prefixes/positions/subPositions lists before passing rowData in.
+ *
+ * คอลัมน์ "วันที่เพิ่มข้อมูล" (created_at) ใช้ valueFormatter เรียก formatThaiDate
+ * เพื่อแสดงเป็นวันที่ไทย + พ.ศ.
  *
  * Props:
  * - rowData: Array<Teacher>
@@ -122,6 +126,13 @@ export default function TeacherTable({ rowData = [], loading = false, onEdit, on
                 width: 150,
                 flex: 1,
                 cellRenderer: ActiveBadgeRenderer,
+            },
+            {
+                field: "created_at",
+                headerName: "วันที่เพิ่มข้อมูล",
+                minWidth: 150,
+                flex: 1,
+                valueFormatter: thaiDateValueFormatter,
             },
             {
                 headerName: "จัดการ",

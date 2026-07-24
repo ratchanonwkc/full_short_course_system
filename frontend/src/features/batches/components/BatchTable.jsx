@@ -3,6 +3,7 @@ import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 import { Pencil, Trash2 } from "lucide-react";
 import Swal from "sweetalert2";
+import { thaiDateValueFormatter } from "../../../utils/dateUtils";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -18,16 +19,6 @@ function StatusBadgeRenderer({ value }) {
     return (
         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cfg.className}`}>
             {cfg.label}
-        </span>
-    );
-}
-
-function DateRangeRenderer({ data }) {
-    const fmt = (d) =>
-        d ? new Date(d).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }) : "-";
-    return (
-        <span className="text-sm text-slate-600">
-            {fmt(data.study_open_date)} - {fmt(data.study_close_date)}
         </span>
     );
 }
@@ -110,11 +101,18 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
                 flex: 1.5,
                 cellRenderer: StatusBadgeRenderer,
             },
+            // คอลัมน์วันที่ -> ใช้ valueFormatter เรียก formatThaiDate เพื่อแสดงเป็นวันที่ไทย + พ.ศ.
             {
-                headerName: "วันที่เรียน",
                 field: "study_open_date",
-                flex: 2,
-                cellRenderer: DateRangeRenderer,
+                headerName: "วันเริ่มเรียน",
+                flex: 1.4,
+                valueFormatter: thaiDateValueFormatter,
+            },
+            {
+                field: "study_close_date",
+                headerName: "วันสิ้นสุด",
+                flex: 1.4,
+                valueFormatter: thaiDateValueFormatter,
             },
             { field: "total_hours", headerName: "จำนวนชั่วโมง", flex: 1, type: "numericColumn" },
             { field: "director_name", headerName: "ผอ.", flex: 2 },

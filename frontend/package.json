@@ -16,6 +16,7 @@
     "ag-grid-community": "^36.0.1",
     "ag-grid-react": "^36.0.1",
     "axios": "^1.18.1",
+    "dayjs": "^1.11.21",
     "lucide-react": "^1.25.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

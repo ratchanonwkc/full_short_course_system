@@ -8,6 +8,7 @@ import {
     createBulkYearBatches,
     getLatestPersonnel,
 } from "../services/batchApi";
+import ThaiDateInput from "../../../components/common/ThaiDateInput";
 
 const STATUS_OPTIONS = [
     { value: "planning", label: "วางแผน" },
@@ -86,9 +87,11 @@ const EMPTY_BULK_ROWS = [1, 2, 3, 4].map((batch_no) => ({
  * - Bulk Year Setup: create a full academic year (2 terms / 4 batches) at once
  *
  * Notes on schema mapping:
- * - academic_year is varchar(4) -> plain text input, max length 4
+ * - academic_year is varchar(4) -> plain text input, max length 4 (พ.ศ. ตามที่ผู้ใช้กรอกเอง)
  * - term is smallint (1 or 2) -> select limited to 1 / 2
  * - batch_no is smallint (1-4) -> select limited to 1-4
+ * - ฟิลด์วันที่ทั้งหมด (batch_start_date ฯลฯ) ยังคงเก็บใน state เป็น ISO ค.ศ. "YYYY-MM-DD"
+ *   เหมือนเดิม (เพื่อยิงเข้า backend ตรง ๆ) แต่แสดงผล/รับ input เป็นไทย+พ.ศ. ผ่าน ThaiDateInput
  * - director_signature_url / head_registration_signature_url are part of the
  *   schema but intentionally hidden from this form for now
  *
@@ -130,6 +133,11 @@ export default function BatchFormModal({
         setForm((prev) => ({ ...prev, [field]: value }));
     };
 
+    // สำหรับฟิลด์วันที่ (ThaiDateInput ส่งค่ากลับมาเป็น ISO string ตรง ๆ ไม่ใช่ event)
+    const handleDateChange = (field) => (isoValue) => {
+        setForm((prev) => ({ ...prev, [field]: isoValue }));
+    };
+
     const handleComboChange = (field) => (value) => {
         setForm((prev) => ({ ...prev, [field]: value }));
     };
@@ -146,6 +154,11 @@ export default function BatchFormModal({
     const handleBulkRowChange = (index, field) => (e) => {
         const { value } = e.target;
         setBulkRows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+    };
+
+    // สำหรับฟิลด์วันที่ในแต่ละแถวของโหมด Bulk Year
+    const handleBulkRowDateChange = (index, field) => (isoValue) => {
+        setBulkRows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: isoValue } : row)));
     };
 
     // ต่อ "คำนำหน้า + ชื่อ + นามสกุล" จากข้อมูลอาจารย์จริงให้เป็น label เดียวใน Combobox
@@ -233,6 +246,7 @@ export default function BatchFormModal({
         setIsSubmitting(true);
         try {
             // โหมดแก้ไข -> PUT /batches/:id, โหมดสร้างใหม่ -> POST /batches
+            // (form.*_date เป็น ISO ค.ศ. อยู่แล้วจาก ThaiDateInput จึงส่งตรง ๆ ได้เลย)
             const data = isEditMode ? await updateBatch(form.id, form) : await createBatch(form);
 
             onSaved?.(data);
@@ -470,28 +484,28 @@ export default function BatchFormModal({
                                                             title="ช่วงเวลารุ่น"
                                                             startId="batch_start_date"
                                                             startValue={form.batch_start_date}
-                                                            onStartChange={handleChange("batch_start_date")}
+                                                            onStartChange={handleDateChange("batch_start_date")}
                                                             endId="batch_end_date"
                                                             endValue={form.batch_end_date}
-                                                            onEndChange={handleChange("batch_end_date")}
+                                                            onEndChange={handleDateChange("batch_end_date")}
                                                         />
                                                         <DateRangeGroup
                                                             title="ช่วงรับสมัคร"
                                                             startId="admit_open_date"
                                                             startValue={form.admit_open_date}
-                                                            onStartChange={handleChange("admit_open_date")}
+                                                            onStartChange={handleDateChange("admit_open_date")}
                                                             endId="admit_close_date"
                                                             endValue={form.admit_close_date}
-                                                            onEndChange={handleChange("admit_close_date")}
+                                                            onEndChange={handleDateChange("admit_close_date")}
                                                         />
                                                         <DateRangeGroup
                                                             title="ช่วงเวลาเรียน"
                                                             startId="study_open_date"
                                                             startValue={form.study_open_date}
-                                                            onStartChange={handleChange("study_open_date")}
+                                                            onStartChange={handleDateChange("study_open_date")}
                                                             endId="study_close_date"
                                                             endValue={form.study_close_date}
-                                                            onEndChange={handleChange("study_close_date")}
+                                                            onEndChange={handleDateChange("study_close_date")}
                                                         />
                                                     </div>
 
@@ -653,28 +667,28 @@ export default function BatchFormModal({
                                                                 title="ช่วงเวลารุ่น"
                                                                 startId={`row${index}_batch_start_date`}
                                                                 startValue={row.batch_start_date}
-                                                                onStartChange={handleBulkRowChange(index, "batch_start_date")}
+                                                                onStartChange={handleBulkRowDateChange(index, "batch_start_date")}
                                                                 endId={`row${index}_batch_end_date`}
                                                                 endValue={row.batch_end_date}
-                                                                onEndChange={handleBulkRowChange(index, "batch_end_date")}
+                                                                onEndChange={handleBulkRowDateChange(index, "batch_end_date")}
                                                             />
                                                             <DateRangeGroup
                                                                 title="ช่วงรับสมัคร"
                                                                 startId={`row${index}_admit_open_date`}
                                                                 startValue={row.admit_open_date}
-                                                                onStartChange={handleBulkRowChange(index, "admit_open_date")}
+                                                                onStartChange={handleBulkRowDateChange(index, "admit_open_date")}
                                                                 endId={`row${index}_admit_close_date`}
                                                                 endValue={row.admit_close_date}
-                                                                onEndChange={handleBulkRowChange(index, "admit_close_date")}
+                                                                onEndChange={handleBulkRowDateChange(index, "admit_close_date")}
                                                             />
                                                             <DateRangeGroup
                                                                 title="ช่วงเวลาเรียน"
                                                                 startId={`row${index}_study_open_date`}
                                                                 startValue={row.study_open_date}
-                                                                onStartChange={handleBulkRowChange(index, "study_open_date")}
+                                                                onStartChange={handleBulkRowDateChange(index, "study_open_date")}
                                                                 endId={`row${index}_study_close_date`}
                                                                 endValue={row.study_close_date}
-                                                                onEndChange={handleBulkRowChange(index, "study_close_date")}
+                                                                onEndChange={handleBulkRowDateChange(index, "study_close_date")}
                                                             />
                                                         </div>
 
@@ -739,29 +753,25 @@ function Field({ label, htmlFor, full = false, children }) {
     );
 }
 
-/** Reusable group of "start date - end date" inputs */
+/** Reusable group of "start date - end date" inputs (ใช้ ThaiDateInput แสดงผลไทย/พ.ศ.) */
 function DateRangeGroup({ title, startId, startValue, onStartChange, endId, endValue, onEndChange, required = false }) {
     return (
         <div className="rounded-lg border border-slate-200 p-3">
             <p className="mb-2 text-xs font-semibold text-slate-500">{title}</p>
             <div className="space-y-2">
                 <Field label="วันเริ่มต้น" htmlFor={startId}>
-                    <input
+                    <ThaiDateInput
                         id={startId}
-                        type="date"
                         value={startValue}
                         onChange={onStartChange}
-                        className={inputClass}
                         required={required}
                     />
                 </Field>
                 <Field label="วันสิ้นสุด" htmlFor={endId}>
-                    <input
+                    <ThaiDateInput
                         id={endId}
-                        type="date"
                         value={endValue}
                         onChange={onEndChange}
-                        className={inputClass}
                         required={required}
                     />
                 </Field>
