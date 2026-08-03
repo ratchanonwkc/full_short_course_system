@@ -16,7 +16,18 @@ export const getTeachers = async (req, res, next) => {
 
 export const createTeacher = async (req, res, next) => {
     try {
-        const teacher = await createTeacherService(req.body);
+        const {
+            id,
+            created_at,
+            prefixes,
+            positions,
+            sub_positions,
+            prefix_name,
+            position_name,
+            sub_position_name,
+            ...insertData
+        } = req.body;
+        const teacher = await createTeacherService(insertData);
         res.status(201).json(teacher);
     } catch (error) {
         // ดักจับกรณีเลขบัตรประชาชน หรือ อีเมล ซ้ำกัน (Unique Violation)
@@ -30,7 +41,18 @@ export const createTeacher = async (req, res, next) => {
 export const updateTeacher = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const teacher = await updateTeacherService(id, req.body);
+        const {
+            id: _,
+            created_at,
+            prefixes,
+            positions,
+            sub_positions,
+            prefix_name,
+            position_name,
+            sub_position_name,
+            ...updateData
+        } = req.body;
+        const teacher = await updateTeacherService(id, updateData);
         res.json(teacher);
     } catch (error) {
         next(error);

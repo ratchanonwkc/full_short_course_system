@@ -1,0 +1,101 @@
+import {
+    getAllSubjectsService,
+    getSubjectByIdService,
+    createSubjectService,
+    updateSubjectService,
+    deleteSubjectService,
+    getNextSequenceService
+} from './subjects.service.js';
+
+export const getSubjects = async (req, res, next) => {
+    try {
+        const { level_id, subject_type_id, major_id, minor_id, search, page, pageSize } = req.query;
+        const result = await getAllSubjectsService({
+            levelId: level_id,
+            subjectTypeId: subject_type_id,
+            majorId: major_id,
+            minorId: minor_id,
+            search,
+            page: page || 1,
+            pageSize: pageSize || 20,
+        });
+        res.json(result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getSubjectById = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const subject = await getSubjectByIdService(id);
+        res.json(subject);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getNextSequence = async (req, res, next) => {
+    try {
+        const { minor_id, duration_group } = req.query;
+        const result = await getNextSequenceService(minor_id, duration_group);
+        res.json(result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const createSubject = async (req, res, next) => {
+    try {
+        const {
+            id,
+            created_at,
+            level_name,
+            curriculum_name,
+            subject_type_name,
+            major_name,
+            minor_name,
+            ...insertData
+        } = req.body;
+        const subject = await createSubjectService(insertData);
+        res.status(201).json(subject);
+    } catch (error) {
+        if (error.code === '23505') {
+            return res.status(400).json({ message: 'รหัสวิชานี้มีอยู่แล้วในระบบ กรุณาตรวจสอบรหัสวิชา' });
+        }
+        next(error);
+    }
+};
+
+export const updateSubject = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const {
+            id: _,
+            created_at,
+            level_name,
+            curriculum_name,
+            subject_type_name,
+            major_name,
+            minor_name,
+            ...updateData
+        } = req.body;
+        const subject = await updateSubjectService(id, updateData);
+        res.json(subject);
+    } catch (error) {
+        if (error.code === '23505') {
+            return res.status(400).json({ message: 'รหัสวิชานี้มีอยู่แล้วในระบบ กรุณาตรวจสอบรหัสวิชา' });
+        }
+        next(error);
+    }
+};
+
+export const deleteSubject = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        await deleteSubjectService(id);
+        res.json({ message: 'ลบรายวิชาเรียบร้อยแล้ว' });
+    } catch (error) {
+        next(error);
+    }
+};

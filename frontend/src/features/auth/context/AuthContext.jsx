@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../../../config/supabaseClient';
+import axiosInstance from '../../../config/axiosInstance';
 
 const AuthContext = createContext({
     user: null,
@@ -14,74 +14,63 @@ export function AuthProvider({ children }) {
     const [session, setSession] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const mapUserFromSession = (currentSession) => {
-        if (!currentSession || !currentSession.user) {
-            return null;
-        }
-        const { user: supabaseUser } = currentSession;
-        // ดึงชื่อจาก metadata หรือใช้ส่วนแรกของอีเมลเป็นค่าเริ่มต้น
-        const name = supabaseUser.user_metadata?.full_name || 
-                     supabaseUser.user_metadata?.name || 
-                     supabaseUser.email.split('@')[0];
-        // ดึงบทบาทจาก metadata หรือใช้ค่าเริ่มต้น "เจ้าหน้าที่ทะเบียน"
-        const role = supabaseUser.user_metadata?.role || "เจ้าหน้าที่ทะเบียน";
-
-        return {
-            id: supabaseUser.id,
-            email: supabaseUser.email,
-            name,
-            role,
-            token: currentSession.access_token
-        };
-    };
-
     useEffect(() => {
-        // ดึงข้อมูล session ปัจจุบันเมื่อโหลดแอปครั้งแรก
         const initializeAuth = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                setLoading(false);
+                return;
+            }
+
             try {
-                const { data: { session: currentSession } } = await supabase.auth.getSession();
-                setSession(currentSession);
-                setUser(mapUserFromSession(currentSession));
+                // Fetch user info using the token (attached by axios interceptor)
+                const { data } = await axiosInstance.get('/auth/me');
+                setUser(data.user);
+                setSession({ access_token: token });
             } catch (err) {
-                console.error('Error getting initial session:', err);
+                console.error('Error verifying token:', err);
+                localStorage.removeItem('token');
+                setUser(null);
+                setSession(null);
             } finally {
                 setLoading(false);
             }
         };
 
         initializeAuth();
-
-        // สมัครรับข้อมูลการเปลี่ยนแปลงของเซสชัน (Sign in, Sign out, Token refreshed)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-            setSession(currentSession);
-            setUser(mapUserFromSession(currentSession));
-            setLoading(false);
-        });
-
-        return () => {
-            subscription?.unsubscribe();
-        };
     }, []);
 
     // ฟังก์ชันเข้าสู่ระบบด้วย Email + Password
     const loginWithEmail = async (email, password) => {
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password
-        });
+        try {
+            const { data } = await axiosInstance.post('/auth/login', {
+                email,
+                password
+            });
 
-        if (error) {
-            throw error;
+            const { user: userData, token } = data;
+            
+            localStorage.setItem('token', token);
+            setUser(userData);
+            setSession({ access_token: token });
+
+            return data;
+        } catch (err) {
+            const msg = err.response?.data?.message || err.message;
+            throw new Error(msg);
         }
-
-        return data;
     };
 
     // ฟังก์ชันออกจากระบบ
     const logout = async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-            throw error;
+        try {
+            await axiosInstance.post('/auth/logout');
+        } catch (err) {
+            console.error('Error calling logout API:', err);
+        } finally {
+            localStorage.removeItem('token');
+            setUser(null);
+            setSession(null);
         }
     };
 

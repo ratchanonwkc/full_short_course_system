@@ -9,11 +9,11 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { name: 'Dashboard', to: '/', icon: LayoutDashboard },
+  { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { name: 'Teachers', to: '/teachers', icon: GraduationCap },
   { name: 'Batches', to: '/batches', icon: Calendar },
-  { name: 'Majors', to: '/majors', icon: BookOpen },
-  { name: 'Subjects', to: '/subjects', icon: Book },
+  { name: 'โครงสร้างหลักสูตร', to: '/academic-structure', icon: BookOpen },
+  { name: 'รายวิชา', to: '/subjects', icon: Book },
 ];
 
 export default function Sidebar() {

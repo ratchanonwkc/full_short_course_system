@@ -1,10 +1,15 @@
 import { supabase } from '../../config/supabase.js';
 
 // Map ประเภท Master Data เข้ากับชื่อตารางใน Supabase
+// เพิ่ม curriculums / academic-levels / subject-types เข้ามาใช้ endpoint generic ชุดเดียวกับ
+// prefixes / positions / sub-positions เดิม เพราะเป็น Lookup Table รูปแบบเดียวกัน (id + ชื่อ)
 const TABLE_MAP = {
     prefixes: { name: 'prefixes', primaryKey: 'short_name' },
     positions: { name: 'positions', primaryKey: 'position_name' },
-    'sub-positions': { name: 'sub_positions', primaryKey: 'sub_position_name' }
+    'sub-positions': { name: 'sub_positions', primaryKey: 'sub_position_name' },
+    curriculums: { name: 'curriculums', primaryKey: 'curriculum_name' },
+    'academic-levels': { name: 'academic_levels', primaryKey: 'level_name' },
+    'subject-types': { name: 'subject_types', primaryKey: 'name_th' }
 };
 
 export const getMasterData = async (req, res, next) => {
@@ -40,6 +45,10 @@ export const createMasterData = async (req, res, next) => {
         if (error) throw error;
         res.status(201).json(data);
     } catch (error) {
+        // ดักจับกรณีชื่อซ้ำ (Unique Violation) เช่น curriculum_name / level_name ซ้ำกัน
+        if (error.code === '23505') {
+            return res.status(400).json({ message: 'ชื่อรายการนี้มีอยู่แล้วในระบบ' });
+        }
         next(error);
     }
 };
@@ -60,6 +69,9 @@ export const updateMasterData = async (req, res, next) => {
         if (error) throw error;
         res.json(data);
     } catch (error) {
+        if (error.code === '23505') {
+            return res.status(400).json({ message: 'ชื่อรายการนี้มีอยู่แล้วในระบบ' });
+        }
         next(error);
     }
 };
@@ -77,9 +89,10 @@ export const deleteMasterData = async (req, res, next) => {
 
         if (error) {
             // ดัก Foreign Key Constraint Error (409 Conflict)
+            // เช่น curriculum/level นี้ถูกใช้งานอยู่ในตาราง subjects แล้ว
             if (error.code === '23503') {
                 return res.status(409).json({
-                    message: 'ไม่สามารถลบได้เนื่องจากมีข้อมูลอาจารย์ใช้งานรายการนี้อยู่'
+                    message: 'ไม่สามารถลบได้เนื่องจากมีข้อมูลอ้างอิงรายการนี้อยู่'
                 });
             }
             throw error;

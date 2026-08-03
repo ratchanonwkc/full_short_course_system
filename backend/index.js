@@ -5,6 +5,10 @@ import dotenv from 'dotenv';
 import teacherRoutes from './src/features/teachers/teachers.routes.js';
 import masterDataRoutes from './src/features/master-data/masterData.routes.js';
 import batchRoutes from './src/features/batches/batches.routes.js';
+import academicMajorsRoutes from './src/features/academic-majors/academicMajors.routes.js';
+import academicMinorsRoutes from './src/features/academic-minors/academicMinors.routes.js';
+import subjectsRoutes from './src/features/subjects/subjects.routes.js';
+import authRoutes from './src/features/auth/auth.routes.js';
 dotenv.config();
 
 const app = express();
@@ -14,9 +18,14 @@ app.use(cors());
 app.use(express.json());
 
 // Routes Integration
+app.use('/api/auth', authRoutes);
 app.use('/api/teachers', teacherRoutes);
 app.use('/api/batches', batchRoutes);
-app.use('/api', masterDataRoutes); // รองรับ /api/prefixes, /api/positions, /api/sub-positions
+app.use('/api/academic-majors', academicMajorsRoutes);
+app.use('/api/academic-minors', academicMinorsRoutes);
+app.use('/api/subjects', subjectsRoutes);
+app.use('/api', masterDataRoutes); // รองรับ /api/prefixes, /api/positions, /api/sub-positions,
+                                    // /api/curriculums, /api/academic-levels, /api/subject-types
 
 // Centralized Error Handler Middleware
 app.use((err, req, res, next) => {

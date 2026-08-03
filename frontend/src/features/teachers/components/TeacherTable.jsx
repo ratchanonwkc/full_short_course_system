@@ -169,7 +169,7 @@ export default function TeacherTable({ rowData = [], loading = false, onEdit, on
                 paginationPageSize={20}
                 headerHeight={44}
                 animateRows
-                overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ไม่พบข้อมูลรุ่นการเรียน</span>"
+                overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ไม่พบข้อมูลอาจารย์</span>"
                 getRowId={(params) => String(params.data.id)}
             />
         </div>

@@ -28,7 +28,15 @@ export const getLatestPersonnel = async (req, res, next) => {
 
 export const createBatch = async (req, res, next) => {
     try {
-        const batch = await createBatchService(req.body);
+        const {
+            id,
+            created_at,
+            director,
+            head_registration,
+            director_name,
+            ...insertData
+        } = req.body;
+        const batch = await createBatchService(insertData);
         res.status(201).json(batch);
     } catch (error) {
         next(error);
@@ -37,7 +45,10 @@ export const createBatch = async (req, res, next) => {
 
 export const createBulkYearBatches = async (req, res, next) => {
     try {
-        const batches = await createBulkYearBatchesService(req.body);
+        const cleanedBatches = Array.isArray(req.body)
+            ? req.body.map(({ id, created_at, director, head_registration, director_name, ...item }) => item)
+            : req.body;
+        const batches = await createBulkYearBatchesService(cleanedBatches);
         res.status(201).json({
             message: 'สร้างรุ่นการเรียนประจำปีการศึกษาสำเร็จ',
             count: batches.length,
@@ -51,7 +62,15 @@ export const createBulkYearBatches = async (req, res, next) => {
 export const updateBatch = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const batch = await updateBatchService(id, req.body);
+        const {
+            id: _,
+            created_at,
+            director,
+            head_registration,
+            director_name,
+            ...updateData
+        } = req.body;
+        const batch = await updateBatchService(id, updateData);
         res.json(batch);
     } catch (error) {
         next(error);

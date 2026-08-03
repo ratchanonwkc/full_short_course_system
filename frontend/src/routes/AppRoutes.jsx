@@ -15,6 +15,8 @@ import LoginPage from '../features/auth/pages/LoginPage';
 // Admin/Staff Pages
 import TeachersPage from '../features/teachers/pages/TeachersPage';
 import BatchesPage from '../features/batches/pages/BatchesPage';
+import AcademicStructurePage from '../features/curriculums/pages/AcademicStructurePage';
+import SubjectsPage from '../features/subjects/pages/SubjectsPage';
 
 export default function AppRoutes() {
     return (
@@ -31,6 +33,8 @@ export default function AppRoutes() {
                     <Route path="/dashboard" element={<div>Dashboard ภาพรวม</div>} />
                     <Route path="/teachers" element={<TeachersPage />} />
                     <Route path="/batches" element={<BatchesPage />} />
+                    <Route path="/academic-structure" element={<AcademicStructurePage />} />
+                    <Route path="/subjects" element={<SubjectsPage />} />
                 </Route>
             </Route>
         </Routes>
