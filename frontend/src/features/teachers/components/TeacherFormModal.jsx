@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Combobox, Dialog, Transition } from "@headlessui/react";
-import { X, Save, Plus, Settings, Check, ChevronsUpDown, XCircle } from "lucide-react";
+import { Dialog, Transition } from "@headlessui/react";
+import { X, Save, Plus, Settings } from "lucide-react";
 import Swal from "sweetalert2";
 import axiosInstance from "../../../config/axiosInstance";
 import ManageMasterModal from "./ManageMasterModal";
+import VirtualizedCombobox from "../../../components/common/VirtualizedCombobox";
 
 // Meta shared with ManageMasterModal's TYPE_META (kept local here to avoid a circular import)
 const QUICK_ADD_META = {
@@ -55,6 +56,10 @@ const EMPTY_FORM = {
  * TeacherFormModal
  * -------------------------------------------------------------------------
  * Create / edit form for a `public.teachers` record.
+ *
+ * หมายเหตุ performance: ช่อง คำนำหน้าชื่อ / ตำแหน่งหลัก / หน้าที่พิเศษ ใช้
+ * <VirtualizedCombobox> (src/components/common) ซึ่ง debounce การพิมพ์ค้นหา
+ * และ virtualize รายการที่ render จริง แก้ปัญหา list ยาวแล้ว UI กระตุก/หน่วง
  *
  * Props:
  * - isOpen: boolean
@@ -114,12 +119,6 @@ export default function TeacherFormModal({
         () => subPositions.map((p) => ({ value: p.id, label: p.sub_position_name })),
         [subPositions]
     );
-
-    const OPTIONS_BY_TYPE = {
-        prefix: prefixOptions,
-        position: positionOptions,
-        sub_position: subPositionOptions,
-    };
 
     const FIELD_BY_TYPE = {
         prefix: "prefix_id",
@@ -246,6 +245,7 @@ export default function TeacherFormModal({
                                                         onChange={handleComboChange("prefix_id")}
                                                         options={prefixOptions}
                                                         placeholder="พิมพ์ค้นหาคำนำหน้าชื่อ..."
+                                                        emptyText="ไม่พบคำนำหน้าชื่อ"
                                                         onQuickAdd={() => openQuickAdd("prefix")}
                                                         onManage={() => openManage("prefix")}
                                                     />
@@ -331,6 +331,7 @@ export default function TeacherFormModal({
                                                         onChange={handleComboChange("position_id")}
                                                         options={positionOptions}
                                                         placeholder="พิมพ์ค้นหาตำแหน่งหลัก..."
+                                                        emptyText="ไม่พบตำแหน่งหลัก"
                                                         onQuickAdd={() => openQuickAdd("position")}
                                                         onManage={() => openManage("position")}
                                                     />
@@ -342,6 +343,7 @@ export default function TeacherFormModal({
                                                         onChange={handleComboChange("sub_position_id")}
                                                         options={subPositionOptions}
                                                         placeholder="พิมพ์ค้นหาหน้าที่พิเศษ..."
+                                                        emptyText="ไม่พบหน้าที่พิเศษ"
                                                         onQuickAdd={() => openQuickAdd("sub_position")}
                                                         onManage={() => openManage("sub_position")}
                                                     />
@@ -416,79 +418,24 @@ function Field({ label, htmlFor, full = false, children }) {
 /**
  * MasterCombobox
  * -------------------------------------------------------------------------
- * Searchable Combobox for a master-data field (prefix / position / sub-position),
- * with "+" (quick add) and "⚙" (manage list) buttons docked to the right.
+ * บาง wrapper รอบ <VirtualizedCombobox> ที่เพิ่มปุ่ม "+" (quick add) และ
+ * "⚙" (manage list) ไว้ด้านข้าง — ตัว search/filter/virtualization ทั้งหมด
+ * ถูกยกไปให้ VirtualizedCombobox จัดการแทน (src/components/common)
  */
-function MasterCombobox({ id, value, onChange, options, placeholder, onQuickAdd, onManage }) {
-    const [query, setQuery] = useState("");
-    const selected = options.find((o) => String(o.value) === String(value)) || null;
-
-    const filtered =
-        query === "" ? options : options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()));
-
+function MasterCombobox({ id, value, onChange, options, placeholder, emptyText, onQuickAdd, onManage }) {
     return (
         <div className="flex items-stretch gap-1.5">
-            <Combobox value={selected} onChange={(opt) => onChange(opt ? opt.value : "")} as="div" className="relative flex-1">
-                <div className="relative">
-                    <Combobox.Input
-                        id={id}
-                        className={`${inputClass} pr-16`}
-                        displayValue={(opt) => opt?.label || ""}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder={placeholder}
-                        autoComplete="off"
-                    />
-                    <div className="absolute inset-y-0 right-1.5 flex items-center gap-0.5">
-                        {selected && (
-                            <button
-                                type="button"
-                                onClick={() => onChange("")}
-                                className="rounded p-1 text-slate-400 hover:text-slate-600"
-                                tabIndex={-1}
-                            >
-                                <XCircle size={14} />
-                            </button>
-                        )}
-                        <Combobox.Button className="rounded p-1 text-slate-400 hover:text-slate-600">
-                            <ChevronsUpDown size={14} />
-                        </Combobox.Button>
-                    </div>
-                </div>
-                <Transition
-                    as={Fragment}
-                    leave="transition ease-in duration-100"
-                    leaveFrom="opacity-100"
-                    leaveTo="opacity-0"
-                    afterLeave={() => setQuery("")}
-                >
-                    <Combobox.Options
-                        anchor={{ to: "bottom start", gap: 4 }}
-                        className="z-[100] w-[var(--input-width)] max-h-56 overflow-auto rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg"
-                    >
-                        {filtered.length === 0 ? (
-                            <div className="px-3 py-2 text-slate-400">ไม่พบรายการ</div>
-                        ) : (
-                            filtered.map((opt) => (
-                                <Combobox.Option
-                                    key={opt.value}
-                                    value={opt}
-                                    className={({ active }) =>
-                                        `flex cursor-pointer items-center justify-between px-3 py-2 ${active ? "bg-indigo-50 text-indigo-600" : "text-slate-700"
-                                        }`
-                                    }
-                                >
-                                    {({ selected: isSelected }) => (
-                                        <>
-                                            <span className={isSelected ? "font-semibold" : ""}>{opt.label}</span>
-                                            {isSelected && <Check size={14} />}
-                                        </>
-                                    )}
-                                </Combobox.Option>
-                            ))
-                        )}
-                    </Combobox.Options>
-                </Transition>
-            </Combobox>
+            <div className="min-w-0 flex-1">
+                <VirtualizedCombobox
+                    id={id}
+                    value={value}
+                    onChange={onChange}
+                    options={options}
+                    placeholder={placeholder}
+                    emptyText={emptyText}
+                    className={inputClass}
+                />
+            </div>
 
             <button
                 type="button"

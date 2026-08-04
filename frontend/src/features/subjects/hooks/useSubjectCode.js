@@ -6,9 +6,9 @@ import { getNextSequence } from "../services/subjectApi";
  * -------------------------------------------------------------------------
  * คำนวณ subject_code แบบ Real-time ตามรูปแบบ:
  *
- *   [Level(1)][SubjectType(1)][Dept(2)][SubDept(1)] - [DurationGroup(1)][Sequence(2)]
+ *   [Level(1)][SubjectType(1)][Dept(2)]- [SubDept(1)][DurationGroup(1)][Sequence(2)]
  *   ตัวอย่าง: level=1, subjectType=1, dept="01", subDept="1", duration=3, seq="01"
- *            -> "11011-301"
+ *            -> "1101-1301"
  *
  * ที่มาของแต่ละส่วน:
  *   - Level        มาจาก academic_levels.id ของวิชา (ต้องเป็นเลขโดด 1 หลักตามระเบียบ)
@@ -58,7 +58,7 @@ export default function useSubjectCode({
             return;
         }
 
-        const prefix = `${levelId}${subjectTypeId}${String(department).padStart(2, "0")}${subDepartment}`;
+        const prefix = `${levelId}${subjectTypeId}${String(department).padStart(2, "0")}`;
 
         let cancelled = false;
         const currentRequestId = ++requestIdRef.current;
@@ -73,7 +73,7 @@ export default function useSubjectCode({
                     setCode(`${prefix}-${durationGroup}??`);
                     return;
                 }
-                setCode(`${prefix}-${durationGroup}${sequence}`);
+                setCode(`${prefix}-${subDepartment}${durationGroup}${sequence}`);
             })
             .catch(() => {
                 if (cancelled || currentRequestId !== requestIdRef.current) return;

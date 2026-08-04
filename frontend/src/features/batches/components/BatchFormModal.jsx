@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Combobox, Dialog, Tab, Transition } from "@headlessui/react";
-import { X, ClipboardCopy, Save, Layers, FilePlus2, Zap, ChevronsUpDown, Check, XCircle } from "lucide-react";
+import { Dialog, Tab, Transition } from "@headlessui/react";
+import { X, ClipboardCopy, Save, Layers, FilePlus2, Zap } from "lucide-react";
 import Swal from "sweetalert2";
 import {
     createBatch,
@@ -8,7 +8,8 @@ import {
     createBulkYearBatches,
     getLatestPersonnel,
 } from "../services/batchApi";
-import ThaiDateInput from "../../../components/common/ThaiDateInput";
+import VirtualizedCombobox from "../../../components/common/VirtualizedCombobox";
+import MaskedDateInput from "../../../components/common/MaskedDateInput";
 
 const STATUS_OPTIONS = [
     { value: "planning", label: "วางแผน" },
@@ -86,12 +87,18 @@ const EMPTY_BULK_ROWS = [1, 2, 3, 4].map((batch_no) => ({
  * - Single Batch: create/edit one batch through a 3-tab form
  * - Bulk Year Setup: create a full academic year (2 terms / 4 batches) at once
  *
+ * Performance/UX notes:
+ * - ผู้รับผิดชอบ 9 ตำแหน่งใช้ <VirtualizedCombobox> (src/components/common) แทน
+ *   Combobox เดิม เพื่อแก้ปัญหา dropdown หน่วงเมื่อรายชื่ออาจารย์มีจำนวนมาก
+ * - ทุกช่องวันที่ใช้ <MaskedDateInput> (src/components/common) แทน
+ *   <input type="date"> เดิม -> พิมพ์ตัวเลขล้วน ๆ ได้เลย ระบบใส่ "/" ให้อัตโนมัติ
+ *   และ validate ทันทีที่ครบ 8 หลักโดยไม่ต้องกด Enter/blur เอง (ยังมีปุ่มปฏิทินไว้เผื่อ
+ *   เลือกด้วยเมาส์เหมือนเดิม)
+ *
  * Notes on schema mapping:
- * - academic_year is varchar(4) -> plain text input, max length 4 (พ.ศ. ตามที่ผู้ใช้กรอกเอง)
+ * - academic_year is varchar(4) -> plain text input, max length 4
  * - term is smallint (1 or 2) -> select limited to 1 / 2
  * - batch_no is smallint (1-4) -> select limited to 1-4
- * - ฟิลด์วันที่ทั้งหมด (batch_start_date ฯลฯ) ยังคงเก็บใน state เป็น ISO ค.ศ. "YYYY-MM-DD"
- *   เหมือนเดิม (เพื่อยิงเข้า backend ตรง ๆ) แต่แสดงผล/รับ input เป็นไทย+พ.ศ. ผ่าน ThaiDateInput
  * - director_signature_url / head_registration_signature_url are part of the
  *   schema but intentionally hidden from this form for now
  *
@@ -128,18 +135,19 @@ export default function BatchFormModal({
         }
     }, [isOpen, initialData]);
 
+    // ── Handlers: normal <input>/<select> (event-based) ─────────────────────
     const handleChange = (field) => (e) => {
         const { value } = e.target;
         setForm((prev) => ({ ...prev, [field]: value }));
     };
 
-    // สำหรับฟิลด์วันที่ (ThaiDateInput ส่งค่ากลับมาเป็น ISO string ตรง ๆ ไม่ใช่ event)
-    const handleDateChange = (field) => (isoValue) => {
-        setForm((prev) => ({ ...prev, [field]: isoValue }));
-    };
-
     const handleComboChange = (field) => (value) => {
         setForm((prev) => ({ ...prev, [field]: value }));
+    };
+
+    // ── Handlers: MaskedDateInput (คืนค่า ISO string ตรง ๆ ไม่ใช่ event) ──────
+    const handleDateChange = (field) => (isoValue) => {
+        setForm((prev) => ({ ...prev, [field]: isoValue }));
     };
 
     const handleBulkCommonChange = (field) => (e) => {
@@ -156,7 +164,6 @@ export default function BatchFormModal({
         setBulkRows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
     };
 
-    // สำหรับฟิลด์วันที่ในแต่ละแถวของโหมด Bulk Year
     const handleBulkRowDateChange = (index, field) => (isoValue) => {
         setBulkRows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: isoValue } : row)));
     };
@@ -246,7 +253,6 @@ export default function BatchFormModal({
         setIsSubmitting(true);
         try {
             // โหมดแก้ไข -> PUT /batches/:id, โหมดสร้างใหม่ -> POST /batches
-            // (form.*_date เป็น ISO ค.ศ. อยู่แล้วจาก ThaiDateInput จึงส่งตรง ๆ ได้เลย)
             const data = isEditMode ? await updateBatch(form.id, form) : await createBatch(form);
 
             onSaved?.(data);
@@ -536,12 +542,16 @@ export default function BatchFormModal({
                                                     <ResponsibleCard title="ฝ่ายบริหาร (ผอ. และ รองฯ 4 ฝ่าย)" roles={EXEC_ROLES}>
                                                         {EXEC_ROLES.map((role) => (
                                                             <Field key={role.key} label={role.label} htmlFor={role.key}>
-                                                                <TeacherCombobox
+                                                                <VirtualizedCombobox
                                                                     id={role.key}
                                                                     value={form[role.key]}
                                                                     onChange={handleComboChange(role.key)}
                                                                     options={teacherOptions}
                                                                     disabled={teachersLoading}
+                                                                    placeholder="พิมพ์ค้นหาชื่ออาจารย์..."
+                                                                    loadingText="กำลังโหลดรายชื่ออาจารย์..."
+                                                                    emptyText="ไม่พบรายชื่ออาจารย์"
+                                                                    className={inputClass}
                                                                 />
                                                             </Field>
                                                         ))}
@@ -550,12 +560,16 @@ export default function BatchFormModal({
                                                     <ResponsibleCard title="ฝ่ายปฏิบัติการ (หัวหน้างาน 4 ฝ่าย)" roles={OPS_ROLES}>
                                                         {OPS_ROLES.map((role) => (
                                                             <Field key={role.key} label={role.label} htmlFor={role.key}>
-                                                                <TeacherCombobox
+                                                                <VirtualizedCombobox
                                                                     id={role.key}
                                                                     value={form[role.key]}
                                                                     onChange={handleComboChange(role.key)}
                                                                     options={teacherOptions}
                                                                     disabled={teachersLoading}
+                                                                    placeholder="พิมพ์ค้นหาชื่ออาจารย์..."
+                                                                    loadingText="กำลังโหลดรายชื่ออาจารย์..."
+                                                                    emptyText="ไม่พบรายชื่ออาจารย์"
+                                                                    className={inputClass}
                                                                 />
                                                             </Field>
                                                         ))}
@@ -616,12 +630,16 @@ export default function BatchFormModal({
                                                     <ResponsibleCard title="ฝ่ายบริหาร (ผอ. และ รองฯ 4 ฝ่าย)" roles={EXEC_ROLES} bare>
                                                         {EXEC_ROLES.map((role) => (
                                                             <Field key={role.key} label={role.label} htmlFor={`bulk_${role.key}`}>
-                                                                <TeacherCombobox
+                                                                <VirtualizedCombobox
                                                                     id={`bulk_${role.key}`}
                                                                     value={bulkCommon[role.key]}
                                                                     onChange={handleBulkCommonComboChange(role.key)}
                                                                     options={teacherOptions}
                                                                     disabled={teachersLoading}
+                                                                    placeholder="พิมพ์ค้นหาชื่ออาจารย์..."
+                                                                    loadingText="กำลังโหลดรายชื่ออาจารย์..."
+                                                                    emptyText="ไม่พบรายชื่ออาจารย์"
+                                                                    className={inputClass}
                                                                 />
                                                             </Field>
                                                         ))}
@@ -629,12 +647,16 @@ export default function BatchFormModal({
                                                     <ResponsibleCard title="ฝ่ายปฏิบัติการ (หัวหน้างาน 4 ฝ่าย)" roles={OPS_ROLES} bare>
                                                         {OPS_ROLES.map((role) => (
                                                             <Field key={role.key} label={role.label} htmlFor={`bulk_${role.key}`}>
-                                                                <TeacherCombobox
+                                                                <VirtualizedCombobox
                                                                     id={`bulk_${role.key}`}
                                                                     value={bulkCommon[role.key]}
                                                                     onChange={handleBulkCommonComboChange(role.key)}
                                                                     options={teacherOptions}
                                                                     disabled={teachersLoading}
+                                                                    placeholder="พิมพ์ค้นหาชื่ออาจารย์..."
+                                                                    loadingText="กำลังโหลดรายชื่ออาจารย์..."
+                                                                    emptyText="ไม่พบรายชื่ออาจารย์"
+                                                                    className={inputClass}
                                                                 />
                                                             </Field>
                                                         ))}
@@ -753,25 +775,32 @@ function Field({ label, htmlFor, full = false, children }) {
     );
 }
 
-/** Reusable group of "start date - end date" inputs (ใช้ ThaiDateInput แสดงผลไทย/พ.ศ.) */
+/**
+ * Reusable group of "start date - end date" inputs, backed by <MaskedDateInput>
+ * (พิมพ์ตัวเลขล้วน ๆ ระบบใส่ "/" ให้อัตโนมัติ + validate ทันทีที่ครบ 8 หลัก)
+ */
 function DateRangeGroup({ title, startId, startValue, onStartChange, endId, endValue, onEndChange, required = false }) {
     return (
         <div className="rounded-lg border border-slate-200 p-3">
             <p className="mb-2 text-xs font-semibold text-slate-500">{title}</p>
             <div className="space-y-2">
                 <Field label="วันเริ่มต้น" htmlFor={startId}>
-                    <ThaiDateInput
+                    <MaskedDateInput
                         id={startId}
                         value={startValue}
                         onChange={onStartChange}
+                        calendar="BE"
+                        className={inputClass}
                         required={required}
                     />
                 </Field>
                 <Field label="วันสิ้นสุด" htmlFor={endId}>
-                    <ThaiDateInput
+                    <MaskedDateInput
                         id={endId}
                         value={endValue}
                         onChange={onEndChange}
+                        calendar="BE"
+                        className={inputClass}
                         required={required}
                     />
                 </Field>
@@ -796,96 +825,5 @@ function ResponsibleCard({ title, children, bare = false }) {
             <p className="mb-3 text-sm font-bold text-slate-800">{title}</p>
             {content}
         </div>
-    );
-}
-
-/**
- * TeacherCombobox
- * -------------------------------------------------------------------------
- * Searchable teacher picker built on Headless UI's <Combobox>. Lets the user
- * type to filter by name instead of scrolling a long <select>.
- *
- * Props:
- * - id: string
- * - value: string | number | ""     -> selected teacher id
- * - onChange: (id) => void
- * - options: Array<{ value, label }>
- * - disabled: boolean               -> true ระหว่างรอโหลดรายชื่ออาจารย์จริงจาก GET /teachers
- */
-function TeacherCombobox({ id, value, onChange, options, disabled = false }) {
-    const [query, setQuery] = useState("");
-    const selected = options.find((o) => String(o.value) === String(value)) || null;
-
-    const filtered =
-        query === ""
-            ? options
-            : options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()));
-
-    return (
-        <Combobox value={selected} onChange={(opt) => onChange(opt ? opt.value : "")} disabled={disabled}>
-            <div className="relative">
-                <div className="relative">
-                    <Combobox.Input
-                        id={id}
-                        className={`${inputClass} pr-16 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400`}
-                        displayValue={(opt) => opt?.label || ""}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder={disabled ? "กำลังโหลดรายชื่ออาจารย์..." : "พิมพ์ค้นหาชื่ออาจารย์..."}
-                        autoComplete="off"
-                    />
-                    <div className="absolute inset-y-0 right-1.5 flex items-center gap-0.5">
-                        {selected && (
-                            <button
-                                type="button"
-                                onClick={() => onChange("")}
-                                className="rounded p-1 text-slate-400 hover:text-slate-600"
-                                tabIndex={-1}
-                            >
-                                <XCircle size={14} />
-                            </button>
-                        )}
-                        <Combobox.Button className="rounded p-1 text-slate-400 hover:text-slate-600">
-                            <ChevronsUpDown size={14} />
-                        </Combobox.Button>
-                    </div>
-                </div>
-                <Transition
-                    as={Fragment}
-                    leave="transition ease-in duration-100"
-                    leaveFrom="opacity-100"
-                    leaveTo="opacity-0"
-                    afterLeave={() => setQuery("")}
-                >
-                    <Combobox.Options
-                        anchor={{ to: "bottom start", gap: 4 }}
-                        className="z-[100] w-[var(--input-width)] max-h-56 overflow-auto rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg"
-                    >
-                        {filtered.length === 0 ? (
-                            <div className="px-3 py-2 text-slate-400">
-                                {disabled ? "กำลังโหลดรายชื่ออาจารย์..." : "ไม่พบรายชื่ออาจารย์"}
-                            </div>
-                        ) : (
-                            filtered.map((opt) => (
-                                <Combobox.Option
-                                    key={opt.value}
-                                    value={opt}
-                                    className={({ active }) =>
-                                        `flex cursor-pointer items-center justify-between px-3 py-2 ${active ? "bg-indigo-50 text-indigo-600" : "text-slate-700"
-                                        }`
-                                    }
-                                >
-                                    {({ selected: isSelected }) => (
-                                        <>
-                                            <span className={isSelected ? "font-semibold" : ""}>{opt.label}</span>
-                                            {isSelected && <Check size={14} />}
-                                        </>
-                                    )}
-                                </Combobox.Option>
-                            ))
-                        )}
-                    </Combobox.Options>
-                </Transition>
-            </div>
-        </Combobox>
     );
 }
