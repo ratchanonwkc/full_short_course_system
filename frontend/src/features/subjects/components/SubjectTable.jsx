@@ -71,7 +71,6 @@ export default function SubjectTable({ rowData = [], loading = false, onEdit, on
                 cellRenderer: SubjectCodeRenderer,
             },
             { field: "name_th", headerName: "ชื่อวิชา (ไทย)", minWidth: 220, flex: 2 },
-            { field: "name_en", headerName: "ชื่อวิชา (English)", minWidth: 200, flex: 2 },
             { field: "level_name", headerName: "ระดับชั้น", minWidth: 140, flex: 1 },
             { field: "subject_type_name", headerName: "ประเภทวิชา", minWidth: 140, flex: 1 },
             { field: "major_name", headerName: "สาขาวิชา", minWidth: 160, flex: 1 },

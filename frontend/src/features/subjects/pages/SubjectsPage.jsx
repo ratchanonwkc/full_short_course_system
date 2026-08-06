@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import Swal from "sweetalert2";
 import SearchableCombobox from "../../../components/common/SearchableCombobox";
@@ -6,6 +6,7 @@ import SubjectTable from "../components/SubjectTable";
 import SubjectFormDrawer from "../components/SubjectFormDrawer";
 import { getSubjects, deleteSubject } from "../services/subjectApi";
 import { getAcademicLevels, getSubjectTypes, getCurriculums, getMajors, getMinors } from "../../curriculums/services/academicStructureApi";
+import useDebouncedValue from "../../../hooks/useDebouncedValue";
 
 const PAGE_SIZE = 20;
 
@@ -15,13 +16,27 @@ const PAGE_SIZE = 20;
  * หน้าจัดการรายวิชาแบบ Master-Detail: Table (AG Grid) + Slide-over Drawer form
  * รองรับ Filter ตาม level_id / subject_type_id / major_id / minor_id, Quick Search,
  * และ Pagination (ยิงตรงไปที่ backend ตาม query params)
+ *
+ * Performance notes (ข้อมูลรายวิชามีหลักพัน record):
+ * - Pagination ทำที่ backend เสมอ (Supabase .range()) -> โหลดแค่หน้าละ PAGE_SIZE รายการ
+ *   ไม่เคยดึงข้อมูลทั้งหมดมาไว้ที่ client
+ * - ช่องค้นหา (Quick Search) debounce ไว้ 400ms ก่อนยิง API จริง เพื่อไม่ให้ยิง request
+ *   รัว ๆ ทุกครั้งที่พิมพ์ (เช่นพิมพ์คำค้นหา 10 ตัวอักษร = ยิงแค่ 1 ครั้งตอนหยุดพิมพ์
+ *   แทนที่จะยิง 10 ครั้ง)
+ * - ป้องกัน stale response race condition: ถ้าเปลี่ยน filter/พิมพ์ค้นหาเร็ว ๆ จนมีหลาย
+ *   request ค้างอยู่พร้อมกัน request ที่ตอบกลับมาไม่ตรงกับ "คำขอล่าสุด" จะถูกทิ้งไป
+ *   ไม่ให้เอามาทับผลลัพธ์ที่ถูกต้องกว่า (เกิดได้ง่ายเวลาเน็ตช้า/สลับ filter เร็ว ๆ)
  */
 export default function SubjectsPage() {
     const [subjects, setSubjects] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 1 });
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
-    const [searchTerm, setSearchTerm] = useState("");
+
+    // rawSearchTerm = ค่าที่ผูกกับ input ตรง ๆ (อัปเดตทุก keystroke เพื่อ UI responsive)
+    // searchTerm    = ค่าที่ debounce แล้ว ใช้ยิง API จริงเท่านั้น
+    const [rawSearchTerm, setRawSearchTerm] = useState("");
+    const searchTerm = useDebouncedValue(rawSearchTerm, 400);
 
     const [filterLevelId, setFilterLevelId] = useState("");
     const [filterSubjectTypeId, setFilterSubjectTypeId] = useState("");
@@ -70,7 +85,11 @@ export default function SubjectsPage() {
         fetchStructure();
     }, [fetchStructure]);
 
+    // ── ป้องกัน stale response: เก็บเลข request ล่าสุดไว้เทียบตอน response กลับมา ──
+    const requestIdRef = useRef(0);
+
     const fetchSubjects = useCallback(async () => {
+        const currentRequestId = ++requestIdRef.current;
         setLoading(true);
         try {
             const params = {
@@ -83,9 +102,15 @@ export default function SubjectsPage() {
                 ...(searchTerm.trim() && { search: searchTerm.trim() }),
             };
             const { data, pagination: pg } = await getSubjects(params);
+
+            // ถ้ามี request ใหม่กว่ายิงออกไประหว่างที่ request นี้ยังไม่ตอบกลับ -> ทิ้งผลลัพธ์นี้
+            // (กันเคสพิมพ์ค้นหา/สลับ filter เร็ว ๆ แล้ว response เก่ามาถึงทีหลัง response ใหม่)
+            if (currentRequestId !== requestIdRef.current) return;
+
             setSubjects(data);
             setPagination(pg);
         } catch (err) {
+            if (currentRequestId !== requestIdRef.current) return;
             Swal.fire({
                 icon: "error",
                 title: "โหลดข้อมูลรายวิชาไม่สำเร็จ",
@@ -93,7 +118,7 @@ export default function SubjectsPage() {
                 confirmButtonColor: "#4f46e5",
             });
         } finally {
-            setLoading(false);
+            if (currentRequestId === requestIdRef.current) setLoading(false);
         }
     }, [page, filterLevelId, filterSubjectTypeId, filterMajorId, filterMinorId, searchTerm]);
 
@@ -103,6 +128,13 @@ export default function SubjectsPage() {
 
     // เปลี่ยน filter ใด ๆ -> รีเซ็ตกลับหน้า 1 เสมอ
     const resetToFirstPage = () => setPage(1);
+
+    // ค้นหาด้วยคำใหม่ (หลัง debounce) -> กลับไปหน้า 1 เสมอเช่นกัน ไม่งั้นอาจค้างอยู่หน้าที่
+    // ไม่มีผลลัพธ์แล้ว (เช่นค้นหาแล้วเจอแค่ 1 หน้า แต่ page state ยังเป็นหน้า 5 จากก่อนหน้า)
+    useEffect(() => {
+        setPage(1);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchTerm]);
 
     const majorFilterOptions = useMemo(
         () =>
@@ -180,14 +212,21 @@ export default function SubjectsPage() {
                     <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                         type="text"
-                        value={searchTerm}
-                        onChange={(e) => {
-                            setSearchTerm(e.target.value);
-                            resetToFirstPage();
-                        }}
+                        value={rawSearchTerm}
+                        onChange={(e) => setRawSearchTerm(e.target.value)}
                         placeholder="ค้นหารหัสวิชา หรือ ชื่อวิชา..."
                         className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
                     />
+                    {/* บอกสถานะตอนกำลังรอ debounce/โหลดผลลัพธ์ ไม่ให้ผู้ใช้งง */}
+                    {rawSearchTerm !== searchTerm ? (
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                            กำลังพิมพ์...
+                        </span>
+                    ) : loading && searchTerm.trim() ? (
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                            กำลังค้นหา...
+                        </span>
+                    ) : null}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

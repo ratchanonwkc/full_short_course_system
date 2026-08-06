@@ -56,12 +56,6 @@ export default function SubjectFormDrawer({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const isEditMode = Boolean(initialData);
 
-    useEffect(() => {
-        if (isOpen) {
-            setForm(initialData ? { ...EMPTY_FORM, ...initialData } : EMPTY_FORM);
-        }
-    }, [isOpen, initialData]);
-
     const levelOptions = useMemo(() => levels.map((l) => ({ value: l.id, label: l.level_name })), [levels]);
     const curriculumOptions = useMemo(
         () => curriculums.map((c) => ({ value: c.id, label: c.curriculum_name })),
@@ -126,6 +120,14 @@ export default function SubjectFormDrawer({
     }, [form.total_hours]);
 
     // ─── Subject code auto-generation ───────────────────────────────────────
+    // สำคัญ: initialLocked = !isEditMode
+    // - โหมดสร้างใหม่ (isEditMode=false) -> locked=true -> auto-calculate รหัสวิชาให้ตามปกติ
+    // - โหมดแก้ไข (isEditMode=true)      -> locked=false -> "ไม่" auto-calculate ทับ
+    //   เพราะรหัสวิชาเดิม (จาก initialData) ถูกต้องอยู่แล้ว การปล่อยให้ hook คำนวณ sequence
+    //   ถัดไปใหม่ทันทีที่เปิดฟอร์ม (โดยไม่รู้ว่ากำลังแก้ไขวิชาตัวไหนอยู่ ไม่ได้ exclude ตัวเอง
+    //   ออกจากการนับ) จะได้รหัสที่ไปชนกับวิชาอื่นที่มีอยู่แล้วในกลุ่มเดียวกัน แล้วพอกด Save
+    //   backend จะตอบ 400 "รหัสวิชานี้มีอยู่แล้วในระบบ" ทั้งที่ผู้ใช้ไม่ได้ตั้งใจเปลี่ยนรหัสวิชาเลย
+    //   ผู้ใช้ยังกดปุ่ม Unlock เองได้ตามปกติถ้าต้องการเปลี่ยนรหัสวิชาตอนแก้ไข
     const { code, setManualCode, locked, setLocked, isCalculating, sequenceWarning } = useSubjectCode({
         levelId: form.level_id,
         subjectTypeId: form.subject_type_id,
@@ -133,7 +135,19 @@ export default function SubjectFormDrawer({
         subDepartment: selectedMinor?.sub_department_id,
         durationGroup: form.duration_group,
         minorId: form.minor_id,
+        initialLocked: !isEditMode,
     });
+
+    // เปิด/ปิดฟอร์ม หรือสลับรายการที่แก้ไข -> reset form + sync locked ให้ตรงกับ mode เสมอ
+    // (ป้องกัน state ของ locked ค้างจากการเปิดฟอร์มครั้งก่อนหน้า เช่น ปิดฟอร์มตอน unlock ค้างไว้
+    // แล้วเปิดฟอร์มแก้ไขวิชาอื่นต่อทันที)
+    useEffect(() => {
+        if (isOpen) {
+            setForm(initialData ? { ...EMPTY_FORM, ...initialData } : EMPTY_FORM);
+            setLocked(!initialData);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, initialData]);
 
     // sync ค่าที่ hook คำนวณได้ลงในฟอร์ม (ยกเว้นตอนแก้ไขวิชาเดิมที่ subject_code มีอยู่แล้วและยัง lock)
     useEffect(() => {
@@ -266,6 +280,11 @@ export default function SubjectFormDrawer({
                                                         <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-indigo-400" />
                                                     )}
                                                 </div>
+                                                {isEditMode && locked && (
+                                                    <p className="mt-1.5 text-xs text-slate-400">
+                                                        * รหัสวิชานี้ถูกล็อกไว้กับข้อมูลเดิม กด "แก้ไขเอง" หากต้องการเปลี่ยนรหัสวิชา
+                                                    </p>
+                                                )}
                                                 {sequenceWarning && (
                                                     <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-amber-600">
                                                         <AlertTriangle size={12} /> {sequenceWarning}

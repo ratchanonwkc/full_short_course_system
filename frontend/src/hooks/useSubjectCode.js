@@ -19,12 +19,21 @@ import { getNextSequence } from "../features/subjects/services/subjectApi";
  *                  ในกลุ่ม minor_id + duration_group เดียวกัน)
  *
  * Behaviour:
- *   - ถ้า locked=true (ค่าเริ่มต้น) -> โค้ดจะถูกคำนวณอัตโนมัติทุกครั้งที่ dependency เปลี่ยน
+ *   - ถ้า locked=true (ค่าเริ่มต้นตอนสร้างใหม่) -> โค้ดจะถูกคำนวณอัตโนมัติทุกครั้งที่
+ *     dependency เปลี่ยน
  *   - ถ้า locked=false -> หยุดคำนวณอัตโนมัติ ผู้ใช้แก้เองได้อิสระผ่าน setManualCode
+ *
+ *   ⚠️ สำคัญ: ตอนแก้ไขวิชาเดิม (edit mode) ต้อง initialLocked=false เสมอ! เพราะถ้าเริ่มต้น
+ *   เป็น locked=true hook จะยิง getNextSequence ทันทีแล้วคำนวณ "sequence ถัดไป" ทับรหัสวิชา
+ *   เดิมที่ถูกต้องอยู่แล้ว (โดยไม่รู้ว่ากำลังแก้ไขวิชาตัวไหน ไม่ได้ exclude ตัวเองออกจากการนับ)
+ *   ผลคือ subject_code ที่ส่งไป backend ตอน Save กลายเป็นรหัสที่ไปชนกับวิชาอื่นที่มีอยู่แล้ว
+ *   ทำให้ backend ตอบ 400 "รหัสวิชานี้มีอยู่แล้วในระบบ" ทั้งที่ผู้ใช้ไม่ได้ตั้งใจเปลี่ยนรหัสวิชาเลย
  *
  * Params:
  *   - levelId, subjectTypeId, department, subDepartment, durationGroup: string|number
- *   - skipSequenceFor: id ของวิชาที่กำลังแก้ไขอยู่ (เผื่ออนาคตอยาก exclude ตัวเองจากการนับลำดับ)
+ *   - minorId: id ของสาขางานที่เลือก (ใช้เป็น key คำนวณลำดับ)
+ *   - initialLocked: boolean (default true) -> ค่าเริ่มต้นของ locked state
+ *     ส่ง false เมื่อเป็นโหมดแก้ไขวิชาเดิม เพื่อไม่ให้ auto-calculate ทับรหัสเดิม
  *
  * Returns:
  *   - code: string                 -> รหัสวิชาปัจจุบัน (auto หรือ manual)
@@ -41,12 +50,19 @@ export default function useSubjectCode({
     subDepartment,
     durationGroup,
     minorId,
+    initialLocked = true,
 }) {
     const [code, setCode] = useState("");
-    const [locked, setLocked] = useState(true);
+    const [locked, setLocked] = useState(initialLocked);
     const [isCalculating, setIsCalculating] = useState(false);
     const [sequenceWarning, setSequenceWarning] = useState(null);
     const requestIdRef = useRef(0);
+
+    // ถ้า initialLocked เปลี่ยน (เช่น ฟอร์มถูกเปิดใหม่สลับระหว่าง create <-> edit)
+    // ให้ sync ค่า locked ตามไปด้วย เพื่อไม่ให้ state ค้างจากการเปิดฟอร์มครั้งก่อน
+    useEffect(() => {
+        setLocked(initialLocked);
+    }, [initialLocked]);
 
     const canCompute = levelId && subjectTypeId && department && subDepartment && durationGroup && minorId;
 
