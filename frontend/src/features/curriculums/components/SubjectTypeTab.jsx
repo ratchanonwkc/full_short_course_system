@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
+import { AgGridReact } from "ag-grid-react";
+import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
+import { Info } from "lucide-react";
 import Swal from "sweetalert2";
 import { getSubjectTypes } from "../services/academicStructureApi";
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 /**
  * SubjectTypeTab
  * -------------------------------------------------------------------------
  * ประเภทวิชา (subject_types) เป็นชุดข้อมูลอ้างอิงตายตัวตามระเบียบ สพฐ.
  * (อุตสาหกรรม, พาณิชยกรรม, ศิลปกรรม ฯลฯ) จึงแสดงเป็น Read-only Table เท่านั้น
- * ไม่มีปุ่มเพิ่ม/แก้ไข/ลบ ตามที่ระบุในสโคปงาน
+ * ไม่มีปุ่มเพิ่ม/แก้ไข/ลบ และไม่ต้องใช้ Split View เพราะไม่มีฟอร์ม
  */
 export default function SubjectTypeTab() {
     const [items, setItems] = useState([]);
@@ -32,38 +37,34 @@ export default function SubjectTypeTab() {
         })();
     }, []);
 
+    const columnDefs = [
+        { field: "id", headerName: "รหัส", width: 90, cellClass: "font-mono text-slate-500" },
+        { field: "name_th", headerName: "ชื่อประเภทวิชา (ไทย)", flex: 1.5, cellClass: "font-medium text-slate-800" },
+        { field: "name_en", headerName: "ชื่อประเภทวิชา (English)", flex: 1.5, valueFormatter: (p) => p.value || "-" },
+    ];
+
     return (
         <div className="space-y-3">
-            <p className="text-xs text-slate-400">
-                ประเภทวิชาเป็นชุดข้อมูลอ้างอิงตามระเบียบ ไม่สามารถเพิ่ม/แก้ไข/ลบได้จากหน้านี้
-            </p>
+            <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500">
+                <Info size={14} className="mt-0.5 shrink-0 text-slate-400" />
+                <p>ประเภทวิชาเป็นชุดข้อมูลอ้างอิงตามระเบียบ ไม่สามารถเพิ่ม/แก้ไข/ลบได้จากหน้านี้</p>
+            </div>
 
-            {loading ? (
-                <p className="py-10 text-center text-sm text-slate-400">กำลังโหลดข้อมูล...</p>
-            ) : items.length === 0 ? (
-                <p className="py-10 text-center text-sm text-slate-400">ไม่พบรายการ</p>
-            ) : (
-                <div className="overflow-hidden rounded-lg border border-slate-200">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
-                            <tr>
-                                <th className="px-4 py-2.5">รหัส</th>
-                                <th className="px-4 py-2.5">ชื่อประเภทวิชา (ไทย)</th>
-                                <th className="px-4 py-2.5">ชื่อประเภทวิชา (English)</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {items.map((item) => (
-                                <tr key={item.id} className="hover:bg-slate-50/60">
-                                    <td className="px-4 py-2.5 font-mono text-slate-500">{item.id}</td>
-                                    <td className="px-4 py-2.5 font-medium text-slate-800">{item.name_th}</td>
-                                    <td className="px-4 py-2.5 text-slate-500">{item.name_en || "-"}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            <div className="h-[420px] overflow-hidden rounded-lg border border-slate-200">
+                <AgGridReact
+                    theme={themeQuartz}
+                    rowData={items}
+                    columnDefs={columnDefs}
+                    defaultColDef={{ resizable: true, sortable: true, filter: true }}
+                    loading={loading}
+                    headerHeight={40}
+                    rowHeight={42}
+                    animateRows
+                    overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ไม่พบรายการ</span>"
+                    getRowId={(params) => String(params.data.id)}
+                    className="h-full w-full"
+                />
+            </div>
         </div>
     );
 }

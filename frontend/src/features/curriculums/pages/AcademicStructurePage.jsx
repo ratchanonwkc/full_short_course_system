@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import { Tab } from "@headlessui/react";
 import { BookOpen, GraduationCap, Layers, Building2, Puzzle } from "lucide-react";
 import Swal from "sweetalert2";
-import SimpleLookupTab from "../components/SimpleLookupTab";
+import SimpleLookupSplitTab from "../components/SimpleLookupTab";
 import SubjectTypeTab from "../components/SubjectTypeTab";
 import MajorTab from "../components/MajorTab";
 import MinorTab from "../components/MinorTab";
@@ -24,16 +24,15 @@ const TABS = [
 /**
  * AcademicStructurePage
  * -------------------------------------------------------------------------
- * หน้าจัดการ "โครงสร้างหลักสูตร/วิชาการ" แบบ Tabbed View 5 แถบ ตามสโคปงาน:
- *   1. หลักสูตร (curriculums)
- *   2. ระดับชั้น (academic_levels)
- *   3. ประเภทวิชา (subject_types) - read only
- *   4. สาขาวิชา/แผนก (academic_majors)
- *   5. สาขางาน/กลุ่มวิชา (academic_minors)
+ * หน้าจัดการ "โครงสร้างหลักสูตร/วิชาการ" แบบ Tabbed View 5 แถบ:
+ *   1. หลักสูตร (curriculums)              -> Split View (SimpleLookupSplitTab)
+ *   2. ระดับชั้น (academic_levels)          -> Split View (SimpleLookupSplitTab)
+ *   3. ประเภทวิชา (subject_types)           -> Read only table
+ *   4. สาขาวิชา/แผนก (academic_majors)      -> Split View (MajorTab)
+ *   5. สาขางาน/กลุ่มวิชา (academic_minors)  -> Split View (MinorTab)
  *
- * ระดับชั้น, ประเภทวิชา และรายชื่ออาจารย์ ถูกโหลดไว้ที่หน้านี้ครั้งเดียว แล้วส่งลงไปเป็น
- * props ให้แท็บ "สาขาวิชา/แผนก" และ "สาขางาน" ใช้ประกอบ Cascading dropdown (คล้าย pattern
- * ของ TeachersPage / BatchesPage ที่โหลด master data ไว้ที่ parent)
+ * แต่ละแท็บที่มีฟอร์มใช้ Layout Master-Detail (Grid ฝั่งซ้าย + Form Panel ฝั่งขวา)
+ * ผ่าน SplitPanelLayout ร่วมกัน เพื่อความสอดคล้องของ UX ทั้งหน้า
  */
 export default function AcademicStructurePage() {
     const [levels, setLevels] = useState([]);
@@ -101,7 +100,7 @@ export default function AcademicStructurePage() {
 
                 <Tab.Panels className="pt-5">
                     <Tab.Panel>
-                        <SimpleLookupTab
+                        <SimpleLookupSplitTab
                             title="หลักสูตร"
                             primaryKey="curriculum_name"
                             placeholder='เช่น "หลักสูตรวิชาชีพระยะสั้นฐานสมรรถนะอาชีพ"'
@@ -113,7 +112,7 @@ export default function AcademicStructurePage() {
                     </Tab.Panel>
 
                     <Tab.Panel>
-                        <SimpleLookupTab
+                        <SimpleLookupSplitTab
                             title="ระดับชั้น"
                             primaryKey="level_name"
                             placeholder="เช่น หลักสูตรวิชาชีพระยะสั้นฯ / ปวช. / ปวส."

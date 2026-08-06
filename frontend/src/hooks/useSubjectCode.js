@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getNextSequence } from "../services/subjectApi";
+import { getNextSequence } from "../features/subjects/services/subjectApi";
 
 /**
  * useSubjectCode

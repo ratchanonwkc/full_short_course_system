@@ -3,9 +3,10 @@ import { Dialog, Transition } from "@headlessui/react";
 import { X, Save, Lock, Unlock, Loader2, AlertTriangle } from "lucide-react";
 import Swal from "sweetalert2";
 import SearchableCombobox from "../../../components/common/SearchableCombobox";
-import useSubjectCode from "../hooks/useSubjectCode";
+import useSubjectCode from "../../../hooks/useSubjectCode";
 import { DURATION_GROUPS, suggestDurationGroup } from "../constants";
 import { createSubject, updateSubject } from "../services/subjectApi";
+import useSingleOptionDefault from "../../../hooks/useSingleOptionDefault";
 
 const inputClass =
     "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40";
@@ -67,7 +68,8 @@ export default function SubjectFormDrawer({
         [curriculums]
     );
     const subjectTypeOptions = useMemo(() => subjectTypes.map((t) => ({ value: t.id, label: t.name_th })), [subjectTypes]);
-
+    useSingleOptionDefault(levelOptions, form.level_id, (v) => setForm((p) => ({ ...p, level_id: v })), !isEditMode);
+    useSingleOptionDefault(curriculumOptions, form.curriculum_id, (v) => setForm((p) => ({ ...p, curriculum_id: v })), !isEditMode);
     // Cascading: สาขาวิชา ต้องกรองตามระดับชั้น + ประเภทวิชาที่เลือกไว้ก่อน
     const filteredMajors = useMemo(
         () =>

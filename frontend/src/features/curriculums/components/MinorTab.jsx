@@ -1,8 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import { Save, Trash2, X, Pencil } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AgGridReact } from "ag-grid-react";
+import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
+import { Plus, Save, Trash2, Search, Pencil } from "lucide-react";
 import Swal from "sweetalert2";
 import SearchableCombobox from "../../../components/common/SearchableCombobox";
+import SplitPanelLayout from "./SplitPanelLayout";
+import FormStatusBanner from "./FormStatusBanner";
+import { buildMinorCode, buildMinorCodePreview } from "../../../utils/academicCode";
 import { getMinors, createMinor, updateMinor, deleteMinor } from "../services/academicStructureApi";
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 const inputClass =
     "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40";
@@ -10,22 +17,31 @@ const inputClass =
 const EMPTY_FORM = { major_id: "", sub_department_id: "", name_th: "", name_en: "" };
 
 /**
- * MinorTab (สาขางาน/กลุ่มวิชา)
+ * MinorTab (สาขางาน/กลุ่มวิชา) — Split View
  * -------------------------------------------------------------------------
- * เลือกสาขาวิชา (major_id) ก่อน แล้วรายการสาขางานจะกรองตาม major ที่เลือกโดยอัตโนมัติ
+ * รหัสสาขางาน (Display/Preview เท่านั้น ไม่ใช่ subject_code):
+ *   [ระดับชั้น 1 หลัก][ประเภทวิชา 1 หลัก][แผนกวิชา 2 หลัก] - [รหัสสาขางาน 1 หลัก]
+ *   เช่น 1 + 1 + 04 + "-" + 1 -> "1104-1"
+ *
+ * ระดับชั้น/ประเภทวิชา มาจาก major ที่เลือก (สาขาวิชาต้นสังกัด) ไม่ใช่ field แยกในฟอร์มนี้
  *
  * Props:
- * - majors: Array<{ id, name_th, department_id }>
+ * - majors: Array<{ id, name_th, department_id, level_id, subject_type_id, level_name, subject_type_name }>
  */
 export default function MinorTab({ majors = [] }) {
     const [filterMajorId, setFilterMajorId] = useState("");
     const [minors, setMinors] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState("");
     const [form, setForm] = useState(EMPTY_FORM);
     const [editingId, setEditingId] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isMobileFormOpen, setIsMobileFormOpen] = useState(false);
+    const firstFieldRef = useRef(null);
+    const isEditMode = Boolean(editingId);
 
     const majorOptions = useMemo(() => majors.map((m) => ({ value: m.id, label: m.name_th })), [majors]);
+    const selectedFormMajor = majors.find((m) => String(m.id) === String(form.major_id));
 
     const load = async (majorId) => {
         setLoading(true);
@@ -54,6 +70,10 @@ export default function MinorTab({ majors = [] }) {
         setEditingId(null);
     };
 
+    const focusFirstField = () => {
+        requestAnimationFrame(() => firstFieldRef.current?.focus?.());
+    };
+
     const handleEdit = (minor) => {
         setForm({
             major_id: minor.major_id ?? "",
@@ -62,6 +82,19 @@ export default function MinorTab({ majors = [] }) {
             name_en: minor.name_en ?? "",
         });
         setEditingId(minor.id);
+        setIsMobileFormOpen(true);
+        focusFirstField();
+    };
+
+    const handleStartCreate = () => {
+        resetForm();
+        setIsMobileFormOpen(true);
+        focusFirstField();
+    };
+
+    const handleCancelEdit = () => {
+        resetForm();
+        setIsMobileFormOpen(false);
     };
 
     const handleSubmit = async (e) => {
@@ -84,6 +117,7 @@ export default function MinorTab({ majors = [] }) {
                 showConfirmButton: false, timer: 2000, timerProgressBar: true,
             });
             resetForm();
+            setIsMobileFormOpen(false);
             load(filterMajorId);
         } catch (err) {
             Swal.fire({
@@ -130,148 +164,249 @@ export default function MinorTab({ majors = [] }) {
         }
     };
 
-    return (
-        <div className="space-y-5">
-            {/* Filter by major */}
-            <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">กรองตามสาขาวิชา</label>
-                <div className="max-w-sm">
-                    <SearchableCombobox
-                        value={filterMajorId}
-                        onChange={(v) => {
-                            setFilterMajorId(v);
-                            setForm((p) => ({ ...p, major_id: v || p.major_id }));
-                        }}
-                        options={majorOptions}
-                        placeholder="เลือกสาขาวิชาเพื่อกรองรายการ..."
-                    />
+    const filteredMinors = useMemo(() => {
+        const term = searchTerm.trim().toLowerCase();
+        if (!term) return minors;
+        return minors.filter(
+            (m) => (m.name_th || "").toLowerCase().includes(term) || (m.major_name || "").toLowerCase().includes(term)
+        );
+    }, [minors, searchTerm]);
+
+    // รหัสเต็มของสาขางาน (สำหรับแสดงในตาราง) คำนวณจากสูตรใหม่โดยใช้ level_id/subject_type_id ของ major ต้นสังกัด
+    const minorCodeFor = (minor) => {
+        // ข้อมูลจาก backend (academicMinors.service.js) join แค่ major_department_id มาให้
+        // ส่วน level_id/subject_type_id ต้องดึงจาก majors prop (โหลดจาก parent) เพื่อความครบถ้วน
+        const relatedMajor = majors.find((m) => String(m.id) === String(minor.major_id));
+        return buildMinorCode({
+            levelId: relatedMajor?.level_id,
+            subjectTypeId: relatedMajor?.subject_type_id,
+            departmentId: minor.major_department_id,
+            subDepartmentId: minor.sub_department_id,
+        }) || `${minor.major_department_id ?? ""}${minor.sub_department_id ?? ""}`; // fallback เผื่อหา major ไม่เจอ
+    };
+
+    const livePreviewCode = buildMinorCodePreview({
+        levelId: selectedFormMajor?.level_id,
+        subjectTypeId: selectedFormMajor?.subject_type_id,
+        departmentId: selectedFormMajor?.department_id,
+        subDepartmentId: form.sub_department_id,
+    });
+    const isPreviewComplete = Boolean(
+        selectedFormMajor?.level_id &&
+        selectedFormMajor?.subject_type_id &&
+        selectedFormMajor?.department_id &&
+        form.sub_department_id
+    );
+
+    const CodeRenderer = (params) => (
+        <span className="font-mono font-semibold text-indigo-700">{minorCodeFor(params.data)}</span>
+    );
+
+    const ActionsRenderer = (params) => (
+        <div className="flex h-full items-center gap-1.5">
+            <button
+                type="button"
+                title="แก้ไข"
+                onClick={() => handleEdit(params.data)}
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600"
+            >
+                <Pencil size={15} />
+            </button>
+            <button
+                type="button"
+                title="ลบ"
+                onClick={() => handleDelete(params.data)}
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
+            >
+                <Trash2 size={15} />
+            </button>
+        </div>
+    );
+    // จัดกลุ่มข้อมูลด้วย major_id
+    const columnDefs = useMemo(
+        () => [
+            { headerName: "รหัส", width: 110, cellRenderer: CodeRenderer },
+            { field: "name_th", headerName: "สาขางาน", flex: 1.6, minWidth: 160, cellClass: "font-medium text-slate-800" },
+            { field: "major_name", headerName: "สาขาวิชาต้นสังกัด", flex: 1.4, minWidth: 160 },
+            {
+                headerName: "จัดการ",
+                pinned: "right",
+                width: 100,
+                sortable: false,
+                filter: false,
+                cellRenderer: ActionsRenderer,
+            },
+        ],
+        [majors]
+    );
+
+    const defaultColDef = useMemo(() => ({ resizable: true, sortable: true, filter: true }), []);
+
+    const grid = (
+        <>
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="w-full sm:max-w-[220px]">
+                        <SearchableCombobox
+                            value={filterMajorId}
+                            onChange={(v) => {
+                                setFilterMajorId(v);
+                                setForm((p) => ({ ...p, major_id: v || p.major_id }));
+                            }}
+                            options={majorOptions}
+                            placeholder="กรองตามสาขาวิชา..."
+                        />
+                    </div>
+                    <div className="relative w-full sm:max-w-[220px]">
+                        <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="ค้นหาสาขางาน..."
+                            className="w-full rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                        />
+                    </div>
                 </div>
+                <button
+                    type="button"
+                    onClick={handleStartCreate}
+                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                >
+                    <Plus size={14} />
+                    เพิ่มสาขางานใหม่
+                </button>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-                <div className="mb-3 flex items-center justify-between">
-                    <p className="text-sm font-bold text-slate-800">
-                        {editingId ? "✏️ แก้ไขสาขางาน/กลุ่มวิชา" : "➕ เพิ่มสาขางาน/กลุ่มวิชาใหม่"}
-                    </p>
-                    {editingId && (
-                        <button
-                            type="button"
-                            onClick={resetForm}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700"
-                        >
-                            <X size={13} /> ยกเลิกการแก้ไข
-                        </button>
-                    )}
-                </div>
+            <div className="min-h-[420px] flex-1 overflow-hidden rounded-lg border border-slate-200 lg:min-h-0">
+                <AgGridReact
+                    theme={themeQuartz}
+                    rowData={filteredMinors}
+                    columnDefs={columnDefs}
+                    defaultColDef={defaultColDef}
+                    loading={loading}
+                    headerHeight={40}
+                    rowHeight={42}
+                    animateRows
+                    domLayout={filteredMinors.length === 0 ? "autoHeight" : undefined}
+                    overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ยังไม่มีข้อมูลสาขางาน</span>"
+                    getRowId={(params) => String(params.data.id)}
+                    getRowClass={(params) =>
+                        editingId && String(params.data.id) === String(editingId) ? "bg-amber-50" : undefined
+                    }
+                    onRowClicked={(params) => handleEdit(params.data)}
+                    rowStyle={{ cursor: "pointer" }}
+                    className="h-full w-full"
+                />
+            </div>
+        </>
+    );
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <Field label="สาขาวิชา" full>
-                        <SearchableCombobox
-                            value={form.major_id}
-                            onChange={(v) => setForm((p) => ({ ...p, major_id: v }))}
-                            options={majorOptions}
-                            placeholder="เลือกสาขาวิชาต้นสังกัด..."
-                        />
-                    </Field>
-                    <Field label="รหัสสาขางาน (1 หลัก)">
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={1}
-                            value={form.sub_department_id}
-                            onChange={(e) => setForm((p) => ({ ...p, sub_department_id: e.target.value }))}
-                            placeholder="เช่น 1"
-                            className={inputClass}
-                        />
-                    </Field>
-                    <Field label="ชื่อสาขางาน (ไทย)">
-                        <input
-                            type="text"
-                            value={form.name_th}
-                            onChange={(e) => setForm((p) => ({ ...p, name_th: e.target.value }))}
-                            className={inputClass}
-                        />
-                    </Field>
-                    <Field label="ชื่อสาขางาน (English)">
-                        <input
-                            type="text"
-                            value={form.name_en}
-                            onChange={(e) => setForm((p) => ({ ...p, name_en: e.target.value }))}
-                            className={inputClass}
-                        />
-                    </Field>
-                </div>
+    const form_ = (
+        <form onSubmit={handleSubmit} className="flex h-full flex-col">
+            <FormStatusBanner
+                mode={isEditMode ? "edit" : "create"}
+                editingLabel={form.name_th}
+                onCancelEdit={handleCancelEdit}
+                createLabel="เพิ่มสาขางาน/กลุ่มวิชาใหม่"
+                editLabel="กำลังแก้ไขสาขางาน"
+            />
 
-                <div className="mt-3 flex justify-end">
-                    <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+                {/* Live code preview */}
+                <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3.5">
+                    <p className="mb-1 text-xs font-semibold text-indigo-700">รหัสสาขางาน (Preview)</p>
+                    <p
+                        className={`font-mono text-lg font-bold ${isPreviewComplete ? "text-indigo-700" : "text-slate-400"
+                            }`}
                     >
-                        <Save size={14} />
-                        {isSubmitting ? "กำลังบันทึก..." : editingId ? "บันทึกการแก้ไข" : "เพิ่มสาขางาน"}
-                    </button>
+                        {livePreviewCode}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                        สูตร: [ระดับชั้น][ประเภทวิชา][แผนกวิชา 2 หลัก] - [รหัสสาขางาน] เช่น 1104-1
+                    </p>
                 </div>
-            </form>
 
-            {/* Table */}
-            {loading ? (
-                <p className="py-10 text-center text-sm text-slate-400">กำลังโหลดข้อมูล...</p>
-            ) : minors.length === 0 ? (
-                <p className="py-10 text-center text-sm text-slate-400">ยังไม่มีข้อมูลสาขางาน</p>
-            ) : (
-                <div className="overflow-hidden rounded-lg border border-slate-200">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
-                            <tr>
-                                <th className="px-4 py-2.5">รหัส</th>
-                                <th className="px-4 py-2.5">สาขางาน</th>
-                                <th className="px-4 py-2.5">สาขาวิชาต้นสังกัด</th>
-                                <th className="px-4 py-2.5 text-right">จัดการ</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {minors.map((m) => (
-                                <tr key={m.id} className="hover:bg-slate-50/60">
-                                    <td className="px-4 py-2.5 font-mono text-slate-500">
-                                        {m.major_department_id}{m.sub_department_id}
-                                    </td>
-                                    <td className="px-4 py-2.5 font-medium text-slate-800">{m.name_th}</td>
-                                    <td className="px-4 py-2.5 text-slate-600">{m.major_name || "-"}</td>
-                                    <td className="px-4 py-2.5">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <button
-                                                type="button"
-                                                title="แก้ไข"
-                                                onClick={() => handleEdit(m)}
-                                                className="rounded-md p-1.5 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600"
-                                            >
-                                                <Pencil size={15} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                title="ลบ"
-                                                onClick={() => handleDelete(m)}
-                                                className="rounded-md p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
-                                            >
-                                                <Trash2 size={15} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </div>
+                <Field label="สาขาวิชาต้นสังกัด">
+                    <SearchableCombobox
+                        value={form.major_id}
+                        onChange={(v) => setForm((p) => ({ ...p, major_id: v }))}
+                        options={majorOptions}
+                        placeholder="เลือกสาขาวิชาต้นสังกัด..."
+                    />
+                    {selectedFormMajor && (
+                        <p className="mt-1 text-xs text-slate-400">
+                            ระดับชั้น: {selectedFormMajor.level_name || selectedFormMajor.level_id || "-"} · ประเภทวิชา:{" "}
+                            {selectedFormMajor.subject_type_name || selectedFormMajor.subject_type_id || "-"} · แผนก:{" "}
+                            {selectedFormMajor.department_id || "-"}
+                        </p>
+                    )}
+                </Field>
+                <Field label="รหัสสาขางาน (1 หลัก)">
+                    <input
+                        ref={firstFieldRef}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={form.sub_department_id}
+                        onChange={(e) => setForm((p) => ({ ...p, sub_department_id: e.target.value }))}
+                        placeholder="เช่น 1"
+                        className={inputClass}
+                    />
+                </Field>
+                <Field label="ชื่อสาขางาน (ไทย)">
+                    <input
+                        type="text"
+                        value={form.name_th}
+                        onChange={(e) => setForm((p) => ({ ...p, name_th: e.target.value }))}
+                        className={inputClass}
+                    />
+                </Field>
+                <Field label="ชื่อสาขางาน (English)">
+                    <input
+                        type="text"
+                        value={form.name_en}
+                        onChange={(e) => setForm((p) => ({ ...p, name_en: e.target.value }))}
+                        className={inputClass}
+                    />
+                </Field>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 px-5 py-4">
+                {isEditMode && (
+                    <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                    >
+                        ยกเลิก
+                    </button>
+                )}
+                <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    <Save size={15} />
+                    {isSubmitting ? "กำลังบันทึก..." : isEditMode ? "บันทึกการแก้ไข" : "เพิ่มสาขางาน"}
+                </button>
+            </div>
+        </form>
+    );
+
+    return (
+        <SplitPanelLayout
+            grid={grid}
+            form={form_}
+            isFormOpen={isMobileFormOpen}
+            onCloseForm={() => setIsMobileFormOpen(false)}
+        />
     );
 }
 
-function Field({ label, full = false, children }) {
+function Field({ label, children }) {
     return (
-        <div className={full ? "sm:col-span-2 lg:col-span-4" : ""}>
+        <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">{label}</label>
             {children}
         </div>

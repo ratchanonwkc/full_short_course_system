@@ -1,40 +1,48 @@
-import { useEffect, useState } from "react";
-import { Plus, Save, Trash2, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AgGridReact } from "ag-grid-react";
+import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
+import { Plus, Save, Trash2, Search, Pencil } from "lucide-react";
 import Swal from "sweetalert2";
+import SplitPanelLayout from "./SplitPanelLayout";
+import FormStatusBanner from "./FormStatusBanner";
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 const inputClass =
     "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40";
 
 /**
- * SimpleLookupTab
+ * SimpleLookupSplitTab
  * -------------------------------------------------------------------------
- * ใช้ซ้ำได้กับ Lookup Table รูปแบบ "id + ชื่อ 1 ฟิลด์" เช่น curriculums (curriculum_name)
- * และ academic_levels (level_name) — โหลดรายการ, เพิ่มใหม่, แก้ไขแบบ inline, ลบ
+ * เวอร์ชัน Split View ของ SimpleLookupTab เดิม ใช้กับ Lookup Table รูปแบบ
+ * "id + ชื่อ 1 ฟิลด์" เช่น curriculums (curriculum_name), academic_levels (level_name)
+ *
+ * - ฝั่งซ้าย: AG-Grid list พร้อม Search
+ * - ฝั่งขวา: Form พร้อม Banner บอกโหมดสร้าง/แก้ไขชัดเจน
+ * - รองรับ Default Value อัตโนมัติ ถ้ามีข้อมูลแค่รายการเดียว (ผ่าน props)
  *
  * Props:
- * - title: string                 -> หัวข้อของแท็บ เช่น "หลักสูตร"
- * - primaryKey: string            -> ชื่อฟิลด์ เช่น "curriculum_name"
- * - placeholder: string
- * - fetchFn: () => Promise<Array>
- * - createFn: (payload) => Promise
- * - updateFn: (id, payload) => Promise
- * - deleteFn: (id) => Promise
+ * - title, primaryKey, placeholder
+ * - fetchFn / createFn / updateFn / deleteFn
  */
-export default function SimpleLookupTab({ title, primaryKey, placeholder, fetchFn, createFn, updateFn, deleteFn }) {
+export default function SimpleLookupSplitTab({ title, primaryKey, placeholder, fetchFn, createFn, updateFn, deleteFn }) {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [editMap, setEditMap] = useState({});
-    const [newValue, setNewValue] = useState("");
-    const [isAdding, setIsAdding] = useState(false);
-    const [savingId, setSavingId] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [value, setValue] = useState("");
+    const [editingItem, setEditingItem] = useState(null); // null = create mode
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isMobileFormOpen, setIsMobileFormOpen] = useState(false);
+    const inputRef = useRef(null);
+    const gridRef = useRef(null);
+
+    const isEditMode = Boolean(editingItem);
 
     const load = async () => {
         setLoading(true);
         try {
             const data = await fetchFn();
             setItems(data);
-            setEditMap(Object.fromEntries(data.map((item) => [item.id, item[primaryKey] ?? ""])));
         } catch (err) {
             Swal.fire({
                 icon: "error",
@@ -52,51 +60,61 @@ export default function SimpleLookupTab({ title, primaryKey, placeholder, fetchF
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const filteredItems = items.filter((item) => {
-        const term = searchTerm.trim().toLowerCase();
-        if (!term) return true;
-        return (editMap[item.id] ?? item[primaryKey] ?? "").toLowerCase().includes(term);
-    });
+    // ── Default value อัตโนมัติเมื่อมีข้อมูลเพียงรายการเดียว (เฉพาะตอนสร้างใหม่) ──
+    useEffect(() => {
+        if (!isEditMode && !value && items.length === 1) {
+            setValue(items[0][primaryKey] ?? "");
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [items, isEditMode]);
 
-    const handleAdd = async () => {
-        if (!newValue.trim()) {
-            Swal.fire({ icon: "warning", title: "กรุณากรอกข้อมูลให้ครบ", confirmButtonColor: "#4f46e5" });
-            return;
-        }
-        setIsAdding(true);
-        try {
-            await createFn({ [primaryKey]: newValue.trim() });
-            setNewValue("");
-            Swal.fire({
-                toast: true, position: "top-end", icon: "success",
-                title: `เพิ่ม${title}ใหม่เรียบร้อยแล้ว`, showConfirmButton: false, timer: 2000, timerProgressBar: true,
-            });
-            load();
-        } catch (err) {
-            Swal.fire({
-                icon: "error",
-                title: "เพิ่มรายการไม่สำเร็จ",
-                text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
-            });
-        } finally {
-            setIsAdding(false);
-        }
+    const resetForm = () => {
+        setValue("");
+        setEditingItem(null);
     };
 
-    const handleSave = async (item) => {
-        const value = editMap[item.id];
-        if (!value?.trim()) {
+    const focusInput = () => {
+        requestAnimationFrame(() => inputRef.current?.focus());
+    };
+
+    const handleStartEdit = (item) => {
+        setEditingItem(item);
+        setValue(item[primaryKey] ?? "");
+        focusInput();
+        setIsMobileFormOpen(true);
+    };
+
+    const handleStartCreate = () => {
+        resetForm();
+        focusInput();
+        setIsMobileFormOpen(true);
+    };
+
+    const handleCancelEdit = () => {
+        resetForm();
+        setIsMobileFormOpen(false);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!value.trim()) {
             Swal.fire({ icon: "warning", title: "กรุณากรอกข้อมูลให้ครบ", confirmButtonColor: "#4f46e5" });
             return;
         }
-        setSavingId(item.id);
+        setIsSubmitting(true);
         try {
-            await updateFn(item.id, { [primaryKey]: value.trim() });
+            if (isEditMode) {
+                await updateFn(editingItem.id, { [primaryKey]: value.trim() });
+            } else {
+                await createFn({ [primaryKey]: value.trim() });
+            }
             Swal.fire({
                 toast: true, position: "top-end", icon: "success",
-                title: "บันทึกเรียบร้อยแล้ว", showConfirmButton: false, timer: 2000, timerProgressBar: true,
+                title: isEditMode ? "บันทึกการแก้ไขสำเร็จ" : `เพิ่ม${title}ใหม่เรียบร้อยแล้ว`,
+                showConfirmButton: false, timer: 2000, timerProgressBar: true,
             });
+            resetForm();
+            setIsMobileFormOpen(false);
             load();
         } catch (err) {
             Swal.fire({
@@ -106,7 +124,7 @@ export default function SimpleLookupTab({ title, primaryKey, placeholder, fetchF
                 confirmButtonColor: "#4f46e5",
             });
         } finally {
-            setSavingId(null);
+            setIsSubmitting(false);
         }
     };
 
@@ -130,6 +148,7 @@ export default function SimpleLookupTab({ title, primaryKey, placeholder, fetchF
                 toast: true, position: "top-end", icon: "success",
                 title: "ลบเรียบร้อยแล้ว", showConfirmButton: false, timer: 2000, timerProgressBar: true,
             });
+            if (editingItem?.id === item.id) resetForm();
             load();
         } catch (err) {
             const isConflict = err?.response?.status === 409;
@@ -142,35 +161,54 @@ export default function SimpleLookupTab({ title, primaryKey, placeholder, fetchF
         }
     };
 
-    return (
-        <div className="space-y-4">
-            {/* Add new */}
-            <div className="rounded-xl border border-dashed border-indigo-300 bg-indigo-50/40 p-3">
-                <p className="mb-2 text-xs font-semibold text-indigo-600">➕ เพิ่ม{title}ใหม่</p>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                    <input
-                        type="text"
-                        value={newValue}
-                        onChange={(e) => setNewValue(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-                        placeholder={placeholder}
-                        className={inputClass}
-                    />
-                    <button
-                        type="button"
-                        onClick={handleAdd}
-                        disabled={isAdding}
-                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
-                    >
-                        <Plus size={14} />
-                        {isAdding ? "กำลังเพิ่ม..." : "เพิ่ม"}
-                    </button>
-                </div>
-            </div>
+    const filteredItems = useMemo(() => {
+        const term = searchTerm.trim().toLowerCase();
+        if (!term) return items;
+        return items.filter((item) => (item[primaryKey] ?? "").toLowerCase().includes(term));
+    }, [items, searchTerm, primaryKey]);
 
-            {/* Search */}
-            {items.length > 0 && (
-                <div className="relative max-w-sm">
+    const ActionsRenderer = (params) => (
+        <div className="flex h-full items-center gap-1.5">
+            <button
+                type="button"
+                title="แก้ไข"
+                onClick={() => handleStartEdit(params.data)}
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600"
+            >
+                <Pencil size={15} />
+            </button>
+            <button
+                type="button"
+                title="ลบ"
+                onClick={() => handleDelete(params.data)}
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
+            >
+                <Trash2 size={15} />
+            </button>
+        </div>
+    );
+
+    const columnDefs = useMemo(
+        () => [
+            { field: primaryKey, headerName: title, flex: 2, cellClass: "font-medium text-slate-800" },
+            {
+                headerName: "จัดการ",
+                pinned: "right",
+                width: 100,
+                sortable: false,
+                filter: false,
+                cellRenderer: ActionsRenderer,
+            },
+        ],
+        [primaryKey, title]
+    );
+
+    const defaultColDef = useMemo(() => ({ resizable: true, sortable: true, filter: true }), []);
+
+    const grid = (
+        <>
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative w-full sm:max-w-xs">
                     <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                         type="text"
@@ -180,49 +218,101 @@ export default function SimpleLookupTab({ title, primaryKey, placeholder, fetchF
                         className="w-full rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
                     />
                 </div>
-            )}
+                <button
+                    type="button"
+                    onClick={handleStartCreate}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                >
+                    <Plus size={14} />
+                    เพิ่ม{title}ใหม่
+                </button>
+            </div>
 
-            {/* List */}
-            {loading ? (
-                <p className="py-10 text-center text-sm text-slate-400">กำลังโหลดข้อมูล...</p>
-            ) : filteredItems.length === 0 ? (
-                <p className="py-10 text-center text-sm text-slate-400">ไม่พบรายการ</p>
-            ) : (
-                <div className="space-y-2">
-                    {filteredItems.map((item) => (
-                        <div
-                            key={item.id}
-                            className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-lg border border-slate-200 bg-white p-2.5 transition hover:border-slate-300 hover:shadow-sm"
-                        >
-                            <input
-                                type="text"
-                                value={editMap[item.id] ?? ""}
-                                onChange={(e) => setEditMap((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                                className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
-                            />
-                            <div className="flex items-center gap-1">
-                                <button
-                                    type="button"
-                                    title="บันทึก"
-                                    onClick={() => handleSave(item)}
-                                    disabled={savingId === item.id}
-                                    className="rounded-md p-1.5 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-50"
-                                >
-                                    <Save size={15} />
-                                </button>
-                                <button
-                                    type="button"
-                                    title="ลบ"
-                                    onClick={() => handleDelete(item)}
-                                    className="rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                                >
-                                    <Trash2 size={15} />
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+            <div className="min-h-[380px] flex-1 overflow-hidden rounded-lg border border-slate-200 lg:min-h-0">
+                <AgGridReact
+                    theme={themeQuartz}
+                    ref={gridRef}
+                    rowData={filteredItems}
+                    columnDefs={columnDefs}
+                    defaultColDef={defaultColDef}
+                    loading={loading}
+                    headerHeight={40}
+                    rowHeight={42}
+                    animateRows
+                    domLayout={filteredItems.length === 0 ? "autoHeight" : undefined}
+                    overlayNoRowsTemplate={`<span class='text-sm text-slate-400'>ไม่พบข้อมูล${title}</span>`}
+                    getRowId={(params) => String(params.data.id)}
+                    getRowClass={(params) =>
+                        editingItem && String(params.data.id) === String(editingItem.id)
+                            ? "bg-amber-50"
+                            : undefined
+                    }
+                    onRowClicked={(params) => handleStartEdit(params.data)}
+                    rowStyle={{ cursor: "pointer" }}
+                    className="h-full w-full"
+                />
+            </div>
+        </>
+    );
+
+    const form = (
+        <form onSubmit={handleSubmit} className="flex h-full flex-col">
+            <FormStatusBanner
+                mode={isEditMode ? "edit" : "create"}
+                editingLabel={editingItem?.[primaryKey]}
+                onCancelEdit={handleCancelEdit}
+                createLabel={`เพิ่ม${title}ใหม่`}
+                editLabel={`แก้ไข${title}`}
+            />
+
+            <div className="flex-1 space-y-4 px-5 py-5">
+                <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">{title}</label>
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        placeholder={placeholder}
+                        className={inputClass}
+                        autoFocus
+                    />
+                    {items.length === 1 && !isEditMode && (
+                        <p className="mt-1.5 text-xs text-slate-400">
+                            * ระบบเลือกค่านี้ให้อัตโนมัติ เนื่องจากมีข้อมูลอยู่เพียงรายการเดียว
+                        </p>
+                    )}
                 </div>
-            )}
-        </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 px-5 py-4">
+                {isEditMode && (
+                    <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                    >
+                        ยกเลิก
+                    </button>
+                )}
+                <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    <Save size={15} />
+                    {isSubmitting ? "กำลังบันทึก..." : isEditMode ? "บันทึกการแก้ไข" : "เพิ่มรายการ"}
+                </button>
+            </div>
+        </form>
+    );
+
+    return (
+        <SplitPanelLayout
+            grid={grid}
+            form={form}
+            isFormOpen={isMobileFormOpen}
+            onCloseForm={() => setIsMobileFormOpen(false)}
+        />
     );
 }
