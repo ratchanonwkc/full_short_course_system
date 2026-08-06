@@ -28,7 +28,7 @@ CREATE TABLE public.teachers (
   first_name_en character varying,
   last_name_en character varying,
   phone character varying,
-  email character varying UNIQUE,
+  email character varying,
   is_active boolean NOT NULL DEFAULT true,
   prefix_id bigint,
   position_id bigint,
@@ -142,4 +142,65 @@ CREATE TABLE public.academic_minors (
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT academic_minors_pkey PRIMARY KEY (id),
   CONSTRAINT academic_minors_major_id_fkey FOREIGN KEY (major_id) REFERENCES public.academic_majors(id)
+);
+CREATE TABLE public.locations (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  name character varying NOT NULL,
+  is_default boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT locations_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.time_slots (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  time_code character varying NOT NULL UNIQUE,
+  time_name character varying NOT NULL,
+  time_range character varying NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT time_slots_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.study_groups (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  batch_id bigint NOT NULL,
+  major_id bigint NOT NULL,
+  group_code character varying NOT NULL,
+  room_code character varying,
+  group_no smallint DEFAULT 1,
+  group_type character varying DEFAULT 'normal'::character varying,
+  group_name character varying NOT NULL,
+  teacher_id bigint,
+  joint_location_id bigint DEFAULT 1,
+  max_seats integer DEFAULT 20,
+  current_seats integer DEFAULT 0,
+  total_hours integer NOT NULL,
+  study_dates_description character varying,
+  start_date date,
+  end_date date,
+  education_type character varying DEFAULT 'วิชาชีพระยะสั้น'::character varying,
+  student_type character varying DEFAULT 'ประชาชนทั่วไป'::character varying,
+  hour_range_category character varying,
+  tuition_fee numeric DEFAULT 0.00,
+  application_fee numeric DEFAULT 10.00,
+  is_waived_fee boolean DEFAULT false,
+  is_ac_maintenance_fee boolean DEFAULT false,
+  is_closed boolean DEFAULT false,
+  is_cancelled boolean DEFAULT false,
+  registration_start_date date,
+  registration_end_date date,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT study_groups_pkey PRIMARY KEY (id),
+  CONSTRAINT study_groups_batch_id_fkey FOREIGN KEY (batch_id) REFERENCES public.batches(id),
+  CONSTRAINT study_groups_major_id_fkey FOREIGN KEY (major_id) REFERENCES public.academic_majors(id),
+  CONSTRAINT study_groups_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.teachers(id),
+  CONSTRAINT study_groups_joint_location_id_fkey FOREIGN KEY (joint_location_id) REFERENCES public.locations(id)
+);
+CREATE TABLE public.study_group_subjects (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  study_group_id bigint NOT NULL,
+  subject_id bigint NOT NULL,
+  moe_code character varying NOT NULL,
+  sequence_order smallint DEFAULT 1,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT study_group_subjects_pkey PRIMARY KEY (id),
+  CONSTRAINT study_group_subjects_study_group_id_fkey FOREIGN KEY (study_group_id) REFERENCES public.study_groups(id),
+  CONSTRAINT study_group_subjects_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id)
 );
