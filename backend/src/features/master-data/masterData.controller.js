@@ -9,7 +9,13 @@ const TABLE_MAP = {
     'sub-positions': { name: 'sub_positions', primaryKey: 'sub_position_name' },
     curriculums: { name: 'curriculums', primaryKey: 'curriculum_name' },
     'academic-levels': { name: 'academic_levels', primaryKey: 'level_name' },
-    'subject-types': { name: 'subject_types', primaryKey: 'name_th' }
+    'subject-types': { name: 'subject_types', primaryKey: 'name_th' },
+    // เพิ่มสำหรับมอดูลกลุ่มเรียน (Study Groups):
+    // - locations: สถานที่จัดเรียนร่วม (มี Quick Add [+] และ Manage [⚙️] ในฟอร์มกลุ่มเรียน)
+    // - time-slots: รอบเรียน (ช/บ/ค/พ) — read-only จาก UI ฝั่งฟอร์มกลุ่มเรียน แต่เปิด endpoint
+    //   generic ไว้เผื่อจัดการในอนาคต
+    locations: { name: 'locations', primaryKey: 'name' },
+    'time-slots': { name: 'time_slots', primaryKey: 'time_name' }
 };
 
 export const getMasterData = async (req, res, next) => {

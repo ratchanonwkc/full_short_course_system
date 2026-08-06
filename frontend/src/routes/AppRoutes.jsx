@@ -17,6 +17,7 @@ import TeachersPage from '../features/teachers/pages/TeachersPage';
 import BatchesPage from '../features/batches/pages/BatchesPage';
 import AcademicStructurePage from '../features/curriculums/pages/AcademicStructurePage';
 import SubjectsPage from '../features/subjects/pages/SubjectsPage';
+import StudyGroupsPage from '../features/study-groups/pages/StudyGroupsPage';
 
 export default function AppRoutes() {
     return (
@@ -33,6 +34,7 @@ export default function AppRoutes() {
                     <Route path="/dashboard" element={<div>Dashboard ภาพรวม</div>} />
                     <Route path="/teachers" element={<TeachersPage />} />
                     <Route path="/batches" element={<BatchesPage />} />
+                    <Route path="/batches/:batchId/groups" element={<StudyGroupsPage />} />
                     <Route path="/academic-structure" element={<AcademicStructurePage />} />
                     <Route path="/subjects" element={<SubjectsPage />} />
                 </Route>

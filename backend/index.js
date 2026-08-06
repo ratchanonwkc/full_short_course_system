@@ -9,6 +9,8 @@ import academicMajorsRoutes from './src/features/academic-majors/academicMajors.
 import academicMinorsRoutes from './src/features/academic-minors/academicMinors.routes.js';
 import subjectsRoutes from './src/features/subjects/subjects.routes.js';
 import authRoutes from './src/features/auth/auth.routes.js';
+import studyGroupsRoutes from './src/features/study-groups/studyGroups.routes.js';
+import studyGroupSubjectsRoutes from './src/features/study-group-subjects/studyGroupSubjects.routes.js';
 dotenv.config();
 
 const app = express();
@@ -24,8 +26,11 @@ app.use('/api/batches', batchRoutes);
 app.use('/api/academic-majors', academicMajorsRoutes);
 app.use('/api/academic-minors', academicMinorsRoutes);
 app.use('/api/subjects', subjectsRoutes);
+app.use('/api/study-groups', studyGroupsRoutes);
+app.use('/api/study-group-subjects', studyGroupSubjectsRoutes);
 app.use('/api', masterDataRoutes); // รองรับ /api/prefixes, /api/positions, /api/sub-positions,
-                                    // /api/curriculums, /api/academic-levels, /api/subject-types
+// /api/curriculums, /api/academic-levels, /api/subject-types,
+// /api/locations, /api/time-slots
 
 // Centralized Error Handler Middleware
 app.use((err, req, res, next) => {

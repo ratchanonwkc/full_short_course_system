@@ -1,7 +1,8 @@
 import { useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Layers } from "lucide-react";
 import Swal from "sweetalert2";
 import { thaiDateValueFormatter } from "../../../utils/dateUtils";
 
@@ -31,9 +32,16 @@ function StatusBadgeRenderer({ value }) {
  * - loading: boolean
  * - onEdit: (batch) => void
  * - onDelete: (batch) => void         -> called only after confirm
+ *
+ * Navigation to Study Groups:
+ * - ปุ่ม "จัดการกลุ่มเรียน" ในคอลัมน์ "จัดการ" -> ไป /batches/:batchId/groups
+ * - ดับเบิ้ลคลิกที่ Row ใดก็ได้ (นอกเหนือจากคอลัมน์ปุ่ม) -> ไปหน้าเดียวกัน
  */
 export default function BatchTable({ rowData = [], loading = false, onEdit, onDelete }) {
     const gridRef = useRef(null);
+    const navigate = useNavigate();
+
+    const goToGroups = (batch) => navigate(`/batches/${batch.id}/groups`);
 
     const handleDeleteClick = async (batch) => {
         const result = await Swal.fire({
@@ -66,8 +74,22 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
         <div className="flex h-full items-center gap-1.5">
             <button
                 type="button"
+                title="จัดการกลุ่มเรียน"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    goToGroups(params.data);
+                }}
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-600"
+            >
+                <Layers size={15} />
+            </button>
+            <button
+                type="button"
                 title="แก้ไข"
-                onClick={() => onEdit?.(params.data)}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit?.(params.data);
+                }}
                 className="rounded-md p-1.5 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600"
             >
                 <Pencil size={15} />
@@ -75,7 +97,10 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
             <button
                 type="button"
                 title="ลบ"
-                onClick={() => handleDeleteClick(params.data)}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteClick(params.data);
+                }}
                 className="rounded-md p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
             >
                 <Trash2 size={15} />
@@ -119,7 +144,7 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
             {
                 headerName: "จัดการ",
                 pinned: "right",
-                width: 100,
+                width: 140,
                 sortable: false,
                 filter: false,
                 cellRenderer: ActionsRenderer,
@@ -153,6 +178,8 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
                 animateRows
                 overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ไม่พบข้อมูลรุ่นการเรียน</span>"
                 getRowId={(params) => String(params.data.id)}
+                onRowDoubleClicked={(params) => goToGroups(params.data)}
+                rowStyle={{ cursor: "pointer" }}
             />
         </div>
     );
