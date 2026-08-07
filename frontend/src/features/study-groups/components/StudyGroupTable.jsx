@@ -3,9 +3,18 @@ import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 import { Pencil, Trash2 } from "lucide-react";
 import Swal from "sweetalert2";
-import { GROUP_TYPE_LABELS } from "../../../utils/groupCode";
+import { GROUP_TYPE_LABELS, GROUP_STATUS_META } from "../../../utils/groupCode";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
+
+function GroupStatusRenderer({ value }) {
+    const meta = GROUP_STATUS_META[value] || GROUP_STATUS_META.open;
+    return (
+        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.className}`}>
+            {meta.emoji} {meta.label}
+        </span>
+    );
+}
 
 const TYPE_BADGE_CLASS = {
     normal: "bg-slate-100 text-slate-600",
@@ -101,32 +110,20 @@ export default function StudyGroupTable({ rowData = [], loading = false, onEdit,
 
     const columnDefs = useMemo(
         () => [
-            {
-                field: "group_code",
-                headerName: "รหัสกลุ่มเรียน",
-                pinned: "left",
-                minWidth: 150,
-                flex: 1.2,
-                cellRenderer: GroupCodeRenderer,
-            },
             { field: "group_name", headerName: "ชื่อกลุ่มเรียน", minWidth: 220, flex: 2 },
-            { field: "major_name", headerName: "แผนกวิชา", minWidth: 140, flex: 1 },
-            { field: "room_code", headerName: "ห้องเรียน", minWidth: 110, flex: 0.8 },
             { field: "teacher_name", headerName: "ผู้สอน", minWidth: 150, flex: 1 },
-            { field: "location_name", headerName: "สถานที่", minWidth: 130, flex: 1 },
-            {
-                field: "group_type",
-                headerName: "ประเภท",
-                minWidth: 120,
-                flex: 0.8,
-                cellRenderer: GroupTypeRenderer,
-            },
-            { field: "total_hours", headerName: "ชม.รวม", width: 90, type: "numericColumn" },
             {
                 headerName: "ที่นั่ง",
                 minWidth: 100,
                 flex: 0.7,
                 cellRenderer: SeatsRenderer,
+            },
+            {
+                field: "status",
+                headerName: "สถานะ",
+                minWidth: 120,
+                flex: 0.8,
+                cellRenderer: GroupStatusRenderer,
             },
             {
                 headerName: "จัดการ",

@@ -40,6 +40,17 @@ export default function StudyGroupsPage() {
     const [locations, setLocations] = useState([]);
     const [timeSlots, setTimeSlots] = useState([]);
     const [refLoading, setRefLoading] = useState(true);
+    // add near other filter state
+    const [filterStatus, setFilterStatus] = useState("all");
+
+    const STATUS_FILTER_OPTIONS = [
+        { value: "all", label: "ทุกสถานะ" },
+        { value: "draft", label: "📝 ร่าง" },
+        { value: "open", label: "🟢 เปิดสอน" },
+        { value: "full", label: "🔴 เต็ม" },
+        { value: "cancelled", label: "⚪ ยกเลิก" },
+    ];
+
 
     // ── โหลดข้อมูลรุ่นการเรียน (สำหรับ Header/Breadcrumb) ─────────────────────
     const fetchBatch = useCallback(async () => {
@@ -131,16 +142,19 @@ export default function StudyGroupsPage() {
 
     const majorOptions = useMemo(() => majors.map((m) => ({ value: m.id, label: m.name_th })), [majors]);
 
+    // update filteredGroups
     const filteredGroups = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
-        if (!term) return groups;
-        return groups.filter(
-            (g) =>
+        return groups.filter((g) => {
+            const matchesSearch =
+                !term ||
                 (g.group_code || "").toLowerCase().includes(term) ||
                 (g.group_name || "").toLowerCase().includes(term) ||
-                (g.teacher_name || "").toLowerCase().includes(term)
-        );
-    }, [groups, searchTerm]);
+                (g.teacher_name || "").toLowerCase().includes(term);
+            const matchesStatus = filterStatus === "all" || g.status === filterStatus;
+            return matchesSearch && matchesStatus;
+        });
+    }, [groups, searchTerm, filterStatus]);
 
     const handleCreate = () => {
         setEditingGroup(null);
@@ -199,6 +213,15 @@ export default function StudyGroupsPage() {
                             placeholder="กรองตามแผนกวิชา..."
                         />
                     </div>
+                    <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 py-1.5 px-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 sm:max-w-[160px]"
+                    >
+                        {STATUS_FILTER_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                    </select>
                 </div>
                 <button
                     type="button"
@@ -219,6 +242,7 @@ export default function StudyGroupsPage() {
     const form = (
         <GroupFormPanel
             batchId={batchId}
+            batch={batch}
             initialData={editingGroup}
             onSaved={handleSaved}
             onCancelEdit={handleCancelEdit}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Save, Zap, Plus, Settings, X, Pencil } from "lucide-react";
 import Swal from "sweetalert2";
 import VirtualizedCombobox from "../../../components/common/VirtualizedCombobox";
@@ -19,11 +19,13 @@ import {
 } from "../services/studyGroupApi";
 import {
     GROUP_TYPE_LABELS,
+    GROUP_STATUS_META,
     buildGroupCode,
     buildGroupCodePreview,
     buildRoomCode,
     buildMoeCode,
     buildGroupName,
+    buildScheduleDescription,
     currentBeYear2Digit,
 } from "../../../utils/groupCode";
 
@@ -31,6 +33,9 @@ const inputClass =
     "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40";
 
 const GROUP_TYPE_OPTIONS = Object.entries(GROUP_TYPE_LABELS).map(([value, label]) => ({ value, label }));
+const GROUP_STATUS_OPTIONS = Object.entries(GROUP_STATUS_META).map(([value, meta]) => ({ value, ...meta }));
+
+const AC_FEE_PER_HOUR = 5; // เปลี่ยนจาก +1 -> +5 บาท/ชม. ตามสเปกใหม่
 
 const EMPTY_FORM = {
     major_id: "",
@@ -39,18 +44,19 @@ const EMPTY_FORM = {
     group_no: 1,
     group_type: "normal",
     group_name: "",
+    status: "open",
     teacher_id: "",
     joint_location_id: 1,
     max_seats: 20,
     total_hours: "",
-    study_dates_description: "",
+    study_dates_description: "", // = "schedule_description" ตามสเปก
     start_date: "",
     end_date: "",
     education_type: "วิชาชีพระยะสั้น",
     student_type: "ประชาชนทั่วไป",
     tuition_fee: "0",
     application_fee: "10",
-    is_waived_fee: false,
+    is_waived_fee: false, // = "ฟรีค่าเรียน" (is_free_tuition ตามสเปก)
     is_ac_maintenance_fee: false,
     registration_start_date: "",
     registration_end_date: "",
@@ -63,23 +69,13 @@ const nextLocalId = () => `local-${Date.now()}-${localIdCounter++}`;
 /**
  * GroupFormPanel
  * -------------------------------------------------------------------------
- * Form ฝั่งขวาของ Split View สำหรับสร้าง/แก้ไข "กลุ่มเรียน" (study_groups)
- * ผูกกับ batchId ที่ได้รับมาจาก URL param เสมอ
- *
- * Props:
- * - batchId: string|number
- * - initialData: StudyGroup | null   -> null = create mode
- * - onSaved: (group) => void
- * - onCancelEdit: () => void
- * - majors: Array<AcademicMajor>     -> ใช้เลือกแผนกวิชา + ดึง department_id สำหรับ Auto Fill
- * - subjects: Array<Subject>         -> ใช้เลือกวิชา/ชุดวิชา
- * - teachers: Array<Teacher>
- * - locations: Array<Location>
- * - timeSlots: Array<{ id, time_code, time_name, time_range }>
- * - onLocationsRefresh: () => void
+ * Props (เพิ่มจากเดิม):
+ * - batch: Batch | null   -> ใช้ดึงวันที่ default (registration_/study_open_date / study_close_date)
+ * เมื่ออยู่ในโหมดสร้างใหม่
  */
 export default function GroupFormPanel({
     batchId,
+    batch = null,
     initialData = null,
     onSaved,
     onCancelEdit,
@@ -100,21 +96,29 @@ export default function GroupFormPanel({
     const isEditMode = Boolean(initialData);
     const { formRef, handleKeyDown } = useEnterKeyNav();
 
+    // ติดตามว่าผู้ใช้เคยแก้ "รูปแบบวันเรียน" เองหรือยัง เพื่อไม่ auto-overwrite ทับของที่แก้เอง
+    const scheduleDescTouchedRef = useRef(false);
+
     const majorOptions = useMemo(
         () => majors.map((m) => ({ value: m.id, label: m.name_th })),
         [majors]
     );
-    const subjectOptions = useMemo(
-        () =>
-            subjects.map((s) => ({
-                value: s.id,
-                label: `${s.subject_code} - ${s.name_th}`,
-                subject_code: s.subject_code,
-                name_th: s.name_th,
-                total_hours: s.total_hours,
-            })),
-        [subjects]
-    );
+
+    // ── 1. Filter รายวิชาตามแผนกที่เลือก (ถ้ายังไม่เลือกแผนก แสดงทั้งหมด) ──────
+    const subjectOptions = useMemo(() => {
+        const source = form.major_id
+            ? subjects.filter((s) => String(s.major_id) === String(form.major_id))
+            : subjects;
+        return source.map((s) => ({
+            value: s.id,
+            label: `${s.subject_code} - ${s.name_th}`,
+            subject_code: s.subject_code,
+            name_th: s.name_th,
+            total_hours: s.total_hours,
+            major_id: s.major_id,
+        }));
+    }, [subjects, form.major_id]);
+
     const teacherOptions = useMemo(
         () =>
             teachers.map((t) => ({
@@ -133,21 +137,24 @@ export default function GroupFormPanel({
     );
 
     const selectedMajor = majors.find((m) => String(m.id) === String(form.major_id));
-    const [primarySubjectId, setPrimarySubjectId] = useState(""); // วิชาหลักที่ใช้คำนวณ group_code
+    const [primarySubjectId, setPrimarySubjectId] = useState("");
 
     // ── โหลด/รีเซ็ตฟอร์มเมื่อสลับโหมดสร้าง/แก้ไข ──────────────────────────────
     useEffect(() => {
+        scheduleDescTouchedRef.current = false;
+
         if (initialData) {
             setForm({
                 ...EMPTY_FORM,
                 ...initialData,
                 group_no: initialData.group_no ?? 1,
                 max_seats: initialData.max_seats ?? 20,
+                status: initialData.status || "open",
                 tuition_fee: String(initialData.tuition_fee ?? "0"),
                 application_fee: String(initialData.application_fee ?? "10"),
                 time_code: extractTimeCodeFromGroupCode(initialData.group_code),
             });
-            // โหลดรายวิชาย่อยของกลุ่มนี้จาก backend
+            scheduleDescTouchedRef.current = Boolean(initialData.study_dates_description);
             (async () => {
                 try {
                     const rows = await getSubjectsInGroup(initialData.id);
@@ -169,12 +176,20 @@ export default function GroupFormPanel({
             })();
             setPrimarySubjectId("");
         } else {
-            setForm({ ...EMPTY_FORM, batch_id: batchId });
+            // ── 2. Default วันที่จาก Batch ต้นทาง (โหมดสร้างใหม่เท่านั้น) ──────
+            setForm({
+                ...EMPTY_FORM,
+                batch_id: batchId,
+                registration_start_date: batch?.admit_open_date || "",
+                registration_end_date: batch?.admit_close_date || "",
+                start_date: batch?.study_open_date || "",
+                end_date: batch?.study_close_date || "",
+            });
             setSubjectsInGroup([]);
             setPrimarySubjectId("");
         }
         setRemovedSubjectIds([]);
-    }, [initialData, batchId]);
+    }, [initialData, batchId, batch]);
 
     const handleChange = (field) => (e) => {
         const { value, type, checked } = e.target;
@@ -187,7 +202,33 @@ export default function GroupFormPanel({
         setForm((prev) => ({ ...prev, [field]: isoValue }));
     };
 
-    // ── Quick add ด่วน [+] ข้าง Combobox สถานที่ (เปิด SweetAlert prompt แล้วสร้างทันที) ──
+    // ── major เปลี่ยน -> เคลียร์วิชาที่ไม่ตรงแผนกออกจากตารางวิชาย่อยที่ยังไม่บันทึก ──
+    const handleMajorChange = (value) => {
+        setForm((prev) => ({ ...prev, major_id: value }));
+    };
+
+    // ── 3. รูปแบบวันเรียน: gen อัตโนมัติเมื่อเลือกรอบเรียน (ถ้าผู้ใช้ยังไม่เคยแก้เอง) ──
+    const handleTimeCodeChange = (e) => {
+        const timeCode = e.target.value;
+        setForm((prev) => {
+            const slot = timeSlots.find((t) => t.time_code === timeCode);
+            const shouldAutoFill = !scheduleDescTouchedRef.current;
+            return {
+                ...prev,
+                time_code: timeCode,
+                study_dates_description: shouldAutoFill
+                    ? buildScheduleDescription({ timeRange: slot?.time_range })
+                    : prev.study_dates_description,
+            };
+        });
+    };
+
+    const handleScheduleDescChange = (e) => {
+        scheduleDescTouchedRef.current = true;
+        setForm((prev) => ({ ...prev, study_dates_description: e.target.value }));
+    };
+
+    // ── Quick add สถานที่ ──────────────────────────────────────────────────
     const handleQuickAddLocation = async () => {
         const { value: name, isConfirmed } = await Swal.fire({
             title: "เพิ่มสถานที่ใหม่ด่วน",
@@ -198,9 +239,7 @@ export default function GroupFormPanel({
             cancelButtonText: "ยกเลิก",
             confirmButtonColor: "#4f46e5",
             preConfirm: (value) => {
-                if (!value?.trim()) {
-                    Swal.showValidationMessage("กรุณากรอกชื่อสถานที่");
-                }
+                if (!value?.trim()) Swal.showValidationMessage("กรุณากรอกชื่อสถานที่");
                 return value;
             },
         });
@@ -242,9 +281,7 @@ export default function GroupFormPanel({
                 moe_code: "",
             },
         ]);
-        // ถ้ายังไม่มีวิชาหลักเลือกไว้ (สำหรับคำนวณ group_code) ให้ใช้ตัวแรกที่เพิ่มเป็นค่าเริ่มต้น
         setPrimarySubjectId((prev) => prev || String(opt.value));
-        // Auto-sum total_hours ของกลุ่มจากผลรวมวิชาย่อย (ผู้ใช้แก้ไขเองต่อได้)
         setForm((prev) => {
             const currentTotal = Number(prev.total_hours) || 0;
             return { ...prev, total_hours: String(currentTotal + (Number(opt.total_hours) || 0)) };
@@ -254,19 +291,16 @@ export default function GroupFormPanel({
         setSubjectsInGroup((prev) => {
             const target = prev.find((s) => s._localId === localId);
             if (target?._persistedId) setRemovedSubjectIds((ids) => [...ids, target._persistedId]);
-            const next = prev.filter((s) => s._localId !== localId);
-            return next;
+            return prev.filter((s) => s._localId !== localId);
         });
     };
     const handleMoeCodeChange = (localId, value) => {
         setSubjectsInGroup((prev) => prev.map((s) => (s._localId === localId ? { ...s, moe_code: value } : s)));
     };
 
-    // ── รหัสวิชาหลัก (ใช้คำนวณ group_code) — ถ้ามีวิชาย่อยหลายตัว ใช้ตัวที่เลือกไว้เป็น primary ──
     const primarySubject =
         subjectsInGroup.find((s) => String(s.subject_id) === String(primarySubjectId)) || subjectsInGroup[0] || null;
 
-    // ── Live preview ของ group_code ระหว่างกรอก (ยังไม่กด Auto Fill) ──────────
     const groupCodePreview = buildGroupCodePreview({
         subjectCode: primarySubject?.subject_code,
         timeCode: form.time_code,
@@ -285,14 +319,10 @@ export default function GroupFormPanel({
             return;
         }
         if (!form.time_code || !form.group_no) {
-            Swal.fire({
-                icon: "warning",
-                title: "กรุณาเลือกรอบเรียนและกรอกกลุ่มที่ก่อน",
-                confirmButtonColor: "#4f46e5",
-            });
+            Swal.fire({ icon: "warning", title: "กรุณาเลือกรอบเรียนและกรอกกลุ่มที่ก่อน", confirmButtonColor: "#4f46e5" });
             return;
         }
-        if (!selectedMajor?.department_id) {
+        if (!selectedMajor?.department_id || !selectedMajor?.full_major_code) {
             Swal.fire({
                 icon: "warning",
                 title: "กรุณาเลือกแผนกวิชาก่อน",
@@ -305,35 +335,32 @@ export default function GroupFormPanel({
         setIsAutoFilling(true);
         try {
             const departmentId = selectedMajor.department_id;
+            const fullMajorCode = selectedMajor.full_major_code;
             const beYear2 = currentBeYear2Digit();
 
-            // 1) group_code
             const groupCode = buildGroupCode({
                 subjectCode: primarySubject.subject_code,
                 timeCode: form.time_code,
                 groupNo: form.group_no,
             });
 
-            // 2) room_code -> ต้องถามลำดับถัดไปจาก backend (กันชนกับห้องที่ใช้ไปแล้วในแผนกเดียวกัน)
-            const roomSeqRes = await getNextRoomSequence(departmentId);
+            // room_code: ใช้ full_major_code (4 หลัก) เป็น prefix แทน department_id (2 หลัก)
+            const roomSeqRes = await getNextRoomSequence(fullMajorCode);
             let roomCode = form.room_code;
             if (roomSeqRes.sequence) {
-                roomCode = buildRoomCode({ departmentId, roomSequence: roomSeqRes.sequence });
-                console.log(roomCode);
-                console.log(departmentId, roomSeqRes.sequence);
+                roomCode = buildRoomCode({ fullMajorCode, roomSequence: roomSeqRes.sequence });
             } else if (roomSeqRes.message) {
                 Swal.fire({ icon: "warning", title: "ไม่สามารถคำนวณรหัสห้องเรียนได้", text: roomSeqRes.message, confirmButtonColor: "#4f46e5" });
             }
 
-            // 3) moe_code ต่อวิชาย่อยแต่ละแถวที่ยังไม่มีเลข ศธ.
             const updatedSubjects = [...subjectsInGroup];
             for (let i = 0; i < updatedSubjects.length; i++) {
-                if (updatedSubjects[i].moe_code?.trim()) continue; // มีอยู่แล้ว ไม่ทับ
-                const moeSeqRes = await getNextMoeSequence(beYear2, departmentId);
+                if (updatedSubjects[i].moe_code?.trim()) continue;
+                const moeSeqRes = await getNextMoeSequence(beYear2, fullMajorCode);
                 if (moeSeqRes.sequence) {
                     updatedSubjects[i] = {
                         ...updatedSubjects[i],
-                        moe_code: buildMoeCode({ beYear2Digit: beYear2, departmentId, moeSequence: moeSeqRes.sequence }),
+                        moe_code: buildMoeCode({ beYear2Digit: beYear2, fullMajorCode, moeSequence: moeSeqRes.sequence }),
                     };
                 } else if (moeSeqRes.message) {
                     Swal.fire({ icon: "warning", title: "ไม่สามารถคำนวณเลข ศธ. ได้", text: moeSeqRes.message, confirmButtonColor: "#4f46e5" });
@@ -342,17 +369,12 @@ export default function GroupFormPanel({
             }
             setSubjectsInGroup(updatedSubjects);
 
-            // 4) group_name
-            const teacher = teachers.find((t) => String(t.id) === String(form.teacher_id));
-            const teacherLabel = teacher
-                ? [teacher.prefix_name, teacher.first_name_th, teacher.last_name_th].filter(Boolean).join(" ")
-                : "";
+            // group_name (สูตรใหม่): {ชื่อวิชา} [{ประเภท}] - {schedule_description} (รอบ {code}/{กลุ่มที่})
             const groupName = buildGroupName({
                 subjectName: primarySubject.name_th,
                 groupType: form.group_type,
                 timeCode: form.time_code,
                 groupNo: form.group_no,
-                teacherName: teacherLabel,
             });
 
             setForm((prev) => ({
@@ -379,11 +401,21 @@ export default function GroupFormPanel({
         }
     };
 
-    // ── ค่าธรรมเนียมสุทธิ (แสดง preview เฉยๆ ไม่ได้ส่งเป็น field แยกไป backend) ──
-    const acFeePerHour = form.is_ac_maintenance_fee ? 1 : 0;
+    // ── 4. ค่าธรรมเนียม: ฟรีค่าเรียน -> 0 + disable, ค่าแอร์ +5/ชม. ────────────
+    const acFeePerHour = form.is_ac_maintenance_fee ? AC_FEE_PER_HOUR : 0;
     const estimatedTuition = form.is_waived_fee
         ? 0
-        : (Number(form.tuition_fee) || 0) + acFeePerHour * (Number(form.total_hours) || 0);
+        : (Number(form.application_fee) || 0) + (Number(form.tuition_fee) || 0) + acFeePerHour * (Number(form.total_hours) || 0);
+
+    const handleToggleFreeTuition = (e) => {
+        const checked = e.target.checked;
+        setForm((prev) => ({
+            ...prev,
+            is_waived_fee: checked,
+            application_fee: checked ? "0" : prev.application_fee,
+            tuition_fee: checked ? "0" : prev.tuition_fee,
+        }));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -410,6 +442,7 @@ export default function GroupFormPanel({
                 group_no: Number(form.group_no) || 1,
                 group_type: form.group_type,
                 group_name: form.group_name.trim(),
+                status: form.status,
                 teacher_id: form.teacher_id || null,
                 joint_location_id: form.joint_location_id || 1,
                 max_seats: Number(form.max_seats) || 20,
@@ -419,7 +452,7 @@ export default function GroupFormPanel({
                 end_date: form.end_date || null,
                 education_type: form.education_type,
                 student_type: form.student_type,
-                tuition_fee: Number(form.tuition_fee) || 0,
+                tuition_fee: form.is_waived_fee ? 0 : Number(form.tuition_fee) || 0,
                 application_fee: Number(form.application_fee) || 0,
                 is_waived_fee: Boolean(form.is_waived_fee),
                 is_ac_maintenance_fee: Boolean(form.is_ac_maintenance_fee),
@@ -431,7 +464,6 @@ export default function GroupFormPanel({
                 ? await updateStudyGroup(initialData.id, payload)
                 : await createStudyGroup(payload);
 
-            // Sync รายวิชาย่อย: ลบที่ถูกนำออก, อัปเดต/สร้างที่เหลือ
             await Promise.all(removedSubjectIds.map((id) => removeSubjectFromGroup(id)));
             await Promise.all(
                 subjectsInGroup.map((s) => {
@@ -509,14 +541,41 @@ export default function GroupFormPanel({
                 <Field label="แผนกวิชา">
                     <VirtualizedCombobox
                         value={form.major_id}
-                        onChange={handleComboChange("major_id")}
+                        onChange={handleMajorChange}
                         options={majorOptions}
                         placeholder="เลือกแผนกวิชา..."
                         className={inputClass}
                     />
+                    {!form.major_id && (
+                        <p className="mt-1 text-xs text-slate-400">* เลือกแผนกก่อนเพื่อกรองรายวิชาให้ตรงแผนก</p>
+                    )}
                 </Field>
 
-                {/* ตารางวิชาย่อย */}
+                {/* สถานะกลุ่มเรียน */}
+                <Field label="สถานะกลุ่มเรียน">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {GROUP_STATUS_OPTIONS.map((opt) => (
+                            <label
+                                key={opt.value}
+                                className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition ${form.status === opt.value ? `${opt.className} border-current` : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                                    }`}
+                            >
+                                <input
+                                    type="radio"
+                                    name="status"
+                                    value={opt.value}
+                                    checked={form.status === opt.value}
+                                    onChange={handleChange("status")}
+                                    className="sr-only"
+                                />
+                                <span>{opt.emoji}</span>
+                                {opt.label}
+                            </label>
+                        ))}
+                    </div>
+                </Field>
+
+                {/* ตารางวิชาย่อย (กรองตามแผนกที่เลือกแล้ว) */}
                 <GroupSubjectsTable
                     subjectsInGroup={subjectsInGroup}
                     subjectOptions={subjectOptions}
@@ -542,7 +601,7 @@ export default function GroupFormPanel({
                 {/* รอบเรียน + กลุ่มที่ */}
                 <div className="grid grid-cols-2 gap-3">
                     <Field label="รอบเรียน (time_slot)">
-                        <select value={form.time_code} onChange={handleChange("time_code")} className={inputClass}>
+                        <select value={form.time_code} onChange={handleTimeCodeChange} className={inputClass}>
                             <option value="">เลือกรอบเรียน</option>
                             {timeSlotOptions.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
@@ -605,8 +664,8 @@ export default function GroupFormPanel({
                         {form.group_code || groupCodePreview}
                     </p>
                     <p className="mt-1 text-[11px] text-slate-400">
-                        สูตร: {"{รหัสวิชา}"}-{"{รอบ}"}{"{กลุ่มที่}"} — กด Auto Fill เพื่อคำนวณรหัสห้องเรียน, เลข ศธ.
-                        และชื่อกลุ่มเรียนให้อัตโนมัติ
+                        สูตร: {"{รหัสวิชา}"}-{"{รอบ}"}{"{กลุ่มที่}"} — ห้องเรียนคำนวณจาก full_major_code (4 หลัก) — กด Auto Fill
+                        เพื่อคำนวณรหัสห้องเรียน, เลข ศธ. และชื่อกลุ่มเรียนให้อัตโนมัติ
                     </p>
                 </div>
 
@@ -684,7 +743,7 @@ export default function GroupFormPanel({
                     </div>
                 </Field>
 
-                {/* ช่วงวันที่ */}
+                {/* ช่วงวันที่ (default มาจาก batch ตอนสร้างใหม่, แก้ไขต่อได้) */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Field label="วันเริ่มเรียน">
                         <MaskedDateInput
@@ -719,13 +778,18 @@ export default function GroupFormPanel({
                         />
                     </Field>
                 </div>
+                {!isEditMode && batch && (
+                    <p className="-mt-3 text-xs text-slate-400">
+                        * วันที่ด้านบนถูกตั้งค่าเริ่มต้นจากรุ่นการเรียน "{batch.batch_name}" แก้ไขได้ตามต้องการ
+                    </p>
+                )}
 
                 <Field label="รูปแบบวันเรียน (คำอธิบาย)">
                     <input
                         type="text"
                         value={form.study_dates_description}
-                        onChange={handleChange("study_dates_description")}
-                        placeholder="เช่น ทุกวันเสาร์-อาทิตย์"
+                        onChange={handleScheduleDescChange}
+                        placeholder="เลือกรอบเรียนเพื่อสร้างข้อความอัตโนมัติ หรือกรอกเอง"
                         className={inputClass}
                     />
                 </Field>
@@ -761,7 +825,8 @@ export default function GroupFormPanel({
                                 min="0"
                                 value={form.application_fee}
                                 onChange={handleChange("application_fee")}
-                                className={inputClass}
+                                disabled={form.is_waived_fee}
+                                className={`${inputClass} disabled:bg-slate-50 disabled:text-slate-400`}
                             />
                         </Field>
                         <Field label="ค่าเรียน (บาท)">
@@ -780,10 +845,10 @@ export default function GroupFormPanel({
                             <input
                                 type="checkbox"
                                 checked={form.is_waived_fee}
-                                onChange={handleChange("is_waived_fee")}
+                                onChange={handleToggleFreeTuition}
                                 className="h-4 w-4 accent-indigo-600"
                             />
-                            ฟรีค่าเรียน
+                            ฟรีค่าเรียน (ค่าเรียนจะถูกปรับเป็น 0 บาท และล็อกช่องกรอก)
                         </label>
                         <label className="flex items-center gap-2 text-sm text-slate-700">
                             <input
@@ -792,7 +857,7 @@ export default function GroupFormPanel({
                                 onChange={handleChange("is_ac_maintenance_fee")}
                                 className="h-4 w-4 accent-indigo-600"
                             />
-                            ค่าบำรุงแอร์ (+1 บาท/ชม.)
+                            ค่าบำรุงแอร์ (+{AC_FEE_PER_HOUR} บาท/ชม.)
                         </label>
                     </div>
                     <p className="mt-3 text-xs text-slate-500">
