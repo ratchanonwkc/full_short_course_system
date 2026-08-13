@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { GraduationCap, LogIn, Menu, X } from 'lucide-react';
+import { GraduationCap, LogIn, Menu, X, FileSearch } from 'lucide-react';
 import LoginFormModal from '../../features/auth/components/LoginFormModal';
+import StatusCheckModal from '../../features/public/components/StatusCheckModal';
 import Swal from 'sweetalert2';
 
 /**
@@ -11,6 +12,7 @@ import Swal from 'sweetalert2';
 export default function PublicLayout() {
   const navigate = useNavigate();
   const [loginOpen, setLoginOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
@@ -65,6 +67,16 @@ export default function PublicLayout() {
                 </NavLink>
               </li>
             ))}
+            <li>
+              <button
+                type="button"
+                onClick={() => setStatusOpen(true)}
+                className="inline-flex items-center gap-1.5 text-slate-600 transition hover:text-indigo-600"
+              >
+                <FileSearch size={15} />
+                ตรวจสอบสถานะการสมัคร
+              </button>
+            </li>
           </ul>
 
           {/* Right side: staff login + hamburger */}
@@ -105,6 +117,16 @@ export default function PublicLayout() {
                   </NavLink>
                 </li>
               ))}
+              <li>
+                <button
+                  type="button"
+                  onClick={() => { setMobileMenuOpen(false); setStatusOpen(true); }}
+                  className="inline-flex items-center gap-1.5 text-slate-600 transition hover:text-indigo-600"
+                >
+                  <FileSearch size={15} />
+                  ตรวจสอบสถานะการสมัคร
+                </button>
+              </li>
             </ul>
           </div>
         )}
@@ -121,6 +143,9 @@ export default function PublicLayout() {
         onClose={() => setLoginOpen(false)}
         onLoginSuccess={handleLoginSuccess}
       />
+
+      {/* ── Status check modal (No-Login) ───────────────────── */}
+      <StatusCheckModal isOpen={statusOpen} onClose={() => setStatusOpen(false)} />
     </>
   );
 }

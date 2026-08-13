@@ -6,6 +6,9 @@ import {
   Calendar,
   BookOpen,
   Book,
+  ClipboardList,
+  Wallet,
+  Landmark,
 } from 'lucide-react';
 
 const navItems = [
@@ -14,6 +17,9 @@ const navItems = [
   { name: 'Batches', to: '/batches', icon: Calendar },
   { name: 'โครงสร้างหลักสูตร', to: '/academic-structure', icon: BookOpen },
   { name: 'รายวิชา', to: '/subjects', icon: Book },
+  { name: 'งานทะเบียน (ผู้สมัคร)', to: '/registrar/enrollments', icon: ClipboardList },
+  { name: 'ตรวจสอบการชำระเงิน', to: '/finance/verification', icon: Wallet },
+  { name: 'ตั้งค่าบัญชีรับเงิน', to: '/finance/payment-methods', icon: Landmark },
 ];
 
 export default function Sidebar() {

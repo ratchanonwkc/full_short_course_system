@@ -10,6 +10,7 @@ import ProtectedRoute from './ProtectedRoute';
 
 // Public Pages
 import IndexPage from '../features/landing/pages/IndexPage';   // หน้าดูวิชาเปิดสอน + สมัครเรียน
+import RegistrationPage from '../features/public/pages/RegistrationPage'; // ฟอร์มสมัครเรียนออนไลน์ 6 ส่วน + ชำระเงิน
 import LoginPage from '../features/auth/pages/LoginPage';
 
 // Admin/Staff Pages
@@ -18,6 +19,9 @@ import BatchesPage from '../features/batches/pages/BatchesPage';
 import AcademicStructurePage from '../features/curriculums/pages/AcademicStructurePage';
 import SubjectsPage from '../features/subjects/pages/SubjectsPage';
 import StudyGroupsPage from '../features/study-groups/pages/StudyGroupsPage';
+import RegistrarEnrollmentsPage from '../features/registrar/pages/RegistrarEnrollmentsPage';
+import FinanceVerificationPage from '../features/finance/pages/FinanceVerificationPage';
+import PaymentMethodSettingsPage from '../features/finance/pages/PaymentMethodSettingsPage';
 
 export default function AppRoutes() {
     return (
@@ -25,6 +29,7 @@ export default function AppRoutes() {
             {/* 🌐 1. Public Zone ( Topnav Layout ) */}
             <Route element={<PublicLayout />}>
                 <Route path="/" element={<IndexPage />} />
+                <Route path="/register/:studyGroupId" element={<RegistrationPage />} />
                 <Route path="/login" element={<LoginPage />} />
             </Route>
 
@@ -37,6 +42,13 @@ export default function AppRoutes() {
                     <Route path="/batches/:batchId/groups" element={<StudyGroupsPage />} />
                     <Route path="/academic-structure" element={<AcademicStructurePage />} />
                     <Route path="/subjects" element={<SubjectsPage />} />
+
+                    {/* 📋 Registrar Portal */}
+                    <Route path="/registrar/enrollments" element={<RegistrarEnrollmentsPage />} />
+
+                    {/* 💰 Finance Portal */}
+                    <Route path="/finance/verification" element={<FinanceVerificationPage />} />
+                    <Route path="/finance/payment-methods" element={<PaymentMethodSettingsPage />} />
                 </Route>
             </Route>
         </Routes>

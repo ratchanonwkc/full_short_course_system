@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import teacherRoutes from './src/features/teachers/teachers.routes.js';
 import masterDataRoutes from './src/features/master-data/masterData.routes.js';
@@ -11,13 +13,21 @@ import subjectsRoutes from './src/features/subjects/subjects.routes.js';
 import authRoutes from './src/features/auth/auth.routes.js';
 import studyGroupsRoutes from './src/features/study-groups/studyGroups.routes.js';
 import studyGroupSubjectsRoutes from './src/features/study-group-subjects/studyGroupSubjects.routes.js';
+import publicRoutes from './src/features/public/public.routes.js';
+import enrollmentsRoutes from './src/features/enrollments/enrollments.routes.js';
+import paymentMethodsRoutes from './src/features/payment-methods/paymentMethods.routes.js';
+
 dotenv.config();
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// Static: ไฟล์สลิปโอนเงิน / QR Code ที่อัปโหลด
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes Integration
 app.use('/api/auth', authRoutes);
@@ -28,6 +38,9 @@ app.use('/api/academic-minors', academicMinorsRoutes);
 app.use('/api/subjects', subjectsRoutes);
 app.use('/api/study-groups', studyGroupsRoutes);
 app.use('/api/study-group-subjects', studyGroupSubjectsRoutes);
+app.use('/api/public', publicRoutes); // Public Portal: open groups, postal lookup, upload slip, applications, status check
+app.use('/api/enrollments', enrollmentsRoutes); // Registrar/Finance: enrollment list, walk-in, confirm payment, cancel
+app.use('/api/payment-methods', paymentMethodsRoutes); // Finance: bank account CRUD + QR upload
 app.use('/api', masterDataRoutes); // รองรับ /api/prefixes, /api/positions, /api/sub-positions,
 // /api/curriculums, /api/academic-levels, /api/subject-types,
 // /api/locations, /api/time-slots

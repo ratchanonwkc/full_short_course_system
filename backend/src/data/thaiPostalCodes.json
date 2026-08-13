@@ -1,0 +1,278 @@
+[
+    {
+        "postal_code": "10100",
+        "subdistrict": "พระบรมมหาราชวัง",
+        "district": "พระนคร",
+        "province": "กรุงเทพมหานคร"
+    },
+    {
+        "postal_code": "10100",
+        "subdistrict": "วังบูรพาภิรมย์",
+        "district": "พระนคร",
+        "province": "กรุงเทพมหานคร"
+    },
+    {
+        "postal_code": "10200",
+        "subdistrict": "บวรนิเวศ",
+        "district": "พระนคร",
+        "province": "กรุงเทพมหานคร"
+    },
+    {
+        "postal_code": "10300",
+        "subdistrict": "วัดโสมนัส",
+        "district": "ป้อมปราบศัตรูพ่าย",
+        "province": "กรุงเทพมหานคร"
+    },
+    {
+        "postal_code": "10400",
+        "subdistrict": "ถนนเพชรบุรี",
+        "district": "ราชเทวี",
+        "province": "กรุงเทพมหานคร"
+    },
+    {
+        "postal_code": "10500",
+        "subdistrict": "บางโคล่",
+        "district": "บางคอแหลม",
+        "province": "กรุงเทพมหานคร"
+    },
+    {
+        "postal_code": "10600",
+        "subdistrict": "บุคคโล",
+        "district": "ธนบุรี",
+        "province": "กรุงเทพมหานคร"
+    },
+    {
+        "postal_code": "10700",
+        "subdistrict": "บางขุนศรี",
+        "district": "บางกอกน้อย",
+        "province": "กรุงเทพมหานคร"
+    },
+    {
+        "postal_code": "10800",
+        "subdistrict": "บางซื่อ",
+        "district": "บางซื่อ",
+        "province": "กรุงเทพมหานคร"
+    },
+    {
+        "postal_code": "10900",
+        "subdistrict": "จตุจักร",
+        "district": "จตุจักร",
+        "province": "กรุงเทพมหานคร"
+    },
+    {
+        "postal_code": "11000",
+        "subdistrict": "โสนลอย",
+        "district": "บางบัวทอง",
+        "province": "นนทบุรี"
+    },
+    {
+        "postal_code": "11120",
+        "subdistrict": "ท่าทราย",
+        "district": "เมืองนนทบุรี",
+        "province": "นนทบุรี"
+    },
+    {
+        "postal_code": "11130",
+        "subdistrict": "บางกรวย",
+        "district": "บางกรวย",
+        "province": "นนทบุรี"
+    },
+    {
+        "postal_code": "12000",
+        "subdistrict": "ประตูน้ำจีน",
+        "district": "เมืองปทุมธานี",
+        "province": "ปทุมธานี"
+    },
+    {
+        "postal_code": "12120",
+        "subdistrict": "คลองหลวง",
+        "district": "คลองหลวง",
+        "province": "ปทุมธานี"
+    },
+    {
+        "postal_code": "13000",
+        "subdistrict": "ตลาด",
+        "district": "พระนครศรีอยุธยา",
+        "province": "พระนครศรีอยุธยา"
+    },
+    {
+        "postal_code": "20000",
+        "subdistrict": "บางปลาสร้อย",
+        "district": "เมืองชลบุรี",
+        "province": "ชลบุรี"
+    },
+    {
+        "postal_code": "20130",
+        "subdistrict": "หนองปรือ",
+        "district": "บางละมุง",
+        "province": "ชลบุรี"
+    },
+    {
+        "postal_code": "20150",
+        "subdistrict": "ห้วยกะปิ",
+        "district": "เมืองชลบุรี",
+        "province": "ชลบุรี"
+    },
+    {
+        "postal_code": "21000",
+        "subdistrict": "ท่าประดู่",
+        "district": "เมืองระยอง",
+        "province": "ระยอง"
+    },
+    {
+        "postal_code": "30000",
+        "subdistrict": "ในเมือง",
+        "district": "เมืองนครราชสีมา",
+        "province": "นครราชสีมา"
+    },
+    {
+        "postal_code": "30130",
+        "subdistrict": "สูงเนิน",
+        "district": "สูงเนิน",
+        "province": "นครราชสีมา"
+    },
+    {
+        "postal_code": "34000",
+        "subdistrict": "ในเมือง",
+        "district": "เมืองอุบลราชธานี",
+        "province": "อุบลราชธานี"
+    },
+    {
+        "postal_code": "40000",
+        "subdistrict": "ในเมือง",
+        "district": "เมืองขอนแก่น",
+        "province": "ขอนแก่น"
+    },
+    {
+        "postal_code": "41000",
+        "subdistrict": "หมากแข้ง",
+        "district": "เมืองอุดรธานี",
+        "province": "อุดรธานี"
+    },
+    {
+        "postal_code": "42000",
+        "subdistrict": "หนองบัว",
+        "district": "เมืองเลย",
+        "province": "เลย"
+    },
+    {
+        "postal_code": "44000",
+        "subdistrict": "ตลาด",
+        "district": "เมืองมหาสารคาม",
+        "province": "มหาสารคาม"
+    },
+    {
+        "postal_code": "50000",
+        "subdistrict": "ศรีภูมิ",
+        "district": "เมืองเชียงใหม่",
+        "province": "เชียงใหม่"
+    },
+    {
+        "postal_code": "50200",
+        "subdistrict": "สุเทพ",
+        "district": "เมืองเชียงใหม่",
+        "province": "เชียงใหม่"
+    },
+    {
+        "postal_code": "57000",
+        "subdistrict": "เวียง",
+        "district": "เมืองเชียงราย",
+        "province": "เชียงราย"
+    },
+    {
+        "postal_code": "60000",
+        "subdistrict": "ปากน้ำโพ",
+        "district": "เมืองนครสวรรค์",
+        "province": "นครสวรรค์"
+    },
+    {
+        "postal_code": "63000",
+        "subdistrict": "แม่สอด",
+        "district": "แม่สอด",
+        "province": "ตาก"
+    },
+    {
+        "postal_code": "65000",
+        "subdistrict": "ในเมือง",
+        "district": "เมืองพิษณุโลก",
+        "province": "พิษณุโลก"
+    },
+    {
+        "postal_code": "70000",
+        "subdistrict": "หน้าเมือง",
+        "district": "เมืองราชบุรี",
+        "province": "ราชบุรี"
+    },
+    {
+        "postal_code": "71000",
+        "subdistrict": "ท่ามะขาม",
+        "district": "เมืองกาญจนบุรี",
+        "province": "กาญจนบุรี"
+    },
+    {
+        "postal_code": "73000",
+        "subdistrict": "พระปฐมเจดีย์",
+        "district": "เมืองนครปฐม",
+        "province": "นครปฐม"
+    },
+    {
+        "postal_code": "74000",
+        "subdistrict": "มหาชัย",
+        "district": "เมืองสมุทรสาคร",
+        "province": "สมุทรสาคร"
+    },
+    {
+        "postal_code": "75000",
+        "subdistrict": "แม่กลอง",
+        "district": "เมืองสมุทรสงคราม",
+        "province": "สมุทรสงคราม"
+    },
+    {
+        "postal_code": "76000",
+        "subdistrict": "ท่าราบ",
+        "district": "เมืองเพชรบุรี",
+        "province": "เพชรบุรี"
+    },
+    {
+        "postal_code": "77000",
+        "subdistrict": "ประจวบคีรีขันธ์",
+        "district": "เมืองประจวบคีรีขันธ์",
+        "province": "ประจวบคีรีขันธ์"
+    },
+    {
+        "postal_code": "80000",
+        "subdistrict": "ท่าวัง",
+        "district": "เมืองนครศรีธรรมราช",
+        "province": "นครศรีธรรมราช"
+    },
+    {
+        "postal_code": "83000",
+        "subdistrict": "ตลาดใหญ่",
+        "district": "เมืองภูเก็ต",
+        "province": "ภูเก็ต"
+    },
+    {
+        "postal_code": "84000",
+        "subdistrict": "ตลาด",
+        "district": "เมืองสุราษฎร์ธานี",
+        "province": "สุราษฎร์ธานี"
+    },
+    {
+        "postal_code": "90000",
+        "subdistrict": "บ่อยาง",
+        "district": "เมืองสงขลา",
+        "province": "สงขลา"
+    },
+    {
+        "postal_code": "94000",
+        "subdistrict": "สะเตง",
+        "district": "เมืองยะลา",
+        "province": "ยะลา"
+    },
+    {
+        "postal_code": "96000",
+        "subdistrict": "สุไหงโก-ลก",
+        "district": "สุไหงโก-ลก",
+        "province": "นราธิวาส"
+    }
+]
