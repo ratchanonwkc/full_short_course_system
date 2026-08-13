@@ -187,6 +187,9 @@ CREATE TABLE public.study_groups (
   registration_start_date date,
   registration_end_date date,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  status USER-DEFINED NOT NULL DEFAULT 'open'::study_group_status,
+  schedule_description text,
+  is_free_tuition boolean NOT NULL DEFAULT false,
   CONSTRAINT study_groups_pkey PRIMARY KEY (id),
   CONSTRAINT study_groups_batch_id_fkey FOREIGN KEY (batch_id) REFERENCES public.batches(id),
   CONSTRAINT study_groups_major_id_fkey FOREIGN KEY (major_id) REFERENCES public.academic_majors(id),
@@ -203,4 +206,57 @@ CREATE TABLE public.study_group_subjects (
   CONSTRAINT study_group_subjects_pkey PRIMARY KEY (id),
   CONSTRAINT study_group_subjects_study_group_id_fkey FOREIGN KEY (study_group_id) REFERENCES public.study_groups(id),
   CONSTRAINT study_group_subjects_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id)
+);
+CREATE TABLE public.payment_methods (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  bank_name character varying NOT NULL,
+  account_name character varying NOT NULL,
+  account_number character varying NOT NULL,
+  qr_code_url text,
+  is_active boolean NOT NULL DEFAULT true,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT payment_methods_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.applicants (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  citizen_id character varying NOT NULL UNIQUE,
+  student_type character varying DEFAULT 'นักศึกษาใหม่'::character varying,
+  title_name character varying NOT NULL,
+  full_name character varying NOT NULL,
+  gender character varying NOT NULL,
+  birth_date date NOT NULL,
+  marital_status character varying DEFAULT 'โสด'::character varying,
+  registered_address text NOT NULL,
+  occupation character varying,
+  nationality character varying DEFAULT 'ไทย'::character varying,
+  religion character varying DEFAULT 'พุทธ'::character varying,
+  highest_education character varying,
+  previous_school character varying,
+  school_province character varying,
+  current_address text NOT NULL,
+  phone character varying NOT NULL,
+  postal_code character varying,
+  subdistrict character varying,
+  district character varying,
+  province character varying,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT applicants_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.enrollments (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  applicant_id bigint NOT NULL,
+  study_group_id bigint NOT NULL,
+  status USER-DEFINED NOT NULL DEFAULT 'pending_payment'::enrollment_status,
+  total_amount numeric NOT NULL DEFAULT 0.00,
+  payment_method_id bigint,
+  slip_url text,
+  receipt_number character varying,
+  confirmed_by_user_id uuid,
+  apply_date timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  payment_date timestamp with time zone,
+  receipt_date timestamp with time zone,
+  CONSTRAINT enrollments_pkey PRIMARY KEY (id),
+  CONSTRAINT enrollments_applicant_id_fkey FOREIGN KEY (applicant_id) REFERENCES public.applicants(id),
+  CONSTRAINT enrollments_study_group_id_fkey FOREIGN KEY (study_group_id) REFERENCES public.study_groups(id),
+  CONSTRAINT enrollments_payment_method_id_fkey FOREIGN KEY (payment_method_id) REFERENCES public.payment_methods(id)
 );
