@@ -240,6 +240,19 @@ CREATE TABLE public.applicants (
   district character varying,
   province character varying,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  house_no character varying,
+  moo character varying,
+  soi character varying,
+  road character varying,
+  current_house_no character varying,
+  current_moo character varying,
+  current_soi character varying,
+  current_road character varying,
+  current_subdistrict character varying,
+  current_district character varying,
+  current_province character varying,
+  current_postal_code character varying,
+  is_same_address boolean DEFAULT true,
   CONSTRAINT applicants_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.enrollments (
@@ -255,6 +268,7 @@ CREATE TABLE public.enrollments (
   apply_date timestamp with time zone DEFAULT timezone('utc'::text, now()),
   payment_date timestamp with time zone,
   receipt_date timestamp with time zone,
+  receipt_book_no character varying,
   CONSTRAINT enrollments_pkey PRIMARY KEY (id),
   CONSTRAINT enrollments_applicant_id_fkey FOREIGN KEY (applicant_id) REFERENCES public.applicants(id),
   CONSTRAINT enrollments_study_group_id_fkey FOREIGN KEY (study_group_id) REFERENCES public.study_groups(id),
