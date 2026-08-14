@@ -17,15 +17,7 @@ export const getMinors = async (req, res, next) => {
 
 export const createMinor = async (req, res, next) => {
     try {
-        const {
-            id,
-            created_at,
-            academic_majors,
-            major_name,
-            major_department_id,
-            ...insertData
-        } = req.body;
-        const minor = await createMinorService(insertData);
+        const minor = await createMinorService(req.body);
         res.status(201).json(minor);
     } catch (error) {
         if (error.code === '23505') {
@@ -38,15 +30,7 @@ export const createMinor = async (req, res, next) => {
 export const updateMinor = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const {
-            id: _,
-            created_at,
-            academic_majors,
-            major_name,
-            major_department_id,
-            ...updateData
-        } = req.body;
-        const minor = await updateMinorService(id, updateData);
+        const minor = await updateMinorService(id, req.body);
         res.json(minor);
     } catch (error) {
         if (error.code === '23505') {

@@ -9,8 +9,7 @@ import {
     uploadQrCode,
 } from "../../payment-methods/services/paymentMethodApi";
 
-const API_ORIGIN = import.meta.env.VITE_API_BASE_URL?.replace("/api", "") || "http://localhost:5000";
-
+// qr_code_url is a full Supabase Storage public URL — used directly, no origin prefix needed.
 const EMPTY_FORM = { bank_name: "", account_name: "", account_number: "", qr_code_url: "", is_active: true };
 
 /**
@@ -92,7 +91,7 @@ export default function PaymentMethodSettingsPage() {
                     <div key={m.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                         <div className="mb-3 flex items-center gap-3">
                             {m.qr_code_url ? (
-                                <img src={`${API_ORIGIN}${m.qr_code_url}`} alt="QR" className="h-16 w-16 rounded-lg border object-cover" />
+                                <img src={m.qr_code_url} alt="QR" className="h-16 w-16 rounded-lg border object-cover" />
                             ) : (
                                 <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-slate-100 text-slate-300">
                                     <Landmark size={22} />
@@ -215,7 +214,7 @@ function FormModal({ isOpen, onClose, editing, onSaved }) {
                             className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 p-3 hover:border-indigo-400"
                         >
                             {form.qr_code_url ? (
-                                <img src={`${API_ORIGIN}${form.qr_code_url}`} alt="QR" className="h-14 w-14 rounded-lg object-cover" />
+                                <img src={form.qr_code_url} alt="QR" className="h-14 w-14 rounded-lg object-cover" />
                             ) : (
                                 <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-slate-100 text-slate-300"><Upload size={18} /></div>
                             )}

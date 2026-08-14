@@ -1,7 +1,7 @@
 import { supabase } from '../../config/supabase.js';
 
 const ENROLLMENT_SELECT = `
-  id, status, total_amount, slip_url, receipt_number, apply_date, payment_date, receipt_date, study_group_id, applicant_id,
+  id, status, total_amount, slip_url, receipt_number, receipt_book_no, apply_date, payment_date, receipt_date, study_group_id, applicant_id,
   applicants:applicant_id ( id, citizen_id, title_name, full_name, phone, current_address, subdistrict, district, province, postal_code ),
   study_groups:study_group_id ( id, group_code, group_name, max_seats, current_seats, tuition_fee, application_fee, is_waived_fee )
 `;
@@ -12,6 +12,7 @@ const flatten = (row) => ({
     total_amount: row.total_amount,
     slip_url: row.slip_url,
     receipt_number: row.receipt_number,
+    receipt_book_no: row.receipt_book_no,
     apply_date: row.apply_date,
     payment_date: row.payment_date,
     receipt_date: row.receipt_date,
@@ -26,14 +27,29 @@ const flatten = (row) => ({
     current_seats: row.study_groups?.current_seats,
 });
 
-export const getEnrollmentsService = async ({ studyGroupId, status } = {}) => {
+export const getEnrollmentsService = async ({ studyGroupId, status, batchId } = {}) => {
     let query = supabase.from('enrollments').select(ENROLLMENT_SELECT).order('apply_date', { ascending: false });
     if (studyGroupId) query = query.eq('study_group_id', studyGroupId);
     if (status) query = query.eq('status', status);
 
     const { data, error } = await query;
     if (error) throw error;
-    return data.map(flatten);
+    let rows = data.map(flatten);
+
+    // batchId isn't a direct column on enrollments — filter client-side against
+    // study_groups already joined in, avoiding a second round-trip for the common
+    // "give me the staff dashboard for this batch" query.
+    if (batchId) {
+        const { data: groupIds, error: gErr } = await supabase
+            .from('study_groups')
+            .select('id')
+            .eq('batch_id', batchId);
+        if (gErr) throw gErr;
+        const idSet = new Set((groupIds || []).map((g) => g.id));
+        rows = rows.filter((r) => idSet.has(r.study_group_id));
+    }
+
+    return rows;
 };
 
 const upsertApplicant = async (applicantData) => {
@@ -62,11 +78,33 @@ const upsertApplicant = async (applicantData) => {
 };
 
 /**
+ * Duplicate-enrollment guard shared by both online and walk-in flows.
+ * Only blocks re-applying to the SAME study_group with a non-cancelled enrollment.
+ */
+const ensureNoDuplicateEnrollment = async (applicantId, studyGroupId) => {
+    const { data, error } = await supabase
+        .from('enrollments')
+        .select('id, status')
+        .eq('applicant_id', applicantId)
+        .eq('study_group_id', studyGroupId)
+        .neq('status', 'cancelled')
+        .maybeSingle();
+    if (error) throw error;
+    if (data) {
+        const err = new Error('ผู้สมัครรายนี้ลงทะเบียนกลุ่มเรียนนี้ไปแล้ว');
+        err.status = 409;
+        throw err;
+    }
+};
+
+/**
  * สร้างใบสมัคร Walk-in โดยเจ้าหน้าที่งานทะเบียน -> สถานะเริ่มต้น 'pending_payment'
  * ส่งต่อให้แผนกการเงินดำเนินการยืนยันชำระเงินต่อไป
  */
 export const createWalkinEnrollmentService = async ({ applicant, study_group_id }) => {
     const savedApplicant = await upsertApplicant(applicant);
+
+    await ensureNoDuplicateEnrollment(savedApplicant.id, study_group_id);
 
     const { data: group, error: groupErr } = await supabase
         .from('study_groups')
@@ -97,13 +135,17 @@ export const createWalkinEnrollmentService = async ({ applicant, study_group_id 
 
 /**
  * ยืนยันการชำระเงิน (Finance) — atomic:
- *   1. update enrollment: status='paid', receipt_number, receipt_date
+ *   1. update enrollment: status='paid', receipt_book_no, receipt_number, receipt_date
  *   2. increment study_groups.current_seats +1
- * ใช้ RPC atomic increment ผ่าน supabase .rpc ถ้ามี function ใน DB, ไม่มีก็ fallback อ่าน-เขียนตรง
  */
-export const confirmPaymentService = async (enrollmentId, { receipt_number }) => {
+export const confirmPaymentService = async (enrollmentId, { receipt_number, receipt_book_no }) => {
     if (!receipt_number?.trim()) {
         const err = new Error('กรุณากรอกเลขที่ใบเสร็จรับเงิน');
+        err.status = 400;
+        throw err;
+    }
+    if (!receipt_book_no?.trim()) {
+        const err = new Error('กรุณากรอกเล่มที่ใบเสร็จรับเงิน');
         err.status = 400;
         throw err;
     }
@@ -124,13 +166,17 @@ export const confirmPaymentService = async (enrollmentId, { receipt_number }) =>
     const now = new Date().toISOString();
     const { data: updated, error: updateErr } = await supabase
         .from('enrollments')
-        .update({ status: 'paid', receipt_number: receipt_number.trim(), receipt_date: now })
+        .update({
+            status: 'paid',
+            receipt_number: receipt_number.trim(),
+            receipt_book_no: receipt_book_no.trim(),
+            receipt_date: now,
+        })
         .eq('id', enrollmentId)
         .select()
         .single();
     if (updateErr) throw updateErr;
 
-    // Atomic seat increment via Postgres function (fallback: read-then-write ถ้า RPC ไม่มี)
     const { error: rpcError } = await supabase.rpc('increment_study_group_seats', {
         p_study_group_id: enrollment.study_group_id,
     });

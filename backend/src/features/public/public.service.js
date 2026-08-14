@@ -80,13 +80,20 @@ export const lookupPostalCodeService = (code) => {
 };
 
 export const getActivePaymentMethodsService = async () => {
-    const { data, error } = await supabase.from('payment_methods').select('*').eq('is_active', true);
+    // Selective projection — avoid SELECT * on hot public endpoint
+    const { data, error } = await supabase
+        .from('payment_methods')
+        .select('id, bank_name, account_name, account_number, qr_code_url')
+        .eq('is_active', true);
     if (error) throw error;
     return data;
 };
 
 /**
- * upsertApplicant: หาผู้สมัครเดิมด้วยเลขบัตรประชาชนก่อน ถ้าไม่มี insert ใหม่ ถ้ามีให้ update ข้อมูลล่าสุด
+ * upsertApplicant: find existing applicant by citizen_id first; update if found, insert if not.
+ * This is the ONLY place identity is deduplicated — never blocks a person from applying
+ * to a different course. Course-level duplication is enforced separately in
+ * ensureNoDuplicateEnrollment() against the (applicant_id, study_group_id) composite key.
  */
 const upsertApplicant = async (applicantData) => {
     const { citizen_id } = applicantData;
@@ -113,8 +120,32 @@ const upsertApplicant = async (applicantData) => {
     return data;
 };
 
+/**
+ * Duplicate-enrollment guard — the ONLY thing that should ever block a submission.
+ * Rejects re-applying to the SAME study_group only if the existing enrollment isn't cancelled.
+ * A student who already took a different course, or whose previous attempt at this
+ * exact course was cancelled, is allowed through.
+ */
+const ensureNoDuplicateEnrollment = async (applicantId, studyGroupId) => {
+    const { data, error } = await supabase
+        .from('enrollments')
+        .select('id, status')
+        .eq('applicant_id', applicantId)
+        .eq('study_group_id', studyGroupId)
+        .neq('status', 'cancelled')
+        .maybeSingle();
+    if (error) throw error;
+    if (data) {
+        const err = new Error('ท่านได้สมัครเรียนวิชานี้ไปแล้ว กรุณาตรวจสอบสถานะการสมัครของท่าน');
+        err.status = 409;
+        throw err;
+    }
+};
+
 export const createOnlineApplicationService = async ({ applicant, study_group_id, slip_url }) => {
     const savedApplicant = await upsertApplicant(applicant);
+
+    await ensureNoDuplicateEnrollment(savedApplicant.id, study_group_id);
 
     const group = await getStudyGroupDetailService(study_group_id);
     const total_amount = group.fee;
@@ -152,7 +183,7 @@ export const getStatusByCitizenIdService = async (citizenId) => {
     const { data: enrollments, error: enrollError } = await supabase
         .from('enrollments')
         .select(
-            `id, status, total_amount, slip_url, receipt_number, apply_date, payment_date, receipt_date,
+            `id, status, total_amount, slip_url, receipt_number, receipt_book_no, apply_date, payment_date, receipt_date,
        study_groups:study_group_id ( id, group_code, group_name, tuition_fee, application_fee, start_date )`
         )
         .eq('applicant_id', applicant.id)

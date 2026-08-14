@@ -47,17 +47,7 @@ export const getNextSequence = async (req, res, next) => {
 
 export const createSubject = async (req, res, next) => {
     try {
-        const {
-            id,
-            created_at,
-            level_name,
-            curriculum_name,
-            subject_type_name,
-            major_name,
-            minor_name,
-            ...insertData
-        } = req.body;
-        const subject = await createSubjectService(insertData);
+        const subject = await createSubjectService(req.body);
         res.status(201).json(subject);
     } catch (error) {
         if (error.code === '23505') {
@@ -70,17 +60,7 @@ export const createSubject = async (req, res, next) => {
 export const updateSubject = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const {
-            id: _,
-            created_at,
-            level_name,
-            curriculum_name,
-            subject_type_name,
-            major_name,
-            minor_name,
-            ...updateData
-        } = req.body;
-        const subject = await updateSubjectService(id, updateData);
+        const subject = await updateSubjectService(id, req.body);
         res.json(subject);
     } catch (error) {
         if (error.code === '23505') {

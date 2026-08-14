@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { User, MapPin, GraduationCap, PhoneCall, IdCard } from "lucide-react";
 import MaskedDateInput from "../../../components/common/MaskedDateInput";
-import { lookupPostalCode } from "../services/publicApi";
+import useThaiAddress from "../../../hooks/useThaiAddress";
 
 const inputCls =
     "w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none";
@@ -10,6 +10,11 @@ const labelCls = "mb-1.5 block text-sm font-bold text-slate-600";
 /**
  * ApplicantFormFields — ฟอร์มประวัติผู้สมัคร 6 ส่วน (ล้อตามคอลัมน์ตาราง applicants)
  * ใช้ร่วมกันทั้งฟอร์มสมัครออนไลน์ (public) และฟอร์ม Walk-in (registrar staff)
+ *
+ * Address is now structured (house_no / moo / soi / road / subdistrict / district /
+ * province / postal_code) instead of a single free-text textarea, for both the
+ * registered address and the current address. Postal code lookup runs entirely
+ * client-side via useThaiAddress (no server round-trip).
  *
  * props:
  * - formData, setFormData: ควบคุมจากภายนอก (controlled)
@@ -22,37 +27,65 @@ export default function ApplicantFormFields({
     showCitizenIdReader = false,
     onReadSmartCard,
 }) {
-    const [postalLoading, setPostalLoading] = useState(false);
+    const { ready: addressReady, lookupByPostalCode } = useThaiAddress();
+    const [registeredPostalLoading, setRegisteredPostalLoading] = useState(false);
+    const [currentPostalLoading, setCurrentPostalLoading] = useState(false);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
     };
 
-    const handlePostalChange = async (e) => {
-        const code = e.target.value.replace(/\D/g, "").slice(0, 5);
-        setFormData((prev) => ({ ...prev, postal_code: code }));
+    // Generic handler for the structured address blocks. `scope` is "registered" or "current".
+    const handleAddressField = (scope) => (field) => (e) => {
+        const key = scope === "registered" ? field : `current_${field}`;
+        setFormData((prev) => ({ ...prev, [key]: e.target.value }));
+    };
 
-        if (code.length === 5) {
-            setPostalLoading(true);
-            try {
-                const results = await lookupPostalCode(code);
-                if (results?.length > 0) {
-                    const first = results[0];
-                    setFormData((prev) => ({
-                        ...prev,
-                        postal_code: code,
-                        subdistrict: first.subdistrict,
-                        district: first.district,
-                        province: first.province,
-                    }));
-                }
-            } catch {
-                /* silent — ผู้ใช้กรอกเองต่อได้ */
-            } finally {
-                setPostalLoading(false);
+    const handlePostalChange = (scope) => (e) => {
+        const code = e.target.value.replace(/\D/g, "").slice(0, 5);
+        const codeKey = scope === "registered" ? "postal_code" : "current_postal_code";
+        const setLoading = scope === "registered" ? setRegisteredPostalLoading : setCurrentPostalLoading;
+
+        setFormData((prev) => ({ ...prev, [codeKey]: code }));
+
+        if (code.length === 5 && addressReady) {
+            setLoading(true);
+            // Client-side lookup — synchronous in practice, wrapped for UX consistency
+            const results = lookupByPostalCode(code);
+            if (results.length > 0) {
+                const first = results[0];
+                const prefix = scope === "registered" ? "" : "current_";
+                setFormData((prev) => ({
+                    ...prev,
+                    [codeKey]: code,
+                    [`${prefix}subdistrict`]: first.subdistrict,
+                    [`${prefix}district`]: first.district,
+                    [`${prefix}province`]: first.province,
+                }));
             }
+            setLoading(false);
         }
+    };
+
+    const handleSameAddressToggle = (e) => {
+        const checked = e.target.checked;
+        setFormData((prev) => ({
+            ...prev,
+            is_same_address: checked,
+            ...(checked
+                ? {
+                      current_house_no: prev.house_no,
+                      current_moo: prev.moo,
+                      current_soi: prev.soi,
+                      current_road: prev.road,
+                      current_subdistrict: prev.subdistrict,
+                      current_district: prev.district,
+                      current_province: prev.province,
+                      current_postal_code: prev.postal_code,
+                  }
+                : {}),
+        }));
     };
 
     return (
@@ -151,31 +184,47 @@ export default function ApplicantFormFields({
                 </div>
             </section>
 
-            {/* ส่วนที่ 3: ที่อยู่ตามทะเบียนบ้าน + Address Autofill */}
+            {/* ส่วนที่ 3: ที่อยู่ตามทะเบียนบ้าน — Structured fields */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
                     <MapPin size={18} className="text-indigo-600" /> [3] ที่อยู่ตามทะเบียนบ้าน
                 </h3>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="md:col-span-2">
-                        <label className={labelCls}>ที่อยู่ (บ้านเลขที่ / หมู่ / ซอย / ถนน) *</label>
-                        <textarea rows={2} required name="registered_address" value={formData.registered_address} onChange={handleChange} placeholder="กรอกที่อยู่ตามทะเบียนบ้าน" className={`${inputCls} text-sm`} />
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                    <div>
+                        <label className={labelCls}>บ้านเลขที่ *</label>
+                        <input type="text" required value={formData.house_no || ""} onChange={handleAddressField("registered")("house_no")} placeholder="เช่น 123/4" className={inputCls} />
                     </div>
                     <div>
-                        <label className={labelCls}>รหัสไปรษณีย์ * {postalLoading && <span className="text-indigo-500">(กำลังค้นหา...)</span>}</label>
-                        <input type="text" required maxLength={5} inputMode="numeric" value={formData.postal_code} onChange={handlePostalChange} placeholder="เช่น 10110" className={inputCls} />
+                        <label className={labelCls}>หมู่</label>
+                        <input type="text" value={formData.moo || ""} onChange={handleAddressField("registered")("moo")} placeholder="เช่น 4" className={inputCls} />
+                    </div>
+                    <div>
+                        <label className={labelCls}>ซอย</label>
+                        <input type="text" value={formData.soi || ""} onChange={handleAddressField("registered")("soi")} className={inputCls} />
+                    </div>
+                    <div>
+                        <label className={labelCls}>ถนน</label>
+                        <input type="text" value={formData.road || ""} onChange={handleAddressField("registered")("road")} className={inputCls} />
+                    </div>
+                </div>
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                        <label className={labelCls}>
+                            รหัสไปรษณีย์ * {registeredPostalLoading && <span className="text-indigo-500">(กำลังค้นหา...)</span>}
+                        </label>
+                        <input type="text" required maxLength={5} inputMode="numeric" value={formData.postal_code} onChange={handlePostalChange("registered")} placeholder="เช่น 10110" className={inputCls} />
                     </div>
                     <div>
                         <label className={labelCls}>ตำบล/แขวง *</label>
-                        <input type="text" required name="subdistrict" value={formData.subdistrict} onChange={handleChange} className={inputCls} />
+                        <input type="text" required value={formData.subdistrict} onChange={handleAddressField("registered")("subdistrict")} className={inputCls} />
                     </div>
                     <div>
                         <label className={labelCls}>อำเภอ/เขต *</label>
-                        <input type="text" required name="district" value={formData.district} onChange={handleChange} className={inputCls} />
+                        <input type="text" required value={formData.district} onChange={handleAddressField("registered")("district")} className={inputCls} />
                     </div>
                     <div>
                         <label className={labelCls}>จังหวัด *</label>
-                        <input type="text" required name="province" value={formData.province} onChange={handleChange} className={inputCls} />
+                        <input type="text" required value={formData.province} onChange={handleAddressField("registered")("province")} className={inputCls} />
                     </div>
                 </div>
             </section>
@@ -207,7 +256,7 @@ export default function ApplicantFormFields({
                 </div>
             </section>
 
-            {/* ส่วนที่ 5-6: ที่อยู่ปัจจุบัน + ช่องทางติดต่อ */}
+            {/* ส่วนที่ 5-6: ที่อยู่ปัจจุบัน (structured) + ช่องทางติดต่อ */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
                     <PhoneCall size={18} className="text-indigo-600" /> [5-6] ที่อยู่ปัจจุบันและช่องทางติดต่อ
@@ -217,10 +266,59 @@ export default function ApplicantFormFields({
                         <label className={labelCls}>เบอร์โทรศัพท์ *</label>
                         <input type="tel" required maxLength={10} name="phone" value={formData.phone} onChange={handleChange} placeholder="0812345678" className={`${inputCls} font-bold tracking-wider`} />
                     </div>
-                    <div>
-                        <label className={labelCls}>ที่อยู่ปัจจุบันที่ติดต่อได้สะดวก *</label>
-                        <textarea rows={2} required name="current_address" value={formData.current_address} onChange={handleChange} placeholder="หากเหมือนที่อยู่ตามทะเบียนบ้าน พิมพ์ว่า 'ตามทะเบียนบ้าน' ได้" className={`${inputCls} text-sm`} />
-                    </div>
+
+                    <label className="flex cursor-pointer items-center gap-2 select-none text-sm font-semibold text-slate-600">
+                        <input
+                            type="checkbox"
+                            checked={Boolean(formData.is_same_address)}
+                            onChange={handleSameAddressToggle}
+                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        ใช้ที่อยู่เดียวกับที่อยู่ตามทะเบียนบ้าน
+                    </label>
+
+                    {!formData.is_same_address && (
+                        <>
+                            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                                <div>
+                                    <label className={labelCls}>บ้านเลขที่ *</label>
+                                    <input type="text" required value={formData.current_house_no || ""} onChange={handleAddressField("current")("house_no")} placeholder="เช่น 123/4" className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>หมู่</label>
+                                    <input type="text" value={formData.current_moo || ""} onChange={handleAddressField("current")("moo")} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>ซอย</label>
+                                    <input type="text" value={formData.current_soi || ""} onChange={handleAddressField("current")("soi")} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>ถนน</label>
+                                    <input type="text" value={formData.current_road || ""} onChange={handleAddressField("current")("road")} className={inputCls} />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <label className={labelCls}>
+                                        รหัสไปรษณีย์ * {currentPostalLoading && <span className="text-indigo-500">(กำลังค้นหา...)</span>}
+                                    </label>
+                                    <input type="text" required maxLength={5} inputMode="numeric" value={formData.current_postal_code || ""} onChange={handlePostalChange("current")} placeholder="เช่น 10110" className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>ตำบล/แขวง *</label>
+                                    <input type="text" required value={formData.current_subdistrict || ""} onChange={handleAddressField("current")("subdistrict")} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>อำเภอ/เขต *</label>
+                                    <input type="text" required value={formData.current_district || ""} onChange={handleAddressField("current")("district")} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>จังหวัด *</label>
+                                    <input type="text" required value={formData.current_province || ""} onChange={handleAddressField("current")("province")} className={inputCls} />
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             </section>
         </div>
@@ -234,17 +332,28 @@ export const EMPTY_APPLICANT = {
     gender: "ชาย",
     birth_date: "",
     marital_status: "โสด",
-    registered_address: "",
+    house_no: "",
+    moo: "",
+    soi: "",
+    road: "",
     occupation: "",
     nationality: "ไทย",
     religion: "พุทธ",
     highest_education: "มัธยมศึกษาตอนปลาย (ม.6)",
     previous_school: "",
     school_province: "",
-    current_address: "",
+    is_same_address: true,
+    current_house_no: "",
+    current_moo: "",
+    current_soi: "",
+    current_road: "",
     phone: "",
     postal_code: "",
     subdistrict: "",
     district: "",
     province: "",
+    current_postal_code: "",
+    current_subdistrict: "",
+    current_district: "",
+    current_province: "",
 };

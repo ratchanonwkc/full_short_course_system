@@ -68,6 +68,7 @@ export const createOnlineApplication = async (req, res, next) => {
         const result = await createOnlineApplicationService({ applicant, study_group_id, slip_url });
         res.status(201).json(result);
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ message: error.message });
         if (error.code === '23505') {
             return res.status(400).json({ message: 'เลขประจำตัวประชาชนนี้มีอยู่แล้วในระบบ' });
         }

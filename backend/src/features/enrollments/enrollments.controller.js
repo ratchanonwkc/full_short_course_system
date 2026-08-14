@@ -7,8 +7,12 @@ import {
 
 export const getEnrollments = async (req, res, next) => {
     try {
-        const { study_group_id, status } = req.query;
-        const enrollments = await getEnrollmentsService({ studyGroupId: study_group_id, status });
+        const { study_group_id, status, batch_id } = req.query;
+        const enrollments = await getEnrollmentsService({
+            studyGroupId: study_group_id,
+            status,
+            batchId: batch_id,
+        });
         res.json(enrollments);
     } catch (error) {
         next(error);
@@ -27,6 +31,7 @@ export const createWalkinEnrollment = async (req, res, next) => {
         const result = await createWalkinEnrollmentService({ applicant, study_group_id });
         res.status(201).json(result);
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ message: error.message });
         if (error.code === '23505') {
             return res.status(400).json({ message: 'เลขประจำตัวประชาชนนี้มีอยู่แล้วในระบบ' });
         }
@@ -37,8 +42,8 @@ export const createWalkinEnrollment = async (req, res, next) => {
 export const confirmPayment = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { receipt_number } = req.body;
-        const updated = await confirmPaymentService(id, { receipt_number });
+        const { receipt_number, receipt_book_no } = req.body;
+        const updated = await confirmPaymentService(id, { receipt_number, receipt_book_no });
         res.json(updated);
     } catch (error) {
         if (error.status) return res.status(error.status).json({ message: error.message });

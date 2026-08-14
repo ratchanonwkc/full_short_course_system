@@ -17,19 +17,7 @@ export const getMajors = async (req, res, next) => {
 
 export const createMajor = async (req, res, next) => {
     try {
-        const {
-            id,
-            created_at,
-            academic_levels,
-            subject_types,
-            teachers,
-            level_name,
-            subject_type_name,
-            head_teacher_name,
-            full_major_code,
-            ...insertData
-        } = req.body;
-        const major = await createMajorService(insertData);
+        const major = await createMajorService(req.body);
         res.status(201).json(major);
     } catch (error) {
         // department_id ซ้ำกันภายใต้ level/subject_type เดียวกัน (ถ้ามี unique constraint) หรือ full_major_code ซ้ำ
@@ -43,19 +31,7 @@ export const createMajor = async (req, res, next) => {
 export const updateMajor = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const {
-            id: _,
-            created_at,
-            academic_levels,
-            subject_types,
-            teachers,
-            level_name,
-            subject_type_name,
-            head_teacher_name,
-            full_major_code,
-            ...updateData
-        } = req.body;
-        const major = await updateMajorService(id, updateData);
+        const major = await updateMajorService(id, req.body);
         res.json(major);
     } catch (error) {
         if (error.code === '23505') {

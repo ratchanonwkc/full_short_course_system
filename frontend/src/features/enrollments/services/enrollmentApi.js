@@ -3,9 +3,9 @@ import axiosInstance from "../../../config/axiosInstance";
 /**
  * enrollmentApi
  * ---------------------------------------------------------------------------
- *   GET  /enrollments                     -> getEnrollments({ study_group_id, status })
+ *   GET  /enrollments                     -> getEnrollments({ study_group_id, status, batch_id })
  *   POST /enrollments/walkin              -> createWalkinEnrollment(payload)
- *   PUT  /enrollments/:id/confirm-payment -> confirmPayment(id, { receipt_number })
+ *   PUT  /enrollments/:id/confirm-payment -> confirmPayment(id, { receipt_book_no, receipt_number })
  *   PUT  /enrollments/:id/cancel          -> cancelEnrollment(id)
  */
 
