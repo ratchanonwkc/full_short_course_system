@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Rocket, BookOpen, Search, LayoutGrid, List as ListIcon, Filter } from "lucide-react";
 import Carousel from "../../public/components/Carousel";
 import CourseCard from "../../public/components/CourseCard";
-import CourseListGrid from "../../public/components/CourseListGrid";
+import CourseListView from "../../public/components/CourseListRow";
 import { getOpenStudyGroups } from "../../public/services/publicApi";
 import { getMajors } from "../../curriculums/services/academicStructureApi";
 import { getTimeSlots } from "../../study-groups/services/studyGroupApi";
@@ -36,7 +36,6 @@ export default function IndexPage() {
   }, [debouncedSearch, filterMajorId]);
 
   // รอบเรียน filter ทำฝั่ง client เพราะ backend ยังไม่รองรับ query param นี้โดยตรง
-  // (group_code มีตัวอักษรรอบเรียนฝังอยู่ เช่น ...ช1, ...บ2)
   const filteredCourses = useMemo(() => {
     if (!filterTimeCode) return courses;
     return courses.filter((c) => c.group_code?.includes(filterTimeCode));
@@ -164,17 +163,7 @@ export default function IndexPage() {
             ))}
           </div>
         ) : (
-          <>
-            {/* Mobile: stacked cards fallback since AG-Grid isn't touch-friendly at narrow widths */}
-            <div className="flex flex-col gap-3 sm:hidden">
-              {filteredCourses.map((course) => (
-                <CourseCard key={course.id} course={course} view="list" />
-              ))}
-            </div>
-            <div className="hidden sm:block">
-              <CourseListGrid courses={filteredCourses} loading={loading} />
-            </div>
-          </>
+          <CourseListView courses={filteredCourses} loading={loading} />
         )}
       </section>
     </div>
