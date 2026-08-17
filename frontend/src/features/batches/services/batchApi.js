@@ -21,6 +21,12 @@ export const getBatches = async (params = {}) => {
     return data;
 };
 
+// ดึงรุ่นการเรียนตาม ID (ใช้ใน StudyGroupsPage breadcrumb แทนการดึงทั้งหมด)
+export const getBatchById = async (id) => {
+    const { data } = await axiosInstance.get(`/batches/${id}`);
+    return data;
+};
+
 // ดึงรายชื่อผู้บริหาร/หัวหน้างาน 9 ตำแหน่งจากรุ่นล่าสุด (ใช้กับปุ่ม Auto-fill)
 export const getLatestPersonnel = async () => {
     const { data } = await axiosInstance.get("/batches/latest-personnel");

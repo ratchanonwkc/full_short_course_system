@@ -58,7 +58,7 @@ export default function CourseCard({ course, view = "grid" }) {
                             }`}
                     >
                         <Users size={15} />
-                        {isFull ? "ที่นั่งเต็ม" : `เหลือ ${course.remaining_seats}/${course.max_seats} ที่`}
+                        {isFull ? "ที่นั่งเต็ม" : `เหลือ ${course.remaining_seats} ที่`}
                     </span>
                 </div>
             </div>
@@ -77,8 +77,8 @@ export default function CourseCard({ course, view = "grid" }) {
                     to={isFull ? "#" : `/register/${course.id}`}
                     aria-disabled={isFull}
                     className={`rounded-lg px-4 py-2 text-sm font-semibold transition active:scale-[0.98] ${isFull
-                            ? "cursor-not-allowed bg-slate-100 text-slate-400"
-                            : "bg-indigo-600 text-white hover:bg-indigo-700"
+                        ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                        : "bg-indigo-600 text-white hover:bg-indigo-700"
                         }`}
                     onClick={(e) => isFull && e.preventDefault()}
                 >

@@ -7,7 +7,7 @@ import GroupFormPanel from "../components/GroupFormPanel";
 import SplitPanelLayout from "../../curriculums/components/SplitPanelLayout";
 import SearchableCombobox from "../../../components/common/SearchableCombobox";
 import { getStudyGroups, deleteStudyGroup, getLocations, getTimeSlots } from "../services/studyGroupApi";
-import { getBatches } from "../../batches/services/batchApi";
+import { getBatchById } from "../../batches/services/batchApi";
 import { getMajors } from "../../curriculums/services/academicStructureApi";
 import { getSubjects } from "../../subjects/services/subjectApi";
 import { getTeachers } from "../../teachers/services/teacherApi";
@@ -20,6 +20,13 @@ import { getTeachers } from "../../teachers/services/teacherApi";
  * โครงสร้าง:
  * - Header/Breadcrumb ระบุชัดเจนว่ากำลังจัดการกลุ่มเรียนของรุ่นใด + ปุ่มย้อนกลับไปหน้า Batches
  * - Split View: ฝั่งซ้าย (60%) AG-Grid รายการกลุ่มเรียน + Filter, ฝั่งขวา (40%) Form Panel
+ *
+ * Performance notes (refactored):
+ * - fetchBatch  → GET /batches/:id  (ไม่ดึงทั้งหมดแล้ว)
+ * - fetchGroups  และ fetchBatch ทำงานพร้อมกัน, ตารางแสดงผลทันที
+ * - fetchReferenceData (majors/subjects/teachers/locations/timeSlots) โหลดพร้อมกันแบบ non-blocking
+ *   ตารางไม่รอ refLoading; เฉพาะ GroupFormPanel เท่านั้นที่ใช้ข้อมูลนี้
+ * - ไม่มี fetchLocations แยกซ้ำอีกต่อไป — onLocationsRefresh ใช้ inline setter โดยตรง
  */
 export default function StudyGroupsPage() {
     const { batchId } = useParams();
@@ -33,13 +40,14 @@ export default function StudyGroupsPage() {
     const [editingGroup, setEditingGroup] = useState(null);
     const [isMobileFormOpen, setIsMobileFormOpen] = useState(false);
 
-    // Shared reference data
+    // Shared reference data (สำหรับ GroupFormPanel เท่านั้น)
     const [majors, setMajors] = useState([]);
     const [subjects, setSubjects] = useState([]);
     const [teachers, setTeachers] = useState([]);
     const [locations, setLocations] = useState([]);
     const [timeSlots, setTimeSlots] = useState([]);
     const [refLoading, setRefLoading] = useState(true);
+
     // add near other filter state
     const [filterStatus, setFilterStatus] = useState("all");
 
@@ -51,28 +59,28 @@ export default function StudyGroupsPage() {
         { value: "cancelled", label: "⚪ ยกเลิก" },
     ];
 
-
-    // ── โหลดข้อมูลรุ่นการเรียน (สำหรับ Header/Breadcrumb) ─────────────────────
+    // ── โหลดข้อมูลรุ่นการเรียน ด้วย GET /batches/:id โดยตรง ───────────────────
     const fetchBatch = useCallback(async () => {
         try {
-            const allBatches = await getBatches();
-            const found = allBatches.find((b) => String(b.id) === String(batchId));
-            setBatch(found || null);
-            if (!found) {
+            const found = await getBatchById(batchId);
+            setBatch(found);
+        } catch (err) {
+            const isNotFound = err?.response?.status === 404;
+            if (isNotFound) {
                 Swal.fire({
                     icon: "warning",
                     title: "ไม่พบข้อมูลรุ่นการเรียน",
                     text: "รุ่นการเรียนนี้อาจถูกลบไปแล้ว",
                     confirmButtonColor: "#4f46e5",
                 }).then(() => navigate("/batches"));
+            } else {
+                Swal.fire({
+                    icon: "error",
+                    title: "โหลดข้อมูลรุ่นการเรียนไม่สำเร็จ",
+                    text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
+                    confirmButtonColor: "#4f46e5",
+                });
             }
-        } catch (err) {
-            Swal.fire({
-                icon: "error",
-                title: "โหลดข้อมูลรุ่นการเรียนไม่สำเร็จ",
-                text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
-            });
         }
     }, [batchId, navigate]);
 
@@ -94,43 +102,37 @@ export default function StudyGroupsPage() {
         }
     }, [batchId, filterMajorId]);
 
-    // ── โหลดข้อมูลอ้างอิงที่ใช้ในฟอร์ม (แผนก/วิชา/ครู/สถานที่/รอบเรียน) ────────
-    const fetchLocations = useCallback(async () => {
-        try {
-            const data = await getLocations();
-            setLocations(data);
-        } catch {
-            /* non-blocking */
-        }
-    }, []);
-
+    // ── โหลดข้อมูลอ้างอิงสำหรับ GroupFormPanel (non-blocking ต่อตาราง) ─────────
     const fetchReferenceData = useCallback(async () => {
         setRefLoading(true);
-        try {
-            const [majorsData, subjectsRes, teachersData, locationsData, timeSlotsData] = await Promise.all([
-                getMajors(),
-                getSubjects({ pageSize: 1000 }), // โหลดวิชาทั้งหมดมาให้เลือกในฟอร์ม (ไม่ paginate ในบริบทนี้)
-                getTeachers({ status: "active" }),
-                getLocations(),
-                getTimeSlots(),
-            ]);
-            setMajors(majorsData);
-            setSubjects(subjectsRes.data || subjectsRes);
-            setTeachers(teachersData);
-            setLocations(locationsData);
-            setTimeSlots(timeSlotsData);
-        } catch (err) {
+        const [majorsRes, subjectsRes, teachersRes, locationsRes, timeSlotsRes] = await Promise.allSettled([
+            getMajors(),
+            getSubjects({ pageSize: 1000 }),
+            getTeachers({ status: "active" }),
+            getLocations(),
+            getTimeSlots(),
+        ]);
+
+        setMajors(majorsRes.status === "fulfilled" ? majorsRes.value : []);
+        setSubjects(subjectsRes.status === "fulfilled" ? (subjectsRes.value.data || subjectsRes.value) : []);
+        setTeachers(teachersRes.status === "fulfilled" ? teachersRes.value : []);
+        setLocations(locationsRes.status === "fulfilled" ? locationsRes.value : []);
+        setTimeSlots(timeSlotsRes.status === "fulfilled" ? timeSlotsRes.value : []);
+
+        const failed = [majorsRes, subjectsRes, teachersRes, locationsRes, timeSlotsRes].some((r) => r.status === "rejected");
+        if (failed) {
             Swal.fire({
-                icon: "error",
-                title: "โหลดข้อมูลตั้งต้นไม่สำเร็จ",
-                text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
+                icon: "warning",
+                title: "โหลดข้อมูลบางส่วนไม่สำเร็จ",
+                text: "ฟอร์มอาจใช้งานได้ไม่สมบูรณ์ กรุณาลองรีเฟรชหน้าอีกครั้ง",
                 confirmButtonColor: "#4f46e5",
             });
-        } finally {
-            setRefLoading(false);
         }
+        setRefLoading(false);
     }, []);
 
+    // ── mount: โหลด batch + groups + reference data พร้อมกัน ────────────────────
+    // ตาราง render ทันทีตาม `loading`; ฟอร์มรอ `refLoading` แยกต่างหาก
     useEffect(() => {
         fetchBatch();
         fetchReferenceData();
@@ -139,6 +141,16 @@ export default function StudyGroupsPage() {
     useEffect(() => {
         fetchGroups();
     }, [fetchGroups]);
+
+    // ── refresh locations หลัง Quick Add / Manage — เรียกเดี่ยว ไม่ซ้ำ ──────────
+    const handleLocationsRefresh = useCallback(async () => {
+        try {
+            const data = await getLocations();
+            setLocations(data);
+        } catch {
+            /* non-blocking */
+        }
+    }, []);
 
     const majorOptions = useMemo(() => majors.map((m) => ({ value: m.id, label: m.name_th })), [majors]);
 
@@ -251,7 +263,8 @@ export default function StudyGroupsPage() {
             teachers={teachers}
             locations={locations}
             timeSlots={timeSlots}
-            onLocationsRefresh={fetchLocations}
+            refLoading={refLoading}
+            onLocationsRefresh={handleLocationsRefresh}
         />
     );
 
@@ -284,16 +297,13 @@ export default function StudyGroupsPage() {
                 </div>
             </div>
 
-            {refLoading ? (
-                <p className="py-10 text-center text-sm text-slate-400">กำลังโหลดข้อมูลตั้งต้น...</p>
-            ) : (
-                <SplitPanelLayout
-                    grid={grid}
-                    form={form}
-                    isFormOpen={isMobileFormOpen}
-                    onCloseForm={() => setIsMobileFormOpen(false)}
-                />
-            )}
+            {/* ตารางแสดงผลทันที โดยไม่รอ refLoading */}
+            <SplitPanelLayout
+                grid={grid}
+                form={form}
+                isFormOpen={isMobileFormOpen}
+                onCloseForm={() => setIsMobileFormOpen(false)}
+            />
         </div>
     );
 }

@@ -9,7 +9,10 @@ const TABLE_MAP = {
     'sub-positions': { name: 'sub_positions', primaryKey: 'sub_position_name' },
     curriculums: { name: 'curriculums', primaryKey: 'curriculum_name' },
     'academic-levels': { name: 'academic_levels', primaryKey: 'level_name' },
-    'subject-types': { name: 'subject_types', primaryKey: 'name_th' }
+    'subject-types': { name: 'subject_types', primaryKey: 'name_th' },
+    // ── FIX: previously missing, caused 400 on GET /api/locations & /api/time-slots ──
+    locations: { name: 'locations', primaryKey: 'name' },
+    'time-slots': { name: 'time_slots', primaryKey: 'time_code' },
 };
 
 export const getMasterData = async (req, res, next) => {

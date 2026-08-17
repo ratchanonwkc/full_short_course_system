@@ -31,6 +31,25 @@ export const getAllBatchesService = async (academicYear, term) => {
     });
 };
 
+// ดึงรุ่นการเรียนตาม ID (สำหรับ StudyGroupsPage breadcrumb)
+export const getBatchByIdService = async (id) => {
+    const { data, error } = await supabase
+        .from('batches')
+        .select(`
+      *,
+      director:director_id (id, prefix_id, first_name_th, last_name_th, prefixes:prefix_id(short_name)),
+      head_registration:head_registration_id (id, prefix_id, first_name_th, last_name_th, prefixes:prefix_id(short_name))
+    `)
+        .eq('id', id)
+        .single();
+
+    if (error) throw error;
+    const b = data;
+    const dirPrefix = b.director?.prefixes?.short_name || '';
+    const dirName = b.director ? `${dirPrefix}${b.director.first_name_th} ${b.director.last_name_th}` : '-';
+    return { ...b, director_name: dirName };
+};
+
 // ดึงรายชื่อผู้บริหารและหัวหน้างาน 9 ตำแหน่งจาก "รุ่นล่าสุด" (สำหรับทำ Auto-fill)
 export const getLatestPersonnelService = async () => {
     const { data, error } = await supabase

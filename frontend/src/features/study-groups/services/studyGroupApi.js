@@ -85,8 +85,8 @@ export const removeSubjectFromGroup = async (id) => {
 };
 
 // ─── Locations (สถานที่จัดเรียนร่วม) ──────────────────────────────────────────
-export const getLocations = async () => {
-    const { data } = await axiosInstance.get("/locations");
+export const getLocations = async (params = {}) => {
+    const { data } = await axiosInstance.get("/locations", { params });
     return data;
 };
 export const createLocation = async (payload) => {
@@ -103,7 +103,7 @@ export const deleteLocation = async (id) => {
 };
 
 // ─── Time slots (รอบเรียน: ช/บ/ค/พ) — read-only จาก UI ───────────────────────
-export const getTimeSlots = async () => {
-    const { data } = await axiosInstance.get("/time-slots");
+export const getTimeSlots = async (params = {}) => {
+    const { data } = await axiosInstance.get("/time-slots", { params });
     return data;
 };

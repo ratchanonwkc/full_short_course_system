@@ -1,5 +1,6 @@
 import {
     getAllBatchesService,
+    getBatchByIdService,
     getLatestPersonnelService,
     createBatchService,
     createBulkYearBatchesService,
@@ -13,6 +14,19 @@ export const getBatches = async (req, res, next) => {
         const batches = await getAllBatchesService(year, term);
         res.json(batches);
     } catch (error) {
+        next(error);
+    }
+};
+
+export const getBatchById = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const batch = await getBatchByIdService(id);
+        res.json(batch);
+    } catch (error) {
+        if (error.code === 'PGRST116') {
+            return res.status(404).json({ message: 'ไม่พบข้อมูลรุ่นการเรียน' });
+        }
         next(error);
     }
 };
