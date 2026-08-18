@@ -253,6 +253,7 @@ CREATE TABLE public.applicants (
   current_province character varying,
   current_postal_code character varying,
   is_same_address boolean DEFAULT true,
+  email character varying,
   CONSTRAINT applicants_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.enrollments (
@@ -269,6 +270,10 @@ CREATE TABLE public.enrollments (
   payment_date timestamp with time zone,
   receipt_date timestamp with time zone,
   receipt_book_no character varying,
+  payment_method character varying DEFAULT 'online_transfer'::character varying,
+  rejection_reason text,
+  rejected_at timestamp with time zone,
+  rejected_by_user_id uuid,
   CONSTRAINT enrollments_pkey PRIMARY KEY (id),
   CONSTRAINT enrollments_applicant_id_fkey FOREIGN KEY (applicant_id) REFERENCES public.applicants(id),
   CONSTRAINT enrollments_study_group_id_fkey FOREIGN KEY (study_group_id) REFERENCES public.study_groups(id),
