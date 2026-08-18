@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 import Swal from "sweetalert2";
-import { Users, UserPlus, IdCard, X } from "lucide-react";
+import { Users, UserPlus, IdCard, X, Search, Eye, BadgeCheck } from "lucide-react";
+import Combobox from "../../../components/common/Combobox";
 import { getStudyGroups } from "../../study-groups/services/studyGroupApi";
 import { getBatches } from "../../batches/services/batchApi";
 import { getEnrollments, createWalkinEnrollment, cancelEnrollment } from "../../enrollments/services/enrollmentApi";
 import ApplicantFormFields, { EMPTY_APPLICANT } from "../../public/components/ApplicantFormFields";
+import ApplicantDetailModal from "../components/ApplicantDetailModal";
+import { findActiveBatch, isBatchActive } from "../../../utils/activeBatch";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -17,16 +20,35 @@ const STATUS_META = {
     cancelled: { label: "ยกเลิก", className: "bg-slate-200 text-slate-500" },
 };
 
+const STATUS_FILTERS = [
+    { value: "all", label: "ทุกสถานะ" },
+    { value: "paid", label: "ชำระเงินแล้ว" },
+    { value: "pending", label: "รอชำระเงิน" }, // covers both pending_payment + pending_verification
+    { value: "cancelled", label: "ยกเลิก" },
+];
+
+const PAYMENT_METHOD_OPTIONS = [
+    { value: "online_transfer", label: "โอนเงินออนไลน์ / แนบสลิป" },
+    { value: "counter_cash", label: "ชำระเงินที่ห้องการเงิน (Pay at Finance Office)" },
+];
+
 function StatusBadgeRenderer({ value }) {
     const meta = STATUS_META[value] || STATUS_META.pending_payment;
     return <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.className}`}>{meta.label}</span>;
 }
 
+function matchesStatusFilter(enrollmentStatus, filterValue) {
+    if (filterValue === "all") return true;
+    if (filterValue === "pending") return enrollmentStatus === "pending_payment" || enrollmentStatus === "pending_verification";
+    return enrollmentStatus === filterValue;
+}
+
 /**
- * RegistrarEnrollmentsPage — Hierarchy-aware student management, single screen.
- * Batch -> Study Group dropdowns at the top let staff jump straight to any
- * group's roster without nested page navigation. "ทุกกลุ่มเรียน" shows every
- * enrollment across the selected batch at once.
+ * RegistrarEnrollmentsPage — Flat global applicant table.
+ * - Auto-selects the Active Batch on load (findActiveBatch), manual override via Combobox.
+ * - Global search across name/phone/email/citizen_id.
+ * - Status quick filters.
+ * - Row click -> ApplicantDetailModal (read-only info + group reassignment).
  */
 export default function RegistrarEnrollmentsPage() {
     const [batches, setBatches] = useState([]);
@@ -36,14 +58,20 @@ export default function RegistrarEnrollmentsPage() {
     const [enrollments, setEnrollments] = useState([]);
     const [loading, setLoading] = useState(false);
     const [walkinOpen, setWalkinOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [detailEnrollment, setDetailEnrollment] = useState(null);
 
+    // ── Load batches, auto-select Active Batch ──────────────────────────────
     useEffect(() => {
         getBatches().then((data) => {
             setBatches(data);
-            if (data.length > 0) setSelectedBatchId(String(data[0].id));
+            const active = findActiveBatch(data);
+            if (active) setSelectedBatchId(String(active.id));
         });
     }, []);
 
+    // ── Load study groups for the selected batch ────────────────────────────
     useEffect(() => {
         if (!selectedBatchId) {
             setGroups([]);
@@ -71,10 +99,41 @@ export default function RegistrarEnrollmentsPage() {
         loadEnrollments();
     }, [loadEnrollments]);
 
+    const batchOptions = useMemo(
+        () =>
+            batches.map((b) => ({
+                value: b.id,
+                label: isBatchActive(b) ? `${b.batch_name} (รุ่นปัจจุบัน)` : b.batch_name,
+            })),
+        [batches]
+    );
+    const groupOptions = useMemo(
+        () => groups.map((g) => ({ value: g.id, label: `${g.group_code} — ${g.group_name}` })),
+        [groups]
+    );
+
+    const currentBatch = useMemo(
+        () => batches.find((b) => String(b.id) === String(selectedBatchId)),
+        [batches, selectedBatchId]
+    );
     const currentGroup = useMemo(
         () => groups.find((g) => String(g.id) === String(selectedGroupId)),
         [groups, selectedGroupId]
     );
+
+    // ── Flat table: global search + status filter (client-side, on already-scoped rows) ──
+    const filteredEnrollments = useMemo(() => {
+        const term = searchTerm.trim().toLowerCase();
+        return enrollments.filter((e) => {
+            const matchesSearch =
+                !term ||
+                (e.applicant_name || "").toLowerCase().includes(term) ||
+                (e.phone || "").includes(term) ||
+                (e.citizen_id || "").includes(term) ||
+                (e.email || "").toLowerCase().includes(term);
+            return matchesSearch && matchesStatusFilter(e.status, statusFilter);
+        });
+    }, [enrollments, searchTerm, statusFilter]);
 
     const handleCancel = async (enrollment) => {
         const result = await Swal.fire({
@@ -92,52 +151,93 @@ export default function RegistrarEnrollmentsPage() {
         }
     };
 
-    const ActionsRenderer = (params) =>
-        params.data.status !== "cancelled" ? (
-            <button onClick={() => handleCancel(params.data)} className="text-xs font-bold text-red-500 hover:underline">
-                ยกเลิก
+    const handleViewDetail = (enrollment) => setDetailEnrollment(enrollment);
+
+    const handleReassigned = (updated) => {
+        setEnrollments((prev) => prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
+        setDetailEnrollment((prev) => (prev ? { ...prev, ...updated } : prev));
+    };
+
+    const ActionsRenderer = (params) => (
+        <div className="flex h-full items-center gap-2">
+            <button
+                onClick={() => handleViewDetail(params.data)}
+                className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:underline"
+            >
+                <Eye size={13} /> ดูรายละเอียด
             </button>
-        ) : null;
+            {params.data.status !== "cancelled" && (
+                <button onClick={() => handleCancel(params.data)} className="text-xs font-bold text-red-500 hover:underline">
+                    ยกเลิก
+                </button>
+            )}
+        </div>
+    );
+
+    const GroupBadgeRenderer = ({ value, data }) => (
+        <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-600">
+            {data.group_code || value || "-"}
+        </span>
+    );
 
     const columnDefs = useMemo(
         () => [
-            { field: "applicant_name", headerName: "ชื่อ-นามสกุล", flex: 1.4, minWidth: 160 },
-            { field: "citizen_id", headerName: "เลขบัตรประชาชน", flex: 1.1, minWidth: 140, cellClass: "font-mono text-xs" },
-            { field: "phone", headerName: "เบอร์โทร", flex: 0.9, minWidth: 110 },
-            ...(selectedGroupId
-                ? []
-                : [{ field: "group_code", headerName: "กลุ่มเรียน", flex: 0.9, minWidth: 110 }]),
+            { field: "citizen_id", headerName: "เลขบัตรประชาชน", flex: 1, minWidth: 130, cellClass: "font-mono text-xs" },
+            { field: "applicant_name", headerName: "ชื่อ-นามสกุล", flex: 1.4, minWidth: 160, cellClass: "font-semibold text-slate-900" },
             {
-                field: "total_amount",
-                headerName: "ยอดชำระ",
-                flex: 0.8,
-                minWidth: 100,
-                type: "numericColumn",
-                valueFormatter: (p) => `${Number(p.value).toLocaleString()} บ.`,
+                headerName: "ติดต่อ",
+                flex: 1.1,
+                minWidth: 150,
+                valueGetter: (p) => `${p.data.phone || "-"}${p.data.email ? ` / ${p.data.email}` : ""}`,
             },
-            { field: "status", headerName: "สถานะ", flex: 0.9, minWidth: 120, cellRenderer: StatusBadgeRenderer },
+            { field: "batch_name", headerName: "รุ่นการเรียน", flex: 1, minWidth: 130 },
+            {
+                headerName: "กลุ่มเรียน",
+                field: "group_code",
+                flex: 0.9,
+                minWidth: 120,
+                cellRenderer: GroupBadgeRenderer,
+            },
+            { field: "status", headerName: "สถานะชำระเงิน", flex: 1, minWidth: 130, cellRenderer: StatusBadgeRenderer },
             {
                 headerName: "จัดการ",
                 pinned: "right",
-                width: 90,
+                width: 160,
                 sortable: false,
                 filter: false,
                 cellRenderer: ActionsRenderer,
             },
         ],
-        [selectedGroupId]
+        []
     );
 
     const defaultColDef = useMemo(() => ({ resizable: true, sortable: true, filter: true }), []);
+
+    // Study groups scoped to the applicant being viewed in the modal (their own batch)
+    const [modalGroupOptions, setModalGroupOptions] = useState([]);
+    useEffect(() => {
+        if (!detailEnrollment) {
+            setModalGroupOptions([]);
+            return;
+        }
+        // If viewing an applicant from the currently selected batch, reuse `groups`;
+        // otherwise fetch groups for that applicant's batch specifically.
+        const batchIdForApplicant = detailEnrollment.batch_id || selectedBatchId;
+        getStudyGroups({ batch_id: batchIdForApplicant })
+            .then((data) => setModalGroupOptions(data.map((g) => ({ value: g.id, label: `${g.group_code} — ${g.group_name}` }))))
+            .catch(() => setModalGroupOptions([]));
+    }, [detailEnrollment, selectedBatchId]);
 
     return (
         <div className="p-4 sm:p-6">
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <h1 className="flex items-center gap-2 text-xl font-black text-slate-800">
-                        <Users size={22} className="text-indigo-600" /> จัดการผู้เรียนในกลุ่มเรียน (งานทะเบียน)
+                        <Users size={22} className="text-indigo-600" /> จัดการผู้สมัครเรียน (งานทะเบียน)
                     </h1>
-                    <p className="text-sm text-slate-500">เลือกรุ่นและกลุ่มเรียนเพื่อดูรายชื่อผู้ลงทะเบียนทันที ไม่ต้องเข้าไปหลายหน้า</p>
+                    <p className="text-sm text-slate-500">
+                        ระบบเลือกรุ่นปัจจุบันให้อัตโนมัติ — ค้นหาและกรองผู้สมัครได้จากตารางด้านล่าง
+                    </p>
                 </div>
                 <button
                     onClick={() => setWalkinOpen(true)}
@@ -148,59 +248,83 @@ export default function RegistrarEnrollmentsPage() {
                 </button>
             </div>
 
-            {/* Hierarchy filters: Batch -> Study Group, both top-level, no page nav */}
-            <div className="mb-4 flex flex-wrap items-center gap-3">
+            {/* Global filter bar */}
+            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                    <label className="mb-1 block text-xs font-bold text-slate-400">รุ่นการเรียน</label>
-                    <select
+                    <label className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                        รุ่นการเรียน
+                        {currentBatch && isBatchActive(currentBatch) && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                                <BadgeCheck size={10} /> รุ่นปัจจุบัน
+                            </span>
+                        )}
+                    </label>
+                    <Combobox
                         value={selectedBatchId}
-                        onChange={(e) => setSelectedBatchId(e.target.value)}
-                        className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold focus:border-indigo-500 focus:outline-none sm:w-64"
-                    >
-                        {batches.map((b) => (
-                            <option key={b.id} value={b.id}>
-                                {b.batch_name}
-                            </option>
-                        ))}
-                    </select>
+                        onChange={setSelectedBatchId}
+                        options={batchOptions}
+                        placeholder="เลือกรุ่นการเรียน..."
+                    />
                 </div>
                 <div>
                     <label className="mb-1 block text-xs font-bold text-slate-400">กลุ่มเรียน</label>
-                    <select
+                    <Combobox
                         value={selectedGroupId}
-                        onChange={(e) => setSelectedGroupId(e.target.value)}
+                        onChange={setSelectedGroupId}
+                        options={groupOptions}
+                        placeholder="ทุกกลุ่มเรียนในรุ่นนี้"
                         disabled={!selectedBatchId}
-                        className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold focus:border-indigo-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 sm:w-64"
+                    />
+                </div>
+                <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-400">ค้นหา</label>
+                    <div className="relative">
+                        <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="ชื่อ, เบอร์โทร, อีเมล, เลขบัตร..."
+                            className="w-full rounded-lg border border-slate-300 py-2 pl-8 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-400">สถานะ</label>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
                     >
-                        <option value="">ทุกกลุ่มเรียนในรุ่นนี้</option>
-                        {groups.map((g) => (
-                            <option key={g.id} value={g.id}>
-                                {g.group_code} — {g.group_name}
-                            </option>
+                        {STATUS_FILTERS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                     </select>
                 </div>
-                {currentGroup && (
-                    <span className="mt-5 text-sm font-semibold text-slate-500">
-                        ที่นั่ง {currentGroup.current_seats}/{currentGroup.max_seats}
-                    </span>
-                )}
             </div>
 
-            <div className="h-[calc(100vh-18rem)] min-h-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            {currentGroup && (
+                <p className="mb-3 text-sm font-semibold text-slate-500">
+                    ที่นั่ง {currentGroup.current_seats}/{currentGroup.max_seats}
+                </p>
+            )}
+
+            <div className="h-[calc(100vh-20rem)] min-h-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <AgGridReact
                     theme={themeQuartz}
-                    rowData={enrollments}
+                    rowData={filteredEnrollments}
                     columnDefs={columnDefs}
                     defaultColDef={defaultColDef}
                     loading={loading}
                     pagination
                     paginationPageSize={25}
                     headerHeight={42}
-                    rowHeight={44}
+                    rowHeight={46}
                     animateRows
                     overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ยังไม่มีผู้ลงทะเบียน</span>"
                     getRowId={(params) => String(params.data.id)}
+                    onRowDoubleClicked={(params) => handleViewDetail(params.data)}
+                    rowStyle={{ cursor: "pointer" }}
                     className="h-full w-full"
                 />
             </div>
@@ -208,6 +332,8 @@ export default function RegistrarEnrollmentsPage() {
             <WalkinModal
                 isOpen={walkinOpen}
                 onClose={() => setWalkinOpen(false)}
+                batches={batches}
+                defaultBatchId={selectedBatchId}
                 groups={groups}
                 defaultGroupId={selectedGroupId}
                 onSuccess={() => {
@@ -215,21 +341,56 @@ export default function RegistrarEnrollmentsPage() {
                     loadEnrollments();
                 }}
             />
+
+            <ApplicantDetailModal
+                isOpen={Boolean(detailEnrollment)}
+                onClose={() => setDetailEnrollment(null)}
+                enrollment={detailEnrollment}
+                groupOptionsForBatch={modalGroupOptions}
+                onReassigned={handleReassigned}
+            />
         </div>
     );
 }
 
-function WalkinModal({ isOpen, onClose, groups, defaultGroupId, onSuccess }) {
+function WalkinModal({ isOpen, onClose, batches, defaultBatchId, groups, defaultGroupId, onSuccess }) {
     const [formData, setFormData] = useState(EMPTY_APPLICANT);
+    const [batchId, setBatchId] = useState(defaultBatchId);
     const [groupId, setGroupId] = useState(defaultGroupId);
+    const [modalGroups, setModalGroups] = useState(groups);
+    const [paymentMethod, setPaymentMethod] = useState("online_transfer");
     const [submitting, setSubmitting] = useState(false);
+
+    const batchOptions = useMemo(
+        () => batches.map((b) => ({ value: b.id, label: isBatchActive(b) ? `${b.batch_name} (รุ่นปัจจุบัน)` : b.batch_name })),
+        [batches]
+    );
+    const groupOptions = useMemo(
+        () => modalGroups.map((g) => ({ value: g.id, label: `${g.group_code} — ${g.group_name}` })),
+        [modalGroups]
+    );
 
     useEffect(() => {
         if (isOpen) {
             setFormData(EMPTY_APPLICANT);
+            setBatchId(defaultBatchId);
             setGroupId(defaultGroupId);
+            setModalGroups(groups);
+            setPaymentMethod("online_transfer");
         }
-    }, [isOpen, defaultGroupId]);
+    }, [isOpen, defaultBatchId, defaultGroupId, groups]);
+
+    // Re-fetch groups if officer picks a different batch inside the modal
+    useEffect(() => {
+        if (!isOpen || !batchId) return;
+        if (String(batchId) === String(defaultBatchId)) {
+            setModalGroups(groups);
+            return;
+        }
+        getStudyGroups({ batch_id: batchId }).then(setModalGroups).catch(() => setModalGroups([]));
+        setGroupId("");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [batchId, isOpen]);
 
     if (!isOpen) return null;
 
@@ -267,8 +428,21 @@ function WalkinModal({ isOpen, onClose, groups, defaultGroupId, onSuccess }) {
         }
         try {
             setSubmitting(true);
-            await createWalkinEnrollment({ applicant: formData, study_group_id: Number(groupId) });
-            Swal.fire("สำเร็จ", "ลงทะเบียน Walk-in เรียบร้อย สถานะ 'รอชำระเงิน' ส่งต่อแผนกการเงิน", "success");
+            // payment_method is passed through; backend should persist it on the
+            // enrollment (e.g. a `payment_method` column) so Finance can distinguish
+            // "counter_cash" (Pay at Finance Office) from "online_transfer".
+            await createWalkinEnrollment({
+                applicant: formData,
+                study_group_id: Number(groupId),
+                payment_method: paymentMethod,
+            });
+            Swal.fire(
+                "สำเร็จ",
+                paymentMethod === "counter_cash"
+                    ? "ลงทะเบียน Walk-in เรียบร้อย รอชำระเงินที่ห้องการเงิน"
+                    : "ลงทะเบียน Walk-in เรียบร้อย สถานะ 'รอชำระเงิน' ส่งต่อแผนกการเงิน",
+                "success"
+            );
             onSuccess?.();
         } catch (error) {
             Swal.fire("เกิดข้อผิดพลาด", error.response?.data?.message || "ไม่สามารถลงทะเบียนได้", "error");
@@ -288,19 +462,46 @@ function WalkinModal({ isOpen, onClose, groups, defaultGroupId, onSuccess }) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label className="mb-1.5 block text-sm font-bold text-slate-600">รุ่นการเรียน *</label>
+                            <Combobox value={batchId} onChange={setBatchId} options={batchOptions} placeholder="เลือกรุ่นการเรียน..." />
+                        </div>
+                        <div>
+                            <label className="mb-1.5 block text-sm font-bold text-slate-600">กลุ่มเรียน *</label>
+                            <Combobox
+                                value={groupId}
+                                onChange={setGroupId}
+                                options={groupOptions}
+                                placeholder="เลือกกลุ่มเรียน..."
+                                disabled={!batchId}
+                            />
+                        </div>
+                    </div>
+
                     <div>
-                        <label className="mb-1.5 block text-sm font-bold text-slate-600">เลือกกลุ่มเรียน *</label>
-                        <select
-                            value={groupId}
-                            onChange={(e) => setGroupId(e.target.value)}
-                            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none"
-                            required
-                        >
-                            <option value="">-- เลือกกลุ่มเรียน --</option>
-                            {groups.map((g) => (
-                                <option key={g.id} value={g.id}>{g.group_code} — {g.group_name}</option>
+                        <label className="mb-1.5 block text-sm font-bold text-slate-600">ช่องทางการชำระเงิน *</label>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                                <label
+                                    key={opt.value}
+                                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm transition ${paymentMethod === opt.value
+                                            ? "border-indigo-400 bg-indigo-50 font-semibold text-indigo-700"
+                                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                        }`}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="payment_method"
+                                        value={opt.value}
+                                        checked={paymentMethod === opt.value}
+                                        onChange={(e) => setPaymentMethod(e.target.value)}
+                                        className="accent-indigo-600"
+                                    />
+                                    {opt.label}
+                                </label>
                             ))}
-                        </select>
+                        </div>
                     </div>
 
                     <ApplicantFormFields
