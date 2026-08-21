@@ -254,6 +254,7 @@ CREATE TABLE public.applicants (
   current_postal_code character varying,
   is_same_address boolean DEFAULT true,
   email character varying,
+  id_card_url text,
   CONSTRAINT applicants_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.enrollments (
