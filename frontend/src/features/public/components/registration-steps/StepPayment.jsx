@@ -30,7 +30,8 @@ export default function StepPayment({ amount, paymentMethod, setPaymentMethod, s
     if (amount === 0) {
         return (
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center text-emerald-700">
-                วิชานี้ไม่มีค่าใช้จ่าย — ไม่ต้องชำระเงิน
+                <p className="font-bold">วิชานี้ไม่มีค่าใช้จ่าย</p>
+                <p className="mt-1 text-sm">ท่านสามารถข้ามขั้นตอนการชำระเงินและไปยังขั้นตอนถัดไปได้ทันที</p>
             </div>
         );
     }
@@ -42,23 +43,21 @@ export default function StepPayment({ amount, paymentMethod, setPaymentMethod, s
             </h3>
 
             <div className="mb-5 flex items-center justify-between rounded-xl bg-indigo-50 px-4 py-3">
-                <span className="text-sm font-semibold text-indigo-700">ยอดที่ต้องชำระ</span>
+                <span className="text-sm font-semibold text-indigo-700">ยอดที่ต้องชำระสำหรับวิชานี้</span>
                 <span className="text-xl font-black text-indigo-700">{amount.toLocaleString()} บาท</span>
             </div>
 
             <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <label
-                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm transition ${
-                        paymentMethod === "online_transfer" ? "border-indigo-400 bg-indigo-50 font-semibold text-indigo-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                    }`}
+                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm transition ${paymentMethod === "online_transfer" ? "border-indigo-400 bg-indigo-50 font-semibold text-indigo-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }`}
                 >
                     <input type="radio" name="reg_payment_method" checked={paymentMethod === "online_transfer"} onChange={() => setPaymentMethod("online_transfer")} className="accent-indigo-600" />
                     <Wallet size={15} /> โอนเงินออนไลน์ / แนบสลิป
                 </label>
                 <label
-                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm transition ${
-                        paymentMethod === "counter_cash" ? "border-indigo-400 bg-indigo-50 font-semibold text-indigo-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                    }`}
+                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm transition ${paymentMethod === "counter_cash" ? "border-indigo-400 bg-indigo-50 font-semibold text-indigo-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }`}
                 >
                     <input type="radio" name="reg_payment_method" checked={paymentMethod === "counter_cash"} onChange={() => setPaymentMethod("counter_cash")} className="accent-indigo-600" />
                     <Building2 size={15} /> ชำระเงินที่ห้องการเงิน
@@ -67,13 +66,13 @@ export default function StepPayment({ amount, paymentMethod, setPaymentMethod, s
 
             {paymentMethod === "online_transfer" && (
                 <>
-                    <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="mb-5 flex flex-wrap justify-center gap-4">
                         {methods.map((m) => (
-                            <div key={m.id} className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 p-5 text-center">
+                            <div key={m.id} className="flex w-full max-w-xs flex-col items-center gap-3 rounded-2xl border border-slate-200 p-5 text-center shadow-sm">
                                 {m.qr_code_url ? (
-                                    <img src={m.qr_code_url} alt="QR Code" className="h-40 w-40 rounded-xl border border-slate-100 object-contain shadow-sm sm:h-48 sm:w-48" />
+                                    <img src={m.qr_code_url} alt="QR Code พร้อมเพย์" className="mx-auto h-48 w-48 rounded-xl border border-slate-100 object-contain shadow-sm" />
                                 ) : (
-                                    <div className="flex h-40 w-40 items-center justify-center rounded-xl bg-slate-100 text-slate-300 sm:h-48 sm:w-48">
+                                    <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-xl bg-slate-100 text-slate-300">
                                         <ImageIcon size={32} />
                                     </div>
                                 )}

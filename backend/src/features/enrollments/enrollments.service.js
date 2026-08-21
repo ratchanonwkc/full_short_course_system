@@ -21,11 +21,21 @@ import { supabase } from '../../config/supabase.js';
  * UI never breaks on a missing join.
  */
 
+// Full applicant column set — needed so the Registrar's Applicant Detail
+// Drawer can render/edit the entire profile (personal, address, education),
+// not just name/citizen_id/phone/email.
 const ENROLLMENT_SELECT = `
   id, status, total_amount, slip_url, receipt_number, receipt_book_no, apply_date, payment_date, receipt_date,
   study_group_id, applicant_id, payment_method, rejection_reason, rejected_at,
   confirmed_by_user_id, rejected_by_user_id,
-  applicants:applicant_id ( id, citizen_id, title_name, full_name, phone, email, id_card_url, current_address, subdistrict, district, province, postal_code ),
+  applicants:applicant_id (
+    id, citizen_id, title_name, full_name, gender, birth_date, marital_status,
+    house_no, moo, soi, road, occupation, nationality, religion,
+    highest_education, previous_school, school_province,
+    is_same_address, current_house_no, current_moo, current_soi, current_road,
+    current_subdistrict, current_district, current_province, current_postal_code,
+    phone, email, postal_code, subdistrict, district, province, id_card_url
+  ),
   study_groups:study_group_id ( id, group_code, group_name, max_seats, current_seats, tuition_fee, application_fee, is_waived_fee, batch_id, batches:batch_id ( id, batch_name ) )
 `;
 
@@ -60,6 +70,9 @@ const flatten = (row) => ({
     batch_name: row.study_groups?.batches?.batch_name,
     confirmed_by_user_id: row.confirmed_by_user_id,
     rejected_by_user_id: row.rejected_by_user_id,
+    // Full nested applicant profile — used by the Registrar Applicant Detail
+    // Drawer to populate the read-only view AND the edit form in one shot.
+    applicant_profile: row.applicants || null,
 });
 
 // Resolves a small set of auth user ids -> display names (best-effort, never throws).
@@ -335,8 +348,8 @@ export const sendConfirmationEmailService = async (enrollmentId) => {
 };
 
 /**
- * Registrar full-edit — updates applicant contact/identity fields and
- * optionally reassigns the study group in one call.
+ * Registrar full-edit — updates ALL applicant fields (personal, address,
+ * education, contact) and optionally reassigns the study group in one call.
  */
 export const updateApplicantDetailsService = async (enrollmentId, { applicant, study_group_id }) => {
     const { data: enrollment, error: findErr } = await supabase
@@ -347,7 +360,9 @@ export const updateApplicantDetailsService = async (enrollmentId, { applicant, s
     if (findErr) throw findErr;
 
     if (applicant && Object.keys(applicant).length > 0) {
-        const { error: appErr } = await supabase.from('applicants').update(applicant).eq('id', enrollment.applicant_id);
+        // Never let stray id/relation keys leak into the update payload.
+        const { id, ...safeApplicant } = applicant;
+        const { error: appErr } = await supabase.from('applicants').update(safeApplicant).eq('id', enrollment.applicant_id);
         if (appErr) {
             if (appErr.code === '23505') {
                 const err = new Error('เลขประจำตัวประชาชนนี้มีอยู่แล้วในระบบ');

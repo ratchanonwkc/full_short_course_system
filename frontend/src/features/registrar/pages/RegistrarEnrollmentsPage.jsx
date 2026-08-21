@@ -8,7 +8,7 @@ import { getStudyGroups } from "../../study-groups/services/studyGroupApi";
 import { getBatches } from "../../batches/services/batchApi";
 import { getEnrollments, createWalkinEnrollment, cancelEnrollment } from "../../enrollments/services/enrollmentApi";
 import ApplicantFormFields, { EMPTY_APPLICANT } from "../../public/components/ApplicantFormFields";
-import ApplicantDetailModal from "../components/ApplicantDetailModal";
+import ApplicantDetailDrawer from "../components/ApplicantDetailDrawer";
 import { findActiveBatch, isBatchActive } from "../../../utils/activeBatch";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -48,7 +48,7 @@ function matchesStatusFilter(enrollmentStatus, filterValue) {
  * - Auto-selects the Active Batch on load (findActiveBatch), manual override via Combobox.
  * - Global search across name/phone/email/citizen_id.
  * - Status quick filters.
- * - Row click -> ApplicantDetailModal (read-only info + group reassignment).
+ * - Row click -> ApplicantDetailDrawer (slide-over, full profile + registrar full-edit).
  */
 export default function RegistrarEnrollmentsPage() {
     const [batches, setBatches] = useState([]);
@@ -213,7 +213,7 @@ export default function RegistrarEnrollmentsPage() {
 
     const defaultColDef = useMemo(() => ({ resizable: true, sortable: true, filter: true }), []);
 
-    // Study groups scoped to the applicant being viewed in the modal (their own batch)
+    // Study groups scoped to the applicant being viewed in the drawer (their own batch)
     const [modalGroupOptions, setModalGroupOptions] = useState([]);
     useEffect(() => {
         if (!detailEnrollment) {
@@ -342,7 +342,7 @@ export default function RegistrarEnrollmentsPage() {
                 }}
             />
 
-            <ApplicantDetailModal
+            <ApplicantDetailDrawer
                 isOpen={Boolean(detailEnrollment)}
                 onClose={() => setDetailEnrollment(null)}
                 enrollment={detailEnrollment}
@@ -428,9 +428,6 @@ function WalkinModal({ isOpen, onClose, batches, defaultBatchId, groups, default
         }
         try {
             setSubmitting(true);
-            // payment_method is passed through; backend should persist it on the
-            // enrollment (e.g. a `payment_method` column) so Finance can distinguish
-            // "counter_cash" (Pay at Finance Office) from "online_transfer".
             await createWalkinEnrollment({
                 applicant: formData,
                 study_group_id: Number(groupId),
@@ -486,8 +483,8 @@ function WalkinModal({ isOpen, onClose, batches, defaultBatchId, groups, default
                                 <label
                                     key={opt.value}
                                     className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm transition ${paymentMethod === opt.value
-                                            ? "border-indigo-400 bg-indigo-50 font-semibold text-indigo-700"
-                                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                        ? "border-indigo-400 bg-indigo-50 font-semibold text-indigo-700"
+                                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
                                         }`}
                                 >
                                     <input

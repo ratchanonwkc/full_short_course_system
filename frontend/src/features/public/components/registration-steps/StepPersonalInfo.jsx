@@ -1,8 +1,9 @@
 import { useRef, useState, useEffect } from "react";
 import { IdCard, Upload, CheckCircle2 } from "lucide-react";
 import ApplicantFormFields from "../ApplicantFormFields";
+import CourseSummaryBanner from "../CourseSummaryBanner";
 
-export default function StepPersonalInfo({ formData, setFormData, idCardFile, setIdCardFile }) {
+export default function StepPersonalInfo({ selectedGroup, formData, setFormData, idCardFile, setIdCardFile }) {
     const [preview, setPreview] = useState(null);
     const fileInputRef = useRef(null);
 
@@ -18,6 +19,8 @@ export default function StepPersonalInfo({ formData, setFormData, idCardFile, se
 
     return (
         <div className="space-y-6">
+            <CourseSummaryBanner group={selectedGroup} />
+
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
                     <IdCard size={18} className="text-indigo-600" /> รูปถ่ายบัตรประชาชน (สำหรับอ้างอิง)

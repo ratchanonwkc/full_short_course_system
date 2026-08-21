@@ -4,18 +4,19 @@ import { ArrowLeft, ArrowRight, CheckCircle } from "lucide-react";
 import Swal from "sweetalert2";
 import Stepper from "../../../components/common/Stepper";
 import StepPersonalInfo from "../components/registration-steps/StepPersonalInfo";
-import StepCourseSelection from "../components/registration-steps/StepCourseSelection";
 import StepPayment from "../components/registration-steps/StepPayment";
 import StepReview from "../components/registration-steps/StepReview";
 import { EMPTY_APPLICANT } from "../components/ApplicantFormFields";
 import { getStudyGroupDetail, uploadSlip, uploadIdCard, submitApplication } from "../services/publicApi";
 
-const STEP_LABELS = ["ข้อมูลส่วนตัว", "เลือกวิชา", "ชำระเงิน", "ตรวจสอบและยืนยัน"];
+const STEP_LABELS = ["ข้อมูลส่วนตัว", "ชำระเงิน", "ตรวจสอบและยืนยัน"];
 
 /**
- * RegistrationPage — Multi-step registration (studyGroupId is optional; when
- * omitted the applicant picks their course in Step 2 via StepCourseSelection).
- * route: /register/:studyGroupId?
+ * RegistrationPage — 3-step registration.
+ * The course/study group is chosen on the Home page (IndexPage) BEFORE
+ * entering this flow, so there is no "select course" step here anymore.
+ * route: /register/:studyGroupId  (studyGroupId is required in practice —
+ * if missing we bounce the applicant back to Home to pick a course first)
  */
 export default function RegistrationPage() {
     const { studyGroupId } = useParams();
@@ -28,11 +29,19 @@ export default function RegistrationPage() {
     const [paymentMethod, setPaymentMethod] = useState("online_transfer");
     const [slipFile, setSlipFile] = useState(null);
     const [acceptedTerms, setAcceptedTerms] = useState(false);
-    const [loadingGroup, setLoadingGroup] = useState(Boolean(studyGroupId));
+    const [loadingGroup, setLoadingGroup] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        if (!studyGroupId) return;
+        if (!studyGroupId) {
+            Swal.fire({
+                icon: "info",
+                title: "กรุณาเลือกวิชาที่ต้องการสมัครก่อน",
+                text: "เลือกวิชาที่เปิดรับสมัครจากหน้าแรก แล้วกด 'สมัครเรียน' เพื่อเข้าสู่ขั้นตอนนี้",
+                confirmButtonColor: "#4f46e5",
+            }).then(() => navigate("/"));
+            return;
+        }
         getStudyGroupDetail(studyGroupId)
             .then(setSelectedGroup)
             .catch(() => {
@@ -47,11 +56,15 @@ export default function RegistrationPage() {
             if (formData.citizen_id.length !== 13) return "กรุณากรอกเลขประจำตัวประชาชนให้ครบ 13 หลัก";
             if (!formData.phone.trim()) return "กรุณากรอกเบอร์โทรศัพท์";
             if (!formData.birth_date) return "กรุณากรอกวันเกิด";
+            if (!formData.postal_code || !formData.subdistrict || !formData.district || !formData.province) {
+                return "กรุณากรอกที่อยู่ตามทะเบียนบ้านให้ครบถ้วน";
+            }
             return null;
         }
-        if (s === 2) return !selectedGroup ? "กรุณาเลือกวิชาที่ต้องการสมัคร" : null;
-        if (s === 3) {
-            if (selectedGroup?.fee > 0 && paymentMethod === "online_transfer" && !slipFile) return "กรุณาอัปโหลดสลิปหลักฐานการโอนเงิน";
+        if (s === 2) {
+            if (selectedGroup?.fee > 0 && paymentMethod === "online_transfer" && !slipFile) {
+                return "กรุณาอัปโหลดสลิปหลักฐานการโอนเงิน";
+            }
             return null;
         }
         return null;
@@ -63,7 +76,7 @@ export default function RegistrationPage() {
             Swal.fire("ข้อมูลไม่ครบถ้วน", err, "warning");
             return;
         }
-        setStep((s) => Math.min(4, s + 1));
+        setStep((s) => Math.min(3, s + 1));
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
     const handleBack = () => {
@@ -106,6 +119,7 @@ export default function RegistrationPage() {
     if (loadingGroup) {
         return <div className="flex min-h-[60vh] items-center justify-center text-slate-400">กำลังโหลดข้อมูล...</div>;
     }
+    if (!selectedGroup) return null;
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -114,19 +128,26 @@ export default function RegistrationPage() {
                     <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-indigo-600">
                         <ArrowLeft size={18} /> กลับไปหน้าเลือกวิชา
                     </button>
-                    <span className="text-sm font-bold text-slate-400">ขั้นตอนที่ {step} จาก 4</span>
+                    <span className="text-sm font-bold text-slate-400">ขั้นตอนที่ {step} จาก 3</span>
                 </div>
             </div>
 
             <div className="mx-auto max-w-3xl px-4 py-8">
                 <Stepper steps={STEP_LABELS} currentStep={step} />
 
-                {step === 1 && <StepPersonalInfo formData={formData} setFormData={setFormData} idCardFile={idCardFile} setIdCardFile={setIdCardFile} />}
-                {step === 2 && <StepCourseSelection selectedGroup={selectedGroup} onSelectGroup={setSelectedGroup} lockedGroupId={studyGroupId} />}
-                {step === 3 && (
+                {step === 1 && (
+                    <StepPersonalInfo
+                        selectedGroup={selectedGroup}
+                        formData={formData}
+                        setFormData={setFormData}
+                        idCardFile={idCardFile}
+                        setIdCardFile={setIdCardFile}
+                    />
+                )}
+                {step === 2 && (
                     <StepPayment amount={selectedGroup?.fee || 0} paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} slipFile={slipFile} setSlipFile={setSlipFile} />
                 )}
-                {step === 4 && (
+                {step === 3 && (
                     <>
                         <StepReview formData={formData} selectedGroup={selectedGroup} paymentMethod={paymentMethod} slipFile={slipFile} idCardFile={idCardFile} />
                         <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
@@ -155,7 +176,7 @@ export default function RegistrationPage() {
                         <ArrowLeft size={16} /> ย้อนกลับ
                     </button>
 
-                    {step < 4 ? (
+                    {step < 3 ? (
                         <button
                             type="button"
                             onClick={handleNext}

@@ -1,92 +1,167 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
-const DATA_URL = "https://raw.githubusercontent.com/earthmie/thailand-geolocation-data/main/thailand_address.json";
-const CACHE_KEY = "__thai_address_cache_v1";
+const SUBDISTRICTS_URL =
+    "https://raw.githubusercontent.com/thailand-geography-data/thailand-geography-json/main/src/subdistricts.json";
+const DISTRICTS_URL =
+    "https://raw.githubusercontent.com/thailand-geography-data/thailand-geography-json/main/src/districts.json";
+const PROVINCES_URL =
+    "https://raw.githubusercontent.com/thailand-geography-data/thailand-geography-json/main/src/provinces.json";
 
-// Module-level cache: survives across component instances/remounts within the session,
-// so the ~3-8MB JSON is only ever fetched once per page load.
+const CACHE_KEY = "__thai_geography_cache_v2";
+
+// Module-level memory cache: survives component remounts and route transitions.
+// Ensures dataset is downloaded only once per session.
 let memoryCache = null;
+let memoryIndex = null;
 let inFlightPromise = null;
 
 async function loadData() {
-    if (memoryCache) return memoryCache;
-    if (inFlightPromise) return inFlightPromise;
+    if (memoryCache && memoryIndex) {
+        return { data: memoryCache, index: memoryIndex };
+    }
+    if (inFlightPromise) {
+        return inFlightPromise;
+    }
 
     inFlightPromise = (async () => {
-        // Try sessionStorage first to survive route changes without re-fetching.
+        // Try reading from sessionStorage first
         try {
             const cached = sessionStorage.getItem(CACHE_KEY);
             if (cached) {
                 const parsed = JSON.parse(cached);
-                memoryCache = parsed;
-                return parsed;
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    memoryCache = parsed;
+                    memoryIndex = buildIndexMap(parsed);
+                    return { data: memoryCache, index: memoryIndex };
+                }
             }
         } catch {
-            /* storage unavailable / quota — fall through to network */
+            // sessionStorage disabled / quota exceeded — fall through to network
         }
 
-        const res = await fetch(DATA_URL);
-        if (!res.ok) throw new Error("Failed to load Thai address dataset");
-        const json = await res.json();
-        memoryCache = json;
-        try {
-            sessionStorage.setItem(CACHE_KEY, JSON.stringify(json));
-        } catch {
-            /* quota exceeded — memory cache still works for this session */
+        const [subdistrictsRes, districtsRes, provincesRes] = await Promise.all([
+            fetch(SUBDISTRICTS_URL),
+            fetch(DISTRICTS_URL).catch(() => null),
+            fetch(PROVINCES_URL).catch(() => null),
+        ]);
+
+        if (!subdistrictsRes.ok) {
+            throw new Error("Failed to load Thai geography subdistricts dataset");
         }
-        return json;
+
+        const subdistricts = await subdistrictsRes.json();
+        const districts = districtsRes && districtsRes.ok ? await districtsRes.json() : [];
+        const provinces = provincesRes && provincesRes.ok ? await provincesRes.json() : [];
+
+        const districtMap = new Map();
+        for (const d of districts) {
+            if (d.districtCode != null) {
+                districtMap.set(d.districtCode, d.districtNameTh || d.districtName || "");
+            }
+        }
+
+        const provinceMap = new Map();
+        for (const p of provinces) {
+            if (p.provinceCode != null) {
+                provinceMap.set(p.provinceCode, p.provinceNameTh || p.provinceName || "");
+            }
+        }
+
+        const normalizedData = subdistricts.map((row) => {
+            const subdistrict = row.subdistrictNameTh || row.subdistrict || "";
+            const district =
+                row.districtNameTh ||
+                districtMap.get(row.districtCode) ||
+                row.district ||
+                "";
+            const province =
+                row.provinceNameTh ||
+                provinceMap.get(row.provinceCode) ||
+                row.province ||
+                "";
+            const postalCode = String(row.postalCode ?? row.postal_code ?? row.zipcode ?? "").trim();
+
+            return {
+                id: row.id,
+                subdistrict,
+                district,
+                province,
+                postalCode,
+                postal_code: postalCode,
+                subdistrictNameTh: subdistrict,
+                districtNameTh: district,
+                provinceNameTh: province,
+                provinceCode: row.provinceCode,
+                districtCode: row.districtCode,
+                subdistrictCode: row.subdistrictCode,
+            };
+        });
+
+        memoryCache = normalizedData;
+        memoryIndex = buildIndexMap(normalizedData);
+
+        try {
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify(normalizedData));
+        } catch {
+            // Quota exceeded: in-memory cache remains active for this session
+        }
+
+        return { data: memoryCache, index: memoryIndex };
     })();
 
     return inFlightPromise;
 }
 
+function buildIndexMap(rows) {
+    const map = new Map();
+    for (const row of rows) {
+        const code = String(row.postalCode || row.postal_code || "").trim();
+        if (!code) continue;
+        if (!map.has(code)) {
+            map.set(code, []);
+        }
+        map.get(code).push(row);
+    }
+    return map;
+}
+
 /**
  * useThaiAddress
  * -------------------------------------------------------------------------
- * Fetches and caches the Thai address dataset client-side (zero DB overhead).
- * Provides an instant, in-memory postal-code lookup.
+ * Fetches and caches thailand-geography-json dataset client-side.
+ * Provides instant in-memory lookup by postal code (zipcode).
  *
  * Returns:
- *   - ready: boolean            -> dataset loaded and indexed
+ *   - ready: boolean
  *   - loading: boolean
  *   - error: Error | null
- *   - lookupByPostalCode(code): Array<{ subdistrict, district, province, postal_code }>
+ *   - searchByZipcode(zipcode): Array<{ subdistrict, district, province, postalCode, ... }>
+ *   - lookupByPostalCode(code): alias to searchByZipcode
+ *   - data: Array<all address records>
  */
 export default function useThaiAddress() {
-    const [ready, setReady] = useState(Boolean(memoryCache));
+    const [ready, setReady] = useState(Boolean(memoryCache && memoryIndex));
     const [loading, setLoading] = useState(!memoryCache);
     const [error, setError] = useState(null);
-    const indexRef = useRef(null); // Map<postal_code, Array<row>>
-
-    const buildIndex = useCallback((rows) => {
-        const idx = new Map();
-        for (const row of rows) {
-            const code = String(row.zipcode ?? row.postal_code ?? "");
-            if (!code) continue;
-            if (!idx.has(code)) idx.set(code, []);
-            idx.get(code).push({
-                postal_code: code,
-                subdistrict: row.district ?? row.subdistrict ?? "",
-                district: row.amphoe ?? row.district_name ?? row.district ?? "",
-                province: row.province ?? "",
-            });
-        }
-        return idx;
-    }, []);
+    const indexRef = useRef(memoryIndex);
 
     useEffect(() => {
         let cancelled = false;
-        if (indexRef.current) {
+
+        if (memoryCache && memoryIndex) {
+            indexRef.current = memoryIndex;
             setReady(true);
             setLoading(false);
             return;
         }
+
         setLoading(true);
         loadData()
-            .then((rows) => {
+            .then(({ index }) => {
                 if (cancelled) return;
-                indexRef.current = buildIndex(Array.isArray(rows) ? rows : rows.data || []);
+                indexRef.current = index;
                 setReady(true);
+                setError(null);
             })
             .catch((err) => {
                 if (cancelled) return;
@@ -95,15 +170,40 @@ export default function useThaiAddress() {
             .finally(() => {
                 if (!cancelled) setLoading(false);
             });
+
         return () => {
             cancelled = true;
         };
-    }, [buildIndex]);
-
-    const lookupByPostalCode = useCallback((code) => {
-        if (!indexRef.current || !code) return [];
-        return indexRef.current.get(String(code)) || [];
     }, []);
 
-    return { ready, loading, error, lookupByPostalCode };
+    const searchByZipcode = useCallback((code) => {
+        if (!code) return [];
+        const cleanCode = String(code).replace(/\D/g, "").slice(0, 5);
+        if (cleanCode.length !== 5) return [];
+
+        const activeIndex = indexRef.current || memoryIndex;
+        if (activeIndex) {
+            return activeIndex.get(cleanCode) || [];
+        }
+
+        if (memoryCache) {
+            return memoryCache.filter(
+                (item) => String(item.postalCode) === cleanCode || String(item.postal_code) === cleanCode
+            );
+        }
+
+        return [];
+    }, []);
+
+    // lookupByPostalCode is an alias for searchByZipcode for backward compatibility
+    const lookupByPostalCode = searchByZipcode;
+
+    return {
+        ready,
+        loading,
+        error,
+        searchByZipcode,
+        lookupByPostalCode,
+        data: memoryCache || [],
+    };
 }

@@ -1,55 +1,127 @@
-import { CheckCircle, User, BookOpen, Wallet, IdCard } from "lucide-react";
+import { CheckCircle, User, BookOpen, Wallet, IdCard, MapPin, GraduationCap, PhoneCall } from "lucide-react";
 
 export default function StepReview({ formData, selectedGroup, paymentMethod, slipFile, idCardFile }) {
+    const registeredAddress = [
+        formData.house_no,
+        formData.moo && `หมู่ ${formData.moo}`,
+        formData.soi && `ซอย ${formData.soi}`,
+        formData.road && `ถนน ${formData.road}`,
+        formData.subdistrict && `ต.${formData.subdistrict}`,
+        formData.district && `อ.${formData.district}`,
+        formData.province && `จ.${formData.province}`,
+        formData.postal_code,
+    ]
+        .filter(Boolean)
+        .join(" ");
+
+    const currentAddress = formData.is_same_address
+        ? "ใช้ที่อยู่เดียวกับที่อยู่ตามทะเบียนบ้าน"
+        : [
+            formData.current_house_no,
+            formData.current_moo && `หมู่ ${formData.current_moo}`,
+            formData.current_soi && `ซอย ${formData.current_soi}`,
+            formData.current_road && `ถนน ${formData.current_road}`,
+            formData.current_subdistrict && `ต.${formData.current_subdistrict}`,
+            formData.current_district && `อ.${formData.current_district}`,
+            formData.current_province && `จ.${formData.current_province}`,
+            formData.current_postal_code,
+        ]
+            .filter(Boolean)
+            .join(" ");
+
     return (
         <div className="space-y-5">
+            {/* ข้อมูลส่วนตัว */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
                     <User size={18} className="text-indigo-600" /> ข้อมูลส่วนตัว
                 </h3>
                 <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                    <ReviewRow label="ชื่อ-นามสกุล" value={`${formData.title_name}${formData.full_name}`} />
+                    <ReviewRow label="คำนำหน้า" value={formData.title_name} />
+                    <ReviewRow label="ชื่อ-นามสกุล" value={formData.full_name} />
                     <ReviewRow label="เลขบัตรประชาชน" value={formData.citizen_id} mono />
-                    <ReviewRow label="เบอร์โทร" value={formData.phone} />
+                    <ReviewRow label="เพศ" value={formData.gender} />
                     <ReviewRow label="วันเกิด" value={formData.birth_date} />
-                    <ReviewRow
-                        label="ที่อยู่ตามทะเบียนบ้าน"
-                        value={[formData.house_no, formData.moo && `หมู่ ${formData.moo}`, formData.subdistrict, formData.district, formData.province, formData.postal_code]
-                            .filter(Boolean)
-                            .join(" ")}
-                        full
-                    />
+                    <ReviewRow label="สถานภาพสมรส" value={formData.marital_status} />
+                    <ReviewRow label="สัญชาติ" value={formData.nationality} />
+                    <ReviewRow label="ศาสนา" value={formData.religion} />
+                    <ReviewRow label="อาชีพปัจจุบัน" value={formData.occupation} />
                 </dl>
                 <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
                     <IdCard size={13} /> {idCardFile ? `แนบรูปบัตรประชาชนแล้ว (${idCardFile.name})` : "ไม่ได้แนบรูปบัตรประชาชน"}
                 </p>
             </section>
 
+            {/* ที่อยู่ */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
+                    <MapPin size={18} className="text-indigo-600" /> ที่อยู่
+                </h3>
+                <dl className="grid grid-cols-1 gap-3 text-sm">
+                    <ReviewRow label="ที่อยู่ตามทะเบียนบ้าน" value={registeredAddress} full />
+                    <ReviewRow label="ที่อยู่ปัจจุบัน" value={currentAddress} full />
+                </dl>
+            </section>
+
+            {/* วุฒิการศึกษา */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
+                    <GraduationCap size={18} className="text-indigo-600" /> วุฒิการศึกษา
+                </h3>
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                    <ReviewRow label="ระดับการศึกษา" value={formData.highest_education} />
+                    <ReviewRow label="สำเร็จการศึกษาจากสถานศึกษา" value={formData.previous_school} />
+                    <ReviewRow label="จังหวัดของสถานศึกษา" value={formData.school_province} />
+                </dl>
+            </section>
+
+            {/* ช่องทางติดต่อ */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
+                    <PhoneCall size={18} className="text-indigo-600" /> ช่องทางติดต่อ
+                </h3>
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                    <ReviewRow label="เบอร์โทรศัพท์" value={formData.phone} />
+                    <ReviewRow label="อีเมล" value={formData.email} />
+                </dl>
+            </section>
+
+            {/* วิชาที่สมัครเรียน */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
                     <BookOpen size={18} className="text-indigo-600" /> วิชาที่สมัครเรียน
                 </h3>
                 <p className="text-sm font-bold text-slate-800">{selectedGroup?.group_name}</p>
                 <p className="text-sm text-slate-500">
-                    รหัส {selectedGroup?.group_code} • {selectedGroup?.is_free ? "ไม่มีค่าใช้จ่าย" : `${selectedGroup?.fee.toLocaleString()} บาท`}
+                    รหัส {selectedGroup?.group_code} • {selectedGroup?.schedule_description || `${selectedGroup?.total_hours} ชั่วโมง`} • {selectedGroup?.location_name}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                    {selectedGroup?.is_free ? "ไม่มีค่าใช้จ่าย" : `${selectedGroup?.fee.toLocaleString()} บาท`}
                 </p>
             </section>
 
+            {/* การชำระเงิน */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
                     <Wallet size={18} className="text-indigo-600" /> การชำระเงิน
                 </h3>
-                <p className="text-sm text-slate-700">{paymentMethod === "counter_cash" ? "ชำระเงินที่ห้องการเงิน" : "โอนเงินออนไลน์"}</p>
-                {paymentMethod !== "counter_cash" && (
-                    <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-                        {slipFile ? (
-                            <>
-                                <CheckCircle size={13} className="text-emerald-500" /> แนบสลิปแล้ว: {slipFile.name}
-                            </>
-                        ) : (
-                            "ยังไม่ได้แนบสลิป"
+                {selectedGroup?.fee > 0 ? (
+                    <>
+                        <p className="text-sm text-slate-700">{paymentMethod === "counter_cash" ? "ชำระเงินที่ห้องการเงิน" : "โอนเงินออนไลน์"}</p>
+                        {paymentMethod !== "counter_cash" && (
+                            <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                                {slipFile ? (
+                                    <>
+                                        <CheckCircle size={13} className="text-emerald-500" /> แนบสลิปแล้ว: {slipFile.name}
+                                    </>
+                                ) : (
+                                    "ยังไม่ได้แนบสลิป"
+                                )}
+                            </p>
                         )}
-                    </p>
+                    </>
+                ) : (
+                    <p className="text-sm font-semibold text-emerald-600">ไม่มีค่าใช้จ่าย</p>
                 )}
             </section>
 
