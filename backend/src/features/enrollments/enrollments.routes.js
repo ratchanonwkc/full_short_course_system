@@ -7,6 +7,7 @@ import {
     cancelEnrollment,
     reassignGroup,
     sendConfirmationEmail,
+    updateApplicantDetails,
 } from './enrollments.controller.js';
 
 const router = Router();
@@ -17,6 +18,7 @@ router.put('/:id/confirm-payment', confirmPayment);
 router.put('/:id/reject', rejectPayment);
 router.put('/:id/cancel', cancelEnrollment);
 router.put('/:id/reassign-group', reassignGroup);
+router.put('/:id/applicant', updateApplicantDetails);
 router.post('/:id/send-email', sendConfirmationEmail);
 
 export default router;

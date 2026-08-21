@@ -1,10 +1,9 @@
 import { Fragment, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
-import { X, Search, FileText, CheckCircle2, Clock, XCircle, Send } from "lucide-react";
+import { X, Search, FileText, CheckCircle2, Clock, XCircle, Send, Upload, RefreshCcw, AlertTriangle } from "lucide-react";
 import Swal from "sweetalert2";
-import { checkApplicationStatus } from "../services/publicApi";
+import { checkApplicationStatus, uploadSlip, resubmitApplication } from "../services/publicApi";
 
-// Ordered pipeline used to derive which timeline steps are "done" / "current" / "upcoming".
 const TIMELINE_STEPS = [
     { key: "submitted", label: "ส่งใบสมัคร" },
     { key: "payment", label: "รอชำระเงิน / ตรวจสอบ" },
@@ -14,7 +13,7 @@ const TIMELINE_STEPS = [
 function timelineStageFor(status) {
     if (status === "paid") return 2;
     if (status === "pending_payment" || status === "pending_verification") return 1;
-    if (status === "cancelled") return -1; // special-cased in UI
+    if (status === "cancelled" || status === "rejected") return -1;
     return 0;
 }
 
@@ -22,20 +21,19 @@ const STATUS_META = {
     pending_payment: { label: "รอการชำระเงิน", color: "text-amber-600 bg-amber-50", icon: Clock },
     pending_verification: { label: "รอตรวจสอบการชำระเงิน", color: "text-blue-600 bg-blue-50", icon: Clock },
     paid: { label: "ชำระเงินสำเร็จ / ยืนยันแล้ว", color: "text-emerald-600 bg-emerald-50", icon: CheckCircle2 },
+    rejected: { label: "ถูกปฏิเสธ / ต้องแก้ไข", color: "text-red-600 bg-red-50", icon: XCircle },
     cancelled: { label: "ยกเลิกใบสมัคร", color: "text-red-600 bg-red-50", icon: XCircle },
 };
 
 function Timeline({ status }) {
     const stage = timelineStageFor(status);
-
     if (stage === -1) {
         return (
             <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
-                <XCircle size={14} /> ใบสมัครนี้ถูกยกเลิกแล้ว
+                <XCircle size={14} /> {status === "rejected" ? "ใบสมัครนี้ถูกปฏิเสธ กรุณาแก้ไขและส่งใหม่" : "ใบสมัครนี้ถูกยกเลิกแล้ว"}
             </div>
         );
     }
-
     return (
         <div className="flex items-center">
             {TIMELINE_STEPS.map((step, i) => {
@@ -46,22 +44,14 @@ function Timeline({ status }) {
                         <div className="flex flex-col items-center gap-1">
                             <div
                                 className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                                    done
-                                        ? "bg-emerald-500 text-white"
-                                        : current
-                                        ? "bg-indigo-600 text-white ring-4 ring-indigo-100"
-                                        : "bg-slate-200 text-slate-400"
+                                    done ? "bg-emerald-500 text-white" : current ? "bg-indigo-600 text-white ring-4 ring-indigo-100" : "bg-slate-200 text-slate-400"
                                 }`}
                             >
                                 {done ? <CheckCircle2 size={14} /> : i + 1}
                             </div>
-                            <span className={`w-16 text-center text-[10px] font-semibold leading-tight ${current ? "text-indigo-600" : "text-slate-400"}`}>
-                                {step.label}
-                            </span>
+                            <span className={`w-16 text-center text-[10px] font-semibold leading-tight ${current ? "text-indigo-600" : "text-slate-400"}`}>{step.label}</span>
                         </div>
-                        {i < TIMELINE_STEPS.length - 1 && (
-                            <div className={`mx-1 h-0.5 flex-1 rounded ${done ? "bg-emerald-400" : "bg-slate-200"}`} />
-                        )}
+                        {i < TIMELINE_STEPS.length - 1 && <div className={`mx-1 h-0.5 flex-1 rounded ${done ? "bg-emerald-400" : "bg-slate-200"}`} />}
                     </div>
                 );
             })}
@@ -69,13 +59,62 @@ function Timeline({ status }) {
     );
 }
 
+function ResubmitPanel({ citizenId, enrollment, onDone }) {
+    const [newSlip, setNewSlip] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleSubmit = async () => {
+        if (!newSlip) {
+            Swal.fire("แจ้งเตือน", "กรุณาแนบสลิปการโอนเงินใหม่", "warning");
+            return;
+        }
+        setSubmitting(true);
+        try {
+            const { slip_url } = await uploadSlip(newSlip);
+            await resubmitApplication(enrollment.id, { citizen_id: citizenId, slip_url });
+            Swal.fire("ส่งข้อมูลใหม่สำเร็จ", "เจ้าหน้าที่จะตรวจสอบสลิปใหม่ของท่านอีกครั้ง", "success");
+            onDone?.();
+        } catch (err) {
+            Swal.fire("เกิดข้อผิดพลาด", err.response?.data?.message || "ไม่สามารถส่งข้อมูลใหม่ได้", "error");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="mt-3 rounded-xl border border-red-200 bg-red-50/60 p-3">
+            {enrollment.rejection_reason && (
+                <p className="mb-2 flex items-start gap-1.5 text-xs font-semibold text-red-600">
+                    <AlertTriangle size={13} className="mt-0.5 shrink-0" /> เหตุผล: {enrollment.rejection_reason}
+                </p>
+            )}
+            <label className="mb-1.5 block text-xs font-bold text-slate-600">แนบสลิปการโอนเงินใหม่</label>
+            <input
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp,.pdf"
+                onChange={(e) => setNewSlip(e.target.files?.[0] || null)}
+                className="block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-indigo-700"
+            />
+            <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-60"
+            >
+                <RefreshCcw size={13} /> {submitting ? "กำลังส่ง..." : "ส่งใบสมัครใหม่อีกครั้ง"}
+            </button>
+        </div>
+    );
+}
+
 /**
  * StatusCheckModal — ตรวจสอบสถานะใบสมัครด้วยเลขบัตรประชาชน 13 หลัก (ไม่ต้อง Login)
+ * Rejected applications get an inline "Edit Application / Re-upload Slip" flow.
  */
 export default function StatusCheckModal({ isOpen, onClose }) {
     const [citizenId, setCitizenId] = useState("");
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
+    const [editingId, setEditingId] = useState(null);
 
     const handleSearch = async () => {
         if (citizenId.length !== 13) {
@@ -84,6 +123,7 @@ export default function StatusCheckModal({ isOpen, onClose }) {
         }
         setLoading(true);
         setResult(null);
+        setEditingId(null);
         try {
             const data = await checkApplicationStatus(citizenId);
             setResult(data);
@@ -97,7 +137,13 @@ export default function StatusCheckModal({ isOpen, onClose }) {
     const handleClose = () => {
         setCitizenId("");
         setResult(null);
+        setEditingId(null);
         onClose();
+    };
+
+    const handleResubmitDone = () => {
+        setEditingId(null);
+        handleSearch();
     };
 
     return (
@@ -128,9 +174,7 @@ export default function StatusCheckModal({ isOpen, onClose }) {
                             </div>
 
                             <div className="max-h-[75vh] overflow-y-auto px-6 py-5">
-                                <label className="mb-1.5 block text-sm font-semibold text-slate-600">
-                                    เลขประจำตัวประชาชน (13 หลัก)
-                                </label>
+                                <label className="mb-1.5 block text-sm font-semibold text-slate-600">เลขประจำตัวประชาชน (13 หลัก)</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
@@ -159,9 +203,7 @@ export default function StatusCheckModal({ isOpen, onClose }) {
                                             <p className="text-slate-500">โทร: {result.applicant.phone}</p>
                                         </div>
 
-                                        {result.enrollments.length === 0 && (
-                                            <p className="py-6 text-center text-sm text-slate-400">ยังไม่มีประวัติการสมัคร</p>
-                                        )}
+                                        {result.enrollments.length === 0 && <p className="py-6 text-center text-sm text-slate-400">ยังไม่มีประวัติการสมัคร</p>}
 
                                         {result.enrollments.map((en) => {
                                             const meta = STATUS_META[en.status] || STATUS_META.pending_payment;
@@ -187,15 +229,22 @@ export default function StatusCheckModal({ isOpen, onClose }) {
                                                         {en.receipt_number && ` • เลขใบเสร็จ: ${en.receipt_book_no ? `${en.receipt_book_no}/` : ""}${en.receipt_number}`}
                                                     </p>
                                                     {en.slip_url && (
-                                                        <a
-                                                            href={en.slip_url}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="mt-1 inline-block text-xs font-semibold text-indigo-600 hover:underline"
-                                                        >
+                                                        <a href={en.slip_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-semibold text-indigo-600 hover:underline">
                                                             ดูสลิปที่อัปโหลด
                                                         </a>
                                                     )}
+
+                                                    {en.status === "rejected" &&
+                                                        (editingId === en.id ? (
+                                                            <ResubmitPanel citizenId={citizenId} enrollment={en} onDone={handleResubmitDone} />
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => setEditingId(en.id)}
+                                                                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
+                                                            >
+                                                                <Upload size={13} /> แก้ไขใบสมัคร / อัปโหลดสลิปใหม่
+                                                            </button>
+                                                        ))}
                                                 </div>
                                             );
                                         })}

@@ -6,6 +6,7 @@ import {
     cancelEnrollmentService,
     reassignGroupService,
     sendConfirmationEmailService,
+    updateApplicantDetailsService,
 } from './enrollments.service.js';
 
 export const getEnrollments = async (req, res, next) => {
@@ -46,7 +47,6 @@ export const confirmPayment = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { receipt_number, receipt_book_no } = req.body;
-        // req.user is populated by requireAuth middleware if mounted on this router
         const approvedByUserId = req.user?.id || null;
         const updated = await confirmPaymentService(id, { receipt_number, receipt_book_no, approvedByUserId });
         res.json(updated);
@@ -102,6 +102,18 @@ export const sendConfirmationEmail = async (req, res, next) => {
         const { id } = req.params;
         const result = await sendConfirmationEmailService(id);
         res.json(result);
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ message: error.message });
+        next(error);
+    }
+};
+
+export const updateApplicantDetails = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { applicant, study_group_id } = req.body;
+        const updated = await updateApplicantDetailsService(id, { applicant, study_group_id });
+        res.json(updated);
     } catch (error) {
         if (error.status) return res.status(error.status).json({ message: error.message });
         next(error);

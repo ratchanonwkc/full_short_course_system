@@ -6,7 +6,7 @@ const GROUP_SELECT = `
   tuition_fee, application_fee, is_waived_fee, is_ac_maintenance_fee,
   total_hours, study_dates_description, schedule_description,
   start_date, end_date, registration_start_date, registration_end_date,
-  major_id,
+  major_id, batch_id,
   academic_majors:major_id ( id, name_th, short_name_th ),
   teachers:teacher_id ( id, first_name_th, last_name_th ),
   locations:joint_location_id ( id, name ),
@@ -35,6 +35,7 @@ const mapGroup = (row) => {
         registration_start_date: row.registration_start_date,
         registration_end_date: row.registration_end_date,
         major_id: row.major_id,
+        batch_id: row.batch_id,
         major_name: row.academic_majors?.name_th || '',
         major_short_name: row.academic_majors?.short_name_th || '',
         teacher_name: row.teachers ? `${row.teachers.first_name_th} ${row.teachers.last_name_th}` : '',
@@ -47,9 +48,10 @@ const mapGroup = (row) => {
     };
 };
 
-export const getOpenStudyGroupsService = async ({ search, majorId } = {}) => {
+export const getOpenStudyGroupsService = async ({ search, majorId, batchId } = {}) => {
     let query = supabase.from('study_groups').select(GROUP_SELECT).eq('status', 'open').order('id', { ascending: false });
     if (majorId) query = query.eq('major_id', majorId);
+    if (batchId) query = query.eq('batch_id', batchId);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -80,7 +82,6 @@ export const lookupPostalCodeService = (code) => {
 };
 
 export const getActivePaymentMethodsService = async () => {
-    // Selective projection — avoid SELECT * on hot public endpoint
     const { data, error } = await supabase
         .from('payment_methods')
         .select('id, bank_name, account_name, account_number, qr_code_url')
@@ -89,12 +90,6 @@ export const getActivePaymentMethodsService = async () => {
     return data;
 };
 
-/**
- * upsertApplicant: find existing applicant by citizen_id first; update if found, insert if not.
- * This is the ONLY place identity is deduplicated — never blocks a person from applying
- * to a different course. Course-level duplication is enforced separately in
- * ensureNoDuplicateEnrollment() against the (applicant_id, study_group_id) composite key.
- */
 const upsertApplicant = async (applicantData) => {
     const { citizen_id } = applicantData;
     const { data: existing, error: findErr } = await supabase
@@ -120,12 +115,6 @@ const upsertApplicant = async (applicantData) => {
     return data;
 };
 
-/**
- * Duplicate-enrollment guard — the ONLY thing that should ever block a submission.
- * Rejects re-applying to the SAME study_group only if the existing enrollment isn't cancelled.
- * A student who already took a different course, or whose previous attempt at this
- * exact course was cancelled, is allowed through.
- */
 const ensureNoDuplicateEnrollment = async (applicantId, studyGroupId) => {
     const { data, error } = await supabase
         .from('enrollments')
@@ -142,7 +131,7 @@ const ensureNoDuplicateEnrollment = async (applicantId, studyGroupId) => {
     }
 };
 
-export const createOnlineApplicationService = async ({ applicant, study_group_id, slip_url }) => {
+export const createOnlineApplicationService = async ({ applicant, study_group_id, slip_url, payment_method = 'online_transfer' }) => {
     const savedApplicant = await upsertApplicant(applicant);
 
     await ensureNoDuplicateEnrollment(savedApplicant.id, study_group_id);
@@ -160,6 +149,7 @@ export const createOnlineApplicationService = async ({ applicant, study_group_id
                 status: 'pending_verification',
                 total_amount,
                 slip_url,
+                payment_method,
                 apply_date: now,
                 payment_date: now,
             },
@@ -184,6 +174,7 @@ export const getStatusByCitizenIdService = async (citizenId) => {
         .from('enrollments')
         .select(
             `id, status, total_amount, slip_url, receipt_number, receipt_book_no, apply_date, payment_date, receipt_date,
+       rejection_reason,
        study_groups:study_group_id ( id, group_code, group_name, tuition_fee, application_fee, start_date )`
         )
         .eq('applicant_id', applicant.id)
@@ -191,4 +182,50 @@ export const getStatusByCitizenIdService = async (citizenId) => {
     if (enrollError) throw enrollError;
 
     return { applicant, enrollments: enrollments || [] };
+};
+
+/**
+ * Self-service correction: applicant edits & resubmits a REJECTED application.
+ * Identity is verified server-side by matching citizen_id — no auth required.
+ */
+export const resubmitApplicationService = async (enrollmentId, { citizen_id, slip_url, applicant }) => {
+    const { data: enrollment, error: findErr } = await supabase
+        .from('enrollments')
+        .select('id, status, applicant_id, applicants:applicant_id ( citizen_id )')
+        .eq('id', enrollmentId)
+        .single();
+    if (findErr) throw findErr;
+
+    if (enrollment.applicants?.citizen_id !== citizen_id) {
+        const err = new Error('ไม่พบใบสมัครนี้ หรือเลขประจำตัวประชาชนไม่ตรงกัน');
+        err.status = 403;
+        throw err;
+    }
+    if (enrollment.status !== 'rejected') {
+        const err = new Error('สามารถแก้ไขได้เฉพาะใบสมัครที่ถูกปฏิเสธเท่านั้น');
+        err.status = 409;
+        throw err;
+    }
+
+    if (applicant && Object.keys(applicant).length > 0) {
+        const { error: appErr } = await supabase.from('applicants').update(applicant).eq('id', enrollment.applicant_id);
+        if (appErr) throw appErr;
+    }
+
+    const updatePayload = {
+        status: 'pending_verification',
+        rejection_reason: null,
+        rejected_at: null,
+        rejected_by_user_id: null,
+    };
+    if (slip_url) updatePayload.slip_url = slip_url;
+
+    const { data: updated, error } = await supabase
+        .from('enrollments')
+        .update(updatePayload)
+        .eq('id', enrollmentId)
+        .select()
+        .single();
+    if (error) throw error;
+    return updated;
 };

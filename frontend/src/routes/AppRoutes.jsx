@@ -10,7 +10,7 @@ import ProtectedRoute from './ProtectedRoute';
 
 // Public Pages
 import IndexPage from '../features/landing/pages/IndexPage';   // หน้าดูวิชาเปิดสอน + สมัครเรียน
-import RegistrationPage from '../features/public/pages/RegistrationPage'; // ฟอร์มสมัครเรียนออนไลน์ 6 ส่วน + ชำระเงิน
+import RegistrationPage from '../features/public/pages/RegistrationPage'; // Multi-step ฟอร์มสมัครเรียนออนไลน์ + ชำระเงิน
 import LoginPage from '../features/auth/pages/LoginPage';
 
 // Admin/Staff Pages
@@ -29,7 +29,8 @@ export default function AppRoutes() {
             {/* 🌐 1. Public Zone ( Topnav Layout ) */}
             <Route element={<PublicLayout />}>
                 <Route path="/" element={<IndexPage />} />
-                <Route path="/register/:studyGroupId" element={<RegistrationPage />} />
+                {/* studyGroupId is optional — omit it to let the applicant pick a course in Step 2 */}
+                <Route path="/register/:studyGroupId?" element={<RegistrationPage />} />
                 <Route path="/login" element={<LoginPage />} />
             </Route>
 

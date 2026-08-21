@@ -2,24 +2,18 @@ import { supabase } from '../../config/supabase.js';
 
 /**
  * SCHEMA NOTE: This service assumes the following columns have been added to
- * `public.enrollments` (run once as a migration; not included in the
- * read-only database_schema.sql context):
+ * `public.enrollments` (migration; not included in the read-only
+ * database_schema.sql context):
  *
  *   ALTER TABLE public.enrollments
  *     ADD COLUMN payment_method varchar DEFAULT 'online_transfer',
  *     ADD COLUMN rejection_reason text,
  *     ADD COLUMN rejected_at timestamptz,
  *     ADD COLUMN rejected_by_user_id uuid;
- *   -- confirmed_by_user_id already exists in the schema and is used for the
- *   -- "approved by" side of the audit log.
  *
- * ALSO NOTE: `public.applicants` has no `email` column in the current schema.
- * "Send Email Confirmation" (sendConfirmationEmailService below) and the
- * email field surfaced in ApplicantDetailModal require adding one:
+ * ALSO NOTE: `public.applicants` requires:
  *   ALTER TABLE public.applicants ADD COLUMN email varchar;
- * and collecting it in ApplicantFormFields.jsx (EMPTY_APPLICANT + a new
- * input in the "ช่องทางติดต่อ" section) if it isn't already gathered
- * elsewhere in your intake flow.
+ *   ALTER TABLE public.applicants ADD COLUMN id_card_url text;
  *
  * `approved_by_name` / `rejected_by_name` in the flattened response are
  * resolved from Supabase Auth (auth.users) via confirmed_by_user_id /
@@ -31,7 +25,7 @@ const ENROLLMENT_SELECT = `
   id, status, total_amount, slip_url, receipt_number, receipt_book_no, apply_date, payment_date, receipt_date,
   study_group_id, applicant_id, payment_method, rejection_reason, rejected_at,
   confirmed_by_user_id, rejected_by_user_id,
-  applicants:applicant_id ( id, citizen_id, title_name, full_name, phone, email, current_address, subdistrict, district, province, postal_code ),
+  applicants:applicant_id ( id, citizen_id, title_name, full_name, phone, email, id_card_url, current_address, subdistrict, district, province, postal_code ),
   study_groups:study_group_id ( id, group_code, group_name, max_seats, current_seats, tuition_fee, application_fee, is_waived_fee, batch_id, batches:batch_id ( id, batch_name ) )
 `;
 
@@ -41,6 +35,7 @@ const flatten = (row) => ({
     total_amount: row.total_amount,
     paid_amount: row.status === 'paid' ? row.total_amount : null,
     slip_url: row.slip_url,
+    id_card_url: row.applicants?.id_card_url || null,
     payment_method: row.payment_method || 'online_transfer',
     rejection_reason: row.rejection_reason,
     rejected_at: row.rejected_at,
@@ -52,6 +47,8 @@ const flatten = (row) => ({
     study_group_id: row.study_group_id,
     applicant_id: row.applicant_id,
     citizen_id: row.applicants?.citizen_id,
+    title_name: row.applicants?.title_name,
+    raw_full_name: row.applicants?.full_name,
     applicant_name: row.applicants ? `${row.applicants.title_name}${row.applicants.full_name}` : '',
     phone: row.applicants?.phone,
     email: row.applicants?.email,
@@ -189,10 +186,7 @@ export const createWalkinEnrollmentService = async ({ applicant, study_group_id,
 };
 
 /**
- * ยืนยันการชำระเงิน (Finance) — works for both online-slip verification and
- * counter-cash confirmation. Atomic-ish:
- *   1. update enrollment: status='paid', receipt fields, confirmed_by_user_id
- *   2. increment study_groups.current_seats +1
+ * ยืนยันการชำระเงิน (Finance)
  */
 export const confirmPaymentService = async (enrollmentId, { receipt_number, receipt_book_no, approvedByUserId }) => {
     if (!receipt_number?.trim()) {
@@ -255,8 +249,7 @@ export const confirmPaymentService = async (enrollmentId, { receipt_number, rece
 };
 
 /**
- * ปฏิเสธสลิป/รายการชำระเงิน (Finance) — sets status='rejected' with a required
- * reason, so the applicant can be prompted to resubmit. Does NOT touch seats.
+ * ปฏิเสธสลิป/รายการชำระเงิน (Finance)
  */
 export const rejectPaymentService = async (enrollmentId, { reason, rejectedByUserId }) => {
     const { data: enrollment, error: findErr } = await supabase
@@ -299,9 +292,7 @@ export const cancelEnrollmentService = async (enrollmentId) => {
 };
 
 /**
- * ย้ายกลุ่มเรียนของผู้สมัคร (Registrar) — updates study_group_id and
- * recalculates total_amount against the new group's fee structure.
- * Does not touch current_seats counters (only confirm-payment does that).
+ * ย้ายกลุ่มเรียนของผู้สมัคร (Registrar)
  */
 export const reassignGroupService = async (enrollmentId, newStudyGroupId) => {
     const { data: group, error: groupErr } = await supabase
@@ -324,8 +315,7 @@ export const reassignGroupService = async (enrollmentId, newStudyGroupId) => {
 };
 
 /**
- * ส่งอีเมลยืนยันให้ผู้สมัคร (stub — wire up to an actual email provider,
- * e.g. Supabase Edge Function + Resend/SendGrid, when available).
+ * ส่งอีเมลยืนยันให้ผู้สมัคร (stub — wire up to a real email provider)
  */
 export const sendConfirmationEmailService = async (enrollmentId) => {
     const { data: enrollment, error } = await supabase
@@ -341,6 +331,38 @@ export const sendConfirmationEmailService = async (enrollmentId) => {
         throw err;
     }
 
-    // TODO: integrate real email provider here.
     return { message: 'ส่งอีเมลยืนยันเรียบร้อยแล้ว', to: enrollment.applicants.email };
+};
+
+/**
+ * Registrar full-edit — updates applicant contact/identity fields and
+ * optionally reassigns the study group in one call.
+ */
+export const updateApplicantDetailsService = async (enrollmentId, { applicant, study_group_id }) => {
+    const { data: enrollment, error: findErr } = await supabase
+        .from('enrollments')
+        .select('id, applicant_id')
+        .eq('id', enrollmentId)
+        .single();
+    if (findErr) throw findErr;
+
+    if (applicant && Object.keys(applicant).length > 0) {
+        const { error: appErr } = await supabase.from('applicants').update(applicant).eq('id', enrollment.applicant_id);
+        if (appErr) {
+            if (appErr.code === '23505') {
+                const err = new Error('เลขประจำตัวประชาชนนี้มีอยู่แล้วในระบบ');
+                err.status = 400;
+                throw err;
+            }
+            throw appErr;
+        }
+    }
+
+    if (study_group_id) {
+        return reassignGroupService(enrollmentId, study_group_id);
+    }
+
+    const { data: fresh, error } = await supabase.from('enrollments').select(ENROLLMENT_SELECT).eq('id', enrollmentId).single();
+    if (error) throw error;
+    return flatten(fresh);
 };

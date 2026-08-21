@@ -6,6 +6,7 @@ import {
     getActivePaymentMethods,
     createOnlineApplication,
     getStatusByCitizenId,
+    resubmitApplication,
 } from './public.controller.js';
 import { uploadSlipMemory, uploadToSupabaseStorage } from '../../middlewares/supabaseUpload.middleware.js';
 
@@ -32,7 +33,25 @@ router.post('/upload-slip', uploadSlipMemory.single('slip'), async (req, res, ne
     }
 });
 
+// Citizen ID card image upload (reference only) — bucket "slips", prefix "idcard"
+router.post('/upload-id-card', uploadSlipMemory.single('id_card'), async (req, res, next) => {
+    try {
+        if (!req.file) return res.status(400).json({ message: 'กรุณาอัปโหลดรูปบัตรประชาชน' });
+        const id_card_url = await uploadToSupabaseStorage(
+            req.file.buffer,
+            req.file.originalname,
+            req.file.mimetype,
+            'idcard'
+        );
+        res.status(201).json({ id_card_url });
+    } catch (error) {
+        next(error);
+    }
+});
+
 router.post('/applications', createOnlineApplication);
 router.get('/applications/status/:citizen_id', getStatusByCitizenId);
+// Self-service correction/resubmit for rejected applications
+router.put('/applications/:id/resubmit', resubmitApplication);
 
 export default router;

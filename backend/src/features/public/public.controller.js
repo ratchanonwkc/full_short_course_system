@@ -5,13 +5,13 @@ import {
     getActivePaymentMethodsService,
     createOnlineApplicationService,
     getStatusByCitizenIdService,
+    resubmitApplicationService,
 } from './public.service.js';
-import { toPublicSlipUrl } from '../../middlewares/upload.middleware.js';
 
 export const getOpenStudyGroups = async (req, res, next) => {
     try {
-        const { search, major_id } = req.query;
-        const groups = await getOpenStudyGroupsService({ search, majorId: major_id });
+        const { search, major_id, batch_id } = req.query;
+        const groups = await getOpenStudyGroupsService({ search, majorId: major_id, batchId: batch_id });
         res.json(groups);
     } catch (error) {
         next(error);
@@ -47,25 +47,16 @@ export const getActivePaymentMethods = async (req, res, next) => {
     }
 };
 
-export const uploadSlipFile = async (req, res, next) => {
-    try {
-        if (!req.file) return res.status(400).json({ message: 'กรุณาอัปโหลดไฟล์สลิป' });
-        res.status(201).json({ slip_url: toPublicSlipUrl(req.file.filename) });
-    } catch (error) {
-        next(error);
-    }
-};
-
 export const createOnlineApplication = async (req, res, next) => {
     try {
-        const { applicant, study_group_id, slip_url } = req.body;
+        const { applicant, study_group_id, slip_url, payment_method } = req.body;
         if (!applicant?.citizen_id || applicant.citizen_id.length !== 13) {
             return res.status(400).json({ message: 'เลขประจำตัวประชาชนไม่ถูกต้อง (ต้องมี 13 หลัก)' });
         }
         if (!study_group_id) {
             return res.status(400).json({ message: 'กรุณาเลือกวิชาที่ต้องการสมัคร' });
         }
-        const result = await createOnlineApplicationService({ applicant, study_group_id, slip_url });
+        const result = await createOnlineApplicationService({ applicant, study_group_id, slip_url, payment_method });
         res.status(201).json(result);
     } catch (error) {
         if (error.status) return res.status(error.status).json({ message: error.message });
@@ -86,6 +77,21 @@ export const getStatusByCitizenId = async (req, res, next) => {
         if (!result) return res.status(404).json({ message: 'ไม่พบข้อมูลการสมัครของเลขประจำตัวประชาชนนี้' });
         res.json(result);
     } catch (error) {
+        next(error);
+    }
+};
+
+export const resubmitApplication = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { citizen_id, slip_url, applicant } = req.body;
+        if (!citizen_id || citizen_id.length !== 13) {
+            return res.status(400).json({ message: 'กรุณาระบุเลขประจำตัวประชาชนเพื่อยืนยันตัวตน' });
+        }
+        const result = await resubmitApplicationService(id, { citizen_id, slip_url, applicant });
+        res.json(result);
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ message: error.message });
         next(error);
     }
 };
