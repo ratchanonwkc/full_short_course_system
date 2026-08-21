@@ -13,15 +13,13 @@ export default function CourseCard({ course, view = "grid" }) {
 
     return (
         <div
-            className={`group relative rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md hover:border-indigo-200 ${
-                isList ? "flex flex-col gap-4 p-4 sm:flex-row sm:items-center" : "flex flex-col p-5"
-            }`}
+            className={`group relative rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md hover:border-indigo-200 ${isList ? "flex flex-col gap-4 p-4 sm:flex-row sm:items-center" : "flex flex-col p-5"
+                }`}
         >
             {/* Seats badge — top-right corner */}
             <span
-                className={`absolute -top-2.5 right-4 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-extrabold shadow-sm ring-2 ring-white ${
-                    isFull ? "bg-red-500 text-white" : "bg-emerald-500 text-white"
-                }`}
+                className={`absolute right-4 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[13px] font-extrabold shadow-sm ring-2 ring-white ${isFull ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"
+                    }`}
             >
                 <Users size={12} />
                 {isFull ? "เต็ม" : `เหลือ ${course.remaining_seats}`}
@@ -67,9 +65,8 @@ export default function CourseCard({ course, view = "grid" }) {
                 <Link
                     to={isFull ? "#" : `/register/${course.id}`}
                     aria-disabled={isFull}
-                    className={`rounded-lg px-4 py-2 text-sm font-semibold transition active:scale-[0.98] ${
-                        isFull ? "cursor-not-allowed bg-slate-100 text-slate-400" : "bg-indigo-600 text-white hover:bg-indigo-700"
-                    }`}
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold transition active:scale-[0.98] ${isFull ? "cursor-not-allowed bg-slate-100 text-slate-400" : "bg-indigo-600 text-white hover:bg-indigo-700"
+                        }`}
                     onClick={(e) => isFull && e.preventDefault()}
                 >
                     {isFull ? "ที่นั่งเต็ม" : "สมัครเรียน"}
