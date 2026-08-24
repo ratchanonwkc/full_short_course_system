@@ -33,7 +33,7 @@ export default function Sidebar() {
     >
       <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200">
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
             <LayoutDashboard size={20} strokeWidth={2.2} />
           </div>
           {!collapsed && <span className="text-sm font-bold text-slate-900">ทะเบียน &amp; หลักสูตร</span>}
@@ -58,7 +58,7 @@ export default function Sidebar() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-md transition-colors hover:bg-slate-100 ${isActive ? 'bg-indigo-100 text-indigo-600' : 'text-slate-600'
+                `flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-md transition-colors hover:bg-slate-100 ${isActive ? 'bg-blue-100 text-blue-600' : 'text-slate-600'
                 }`
               }
             >

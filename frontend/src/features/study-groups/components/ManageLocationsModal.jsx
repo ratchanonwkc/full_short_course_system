@@ -5,7 +5,7 @@ import Swal from "sweetalert2";
 import { createLocation, updateLocation, deleteLocation } from "../services/studyGroupApi";
 
 const inputClass =
-    "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30";
+    "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30";
 
 /**
  * ManageLocationsModal
@@ -38,7 +38,7 @@ export default function ManageLocationsModal({ isOpen, onClose, items = [], onRe
 
     const handleAddNew = async () => {
         if (!newName.trim()) {
-            Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อสถานที่", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อสถานที่", confirmButtonColor: "#0270c7" });
             return;
         }
         setIsAdding(true);
@@ -56,7 +56,7 @@ export default function ManageLocationsModal({ isOpen, onClose, items = [], onRe
                 icon: "error",
                 title: "เพิ่มรายการไม่สำเร็จ",
                 text: err?.response?.data?.message || (isDuplicate ? "ชื่อสถานที่นี้มีอยู่แล้วในระบบ" : "กรุณาลองใหม่อีกครั้ง"),
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsAdding(false);
@@ -66,7 +66,7 @@ export default function ManageLocationsModal({ isOpen, onClose, items = [], onRe
     const handleSave = async (item) => {
         const value = editMap[item.id]?.name || "";
         if (!value.trim()) {
-            Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อสถานที่", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อสถานที่", confirmButtonColor: "#0270c7" });
             return;
         }
         setSavingId(item.id);
@@ -82,7 +82,7 @@ export default function ManageLocationsModal({ isOpen, onClose, items = [], onRe
                 icon: "error",
                 title: "บันทึกไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setSavingId(null);
@@ -118,7 +118,7 @@ export default function ManageLocationsModal({ isOpen, onClose, items = [], onRe
                 text:
                     err?.response?.data?.message ||
                     (isConflict ? "ไม่สามารถลบได้เนื่องจากมีกลุ่มเรียนใช้งานสถานที่นี้อยู่" : "กรุณาลองใหม่อีกครั้ง"),
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         }
     };
@@ -143,8 +143,8 @@ export default function ManageLocationsModal({ isOpen, onClose, items = [], onRe
                         >
                             <Dialog.Panel className="relative flex max-h-[75vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all">
                                 <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
-                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50">
-                                        <MapPin size={16} className="text-indigo-600" />
+                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50">
+                                        <MapPin size={16} className="text-blue-600" />
                                     </span>
                                     <Dialog.Title className="flex-1 text-base font-bold text-slate-900">
                                         จัดการสถานที่จัดเรียนร่วม
@@ -158,8 +158,8 @@ export default function ManageLocationsModal({ isOpen, onClose, items = [], onRe
                                 </div>
 
                                 <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
-                                    <div className="rounded-xl border border-dashed border-indigo-300 bg-indigo-50/40 p-3">
-                                        <p className="mb-2 text-xs font-semibold text-indigo-600">➕ เพิ่มสถานที่ใหม่</p>
+                                    <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50/40 p-3">
+                                        <p className="mb-2 text-xs font-semibold text-blue-600">➕ เพิ่มสถานที่ใหม่</p>
                                         <div className="flex gap-2">
                                             <input
                                                 type="text"
@@ -173,7 +173,7 @@ export default function ManageLocationsModal({ isOpen, onClose, items = [], onRe
                                                 type="button"
                                                 onClick={handleAddNew}
                                                 disabled={isAdding}
-                                                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                                                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
                                             >
                                                 <Plus size={13} />
                                                 {isAdding ? "กำลังเพิ่ม..." : "เพิ่ม"}
@@ -200,7 +200,7 @@ export default function ManageLocationsModal({ isOpen, onClose, items = [], onRe
                                                                     [item.id]: { name: e.target.value },
                                                                 }))
                                                             }
-                                                            className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
+                                                            className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
                                                         />
                                                         {item.is_default && (
                                                             <span title="ค่าเริ่มต้น" className="shrink-0 text-amber-500">

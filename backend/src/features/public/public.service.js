@@ -13,15 +13,24 @@ const GROUP_SELECT = `
   study_group_subjects (
     id, subject_id, sequence_order,
     subjects:subject_id ( id, subject_code, name_th, total_hours )
-  )
+  ),
+  batches:batch_id ( id, batch_name, status )
 `;
 
 const mapGroup = (row) => {
     const fee = row.is_waived_fee ? 0 : Number(row.tuition_fee || 0) + Number(row.application_fee || 0);
+    const timeCodeMatch = row.group_code ? /[ชบคพ]/.exec(row.group_code) : null;
+    const derivedTimeCode = timeCodeMatch ? timeCodeMatch[0] : '';
+    const scheduleText = row.schedule_description || row.study_dates_description || '';
+    const timeRangeMatch = /(\d{1,2}[:.]\d{2})\s*[-–—to至]\s*(\d{1,2}[:.]\d{2})/.exec(scheduleText);
+    const derivedTimeRange = timeRangeMatch ? `${timeRangeMatch[1]} - ${timeRangeMatch[2]}` : '';
+
     return {
         id: row.id,
         group_code: row.group_code,
         group_name: row.group_name,
+        time_code: row.time_code || derivedTimeCode,
+        time_range: row.time_range || derivedTimeRange,
         status: row.status,
         max_seats: row.max_seats,
         current_seats: row.current_seats,
@@ -36,6 +45,8 @@ const mapGroup = (row) => {
         registration_end_date: row.registration_end_date,
         major_id: row.major_id,
         batch_id: row.batch_id,
+        batch_name: row.batches?.batch_name || '',
+        batch_status: row.batches?.status || '',
         major_name: row.academic_majors?.name_th || '',
         major_short_name: row.academic_majors?.short_name_th || '',
         teacher_name: row.teachers ? `${row.teachers.first_name_th} ${row.teachers.last_name_th}` : '',
@@ -56,7 +67,14 @@ export const getOpenStudyGroupsService = async ({ search, majorId, batchId } = {
     const { data, error } = await query;
     if (error) throw error;
 
-    let mapped = data.map(mapGroup);
+    // Study groups should only be visible to the public if their parent Batch has status === "admitting" OR "studying"
+    // If a batch is planning, ended, or cancelled, its study groups must not appear in the public enrollment selection.
+    const activeBatchesOnly = (data || []).filter((row) => {
+        const batchStatus = row.batches?.status;
+        return batchStatus === 'admitting' || batchStatus === 'studying';
+    });
+
+    let mapped = activeBatchesOnly.map(mapGroup);
 
     if (search?.trim()) {
         const q = search.trim().toLowerCase();
@@ -73,6 +91,20 @@ export const getOpenStudyGroupsService = async ({ search, majorId, batchId } = {
 export const getStudyGroupDetailService = async (id) => {
     const { data, error } = await supabase.from('study_groups').select(GROUP_SELECT).eq('id', id).single();
     if (error) throw error;
+    if (!data) {
+        const notFoundErr = new Error('ไม่พบข้อมูลกลุ่มเรียน');
+        notFoundErr.status = 404;
+        throw notFoundErr;
+    }
+
+    // Check parent batch status: only allow admitting or studying
+    const batchStatus = data.batches?.status;
+    if (batchStatus !== 'admitting' && batchStatus !== 'studying') {
+        const err = new Error('วิชา/กลุ่มเรียนนี้ไม่อยู่ในช่วงเปิดรับสมัครหรือกำลังเรียน');
+        err.status = 404;
+        throw err;
+    }
+
     return mapGroup(data);
 };
 

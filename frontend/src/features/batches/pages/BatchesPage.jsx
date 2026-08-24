@@ -12,6 +12,7 @@ const STATUS_OPTIONS = [
     { value: "admitting", label: "เปิดรับสมัคร" },
     { value: "studying", label: "กำลังเรียน" },
     { value: "ended", label: "จบหลักสูตรแล้ว" },
+    { value: "cancelled", label: "ยกเลิก" },
 ];
 
 const CURRENT_BE_YEAR = new Date().getFullYear() + 543;
@@ -51,7 +52,7 @@ export default function BatchesPage() {
                 text:
                     err?.response?.data?.message ||
                     "ไม่สามารถดึงข้อมูลรุ่นการเรียนได้ กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setLoading(false);
@@ -72,7 +73,7 @@ export default function BatchesPage() {
                 text:
                     err?.response?.data?.message ||
                     "ไม่สามารถดึงรายชื่ออาจารย์มาให้เลือกเป็นผู้รับผิดชอบได้ กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setTeachersLoading(false);
@@ -139,7 +140,7 @@ export default function BatchesPage() {
                 icon: "error",
                 title: "ลบข้อมูลไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         }
     };
@@ -178,7 +179,7 @@ export default function BatchesPage() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Quick Search ค้นหารุ่นการเรียน (ทุกปี)..."
-                            className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 sm:w-72"
+                            className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40 sm:w-72"
                         />
                     </div>
 
@@ -189,7 +190,7 @@ export default function BatchesPage() {
                             value={academicYearFilter}
                             onChange={(e) => setAcademicYearFilter(e.target.value)}
                             disabled={isQuickSearching}
-                            className="w-full appearance-none rounded-lg border border-slate-300 py-2 pl-9 pr-8 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 sm:w-44"
+                            className="w-full appearance-none rounded-lg border border-slate-300 py-2 pl-9 pr-8 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 sm:w-44"
                         >
                             <option value="all">ทุกปีการศึกษา</option>
                             {academicYearOptions.map((year) => (
@@ -206,7 +207,7 @@ export default function BatchesPage() {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full appearance-none rounded-lg border border-slate-300 py-2 pl-9 pr-8 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 sm:w-48"
+                            className="w-full appearance-none rounded-lg border border-slate-300 py-2 pl-9 pr-8 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40 sm:w-48"
                         >
                             {STATUS_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
@@ -220,7 +221,7 @@ export default function BatchesPage() {
                 <button
                     type="button"
                     onClick={handleCreate}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.98]"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
                 >
                     <Plus size={16} />
                     สร้างรุ่นการเรียนใหม่

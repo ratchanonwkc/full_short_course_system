@@ -162,7 +162,7 @@ export default function RegistrarEnrollmentsPage() {
         <div className="flex h-full items-center gap-2">
             <button
                 onClick={() => handleViewDetail(params.data)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"
             >
                 <Eye size={13} /> ดูรายละเอียด
             </button>
@@ -175,7 +175,7 @@ export default function RegistrarEnrollmentsPage() {
     );
 
     const GroupBadgeRenderer = ({ value, data }) => (
-        <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-600">
+        <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-600">
             {data.group_code || value || "-"}
         </span>
     );
@@ -233,7 +233,7 @@ export default function RegistrarEnrollmentsPage() {
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <h1 className="flex items-center gap-2 text-xl font-black text-slate-800">
-                        <Users size={22} className="text-indigo-600" /> จัดการผู้สมัครเรียน (งานทะเบียน)
+                        <Users size={22} className="text-blue-600" /> จัดการผู้สมัครเรียน (งานทะเบียน)
                     </h1>
                     <p className="text-sm text-slate-500">
                         ระบบเลือกรุ่นปัจจุบันให้อัตโนมัติ — ค้นหาและกรองผู้สมัครได้จากตารางด้านล่าง
@@ -242,7 +242,7 @@ export default function RegistrarEnrollmentsPage() {
                 <button
                     onClick={() => setWalkinOpen(true)}
                     disabled={!selectedBatchId}
-                    className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
                 >
                     <UserPlus size={16} /> ลงทะเบียน Walk-in
                 </button>
@@ -285,7 +285,7 @@ export default function RegistrarEnrollmentsPage() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="ชื่อ, เบอร์โทร, อีเมล, เลขบัตร..."
-                            className="w-full rounded-lg border border-slate-300 py-2 pl-8 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                            className="w-full rounded-lg border border-slate-300 py-2 pl-8 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
                         />
                     </div>
                 </div>
@@ -294,7 +294,7 @@ export default function RegistrarEnrollmentsPage() {
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
                     >
                         {STATUS_FILTERS.map((opt) => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -453,7 +453,7 @@ function WalkinModal({ isOpen, onClose, batches, defaultBatchId, groups, default
             <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
                 <div className="mb-4 flex items-center justify-between">
                     <h2 className="flex items-center gap-2 text-lg font-black text-slate-800">
-                        <UserPlus size={20} className="text-indigo-600" /> ลงทะเบียนนักเรียน Walk-in
+                        <UserPlus size={20} className="text-blue-600" /> ลงทะเบียนนักเรียน Walk-in
                     </h2>
                     <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X size={20} /></button>
                 </div>
@@ -483,7 +483,7 @@ function WalkinModal({ isOpen, onClose, batches, defaultBatchId, groups, default
                                 <label
                                     key={opt.value}
                                     className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm transition ${paymentMethod === opt.value
-                                        ? "border-indigo-400 bg-indigo-50 font-semibold text-indigo-700"
+                                        ? "border-blue-400 bg-blue-50 font-semibold text-blue-700"
                                         : "border-slate-200 text-slate-600 hover:bg-slate-50"
                                         }`}
                                 >
@@ -493,7 +493,7 @@ function WalkinModal({ isOpen, onClose, batches, defaultBatchId, groups, default
                                         value={opt.value}
                                         checked={paymentMethod === opt.value}
                                         onChange={(e) => setPaymentMethod(e.target.value)}
-                                        className="accent-indigo-600"
+                                        className="accent-blue-600"
                                     />
                                     {opt.label}
                                 </label>
@@ -515,7 +515,7 @@ function WalkinModal({ isOpen, onClose, batches, defaultBatchId, groups, default
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+                            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
                         >
                             <IdCard size={16} /> {submitting ? "กำลังบันทึก..." : "บันทึกและส่งต่อแผนกการเงิน"}
                         </button>

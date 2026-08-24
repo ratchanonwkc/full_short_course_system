@@ -72,13 +72,13 @@ export default function PaymentMethodSettingsPage() {
             <div className="mb-6 flex items-center justify-between">
                 <div>
                     <h1 className="flex items-center gap-2 text-xl font-black text-slate-800">
-                        <Landmark size={22} className="text-indigo-600" /> ตั้งค่าบัญชีธนาคาร / QR Code รับเงิน
+                        <Landmark size={22} className="text-blue-600" /> ตั้งค่าบัญชีธนาคาร / QR Code รับเงิน
                     </h1>
                     <p className="text-sm text-slate-500">จัดการบัญชีธนาคารที่แสดงในหน้าชำระเงินของผู้สมัครออนไลน์</p>
                 </div>
                 <button
                     onClick={openCreate}
-                    className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700"
+                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700"
                 >
                     <Plus size={16} /> เพิ่มบัญชีธนาคาร
                 </button>
@@ -112,7 +112,7 @@ export default function PaymentMethodSettingsPage() {
                                 )}
                             </button>
                             <div className="flex items-center gap-2">
-                                <button onClick={() => openEdit(m)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"><Pencil size={16} /></button>
+                                <button onClick={() => openEdit(m)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-blue-600"><Pencil size={16} /></button>
                                 <button onClick={() => handleDelete(m)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 size={16} /></button>
                             </div>
                         </div>
@@ -197,21 +197,21 @@ function FormModal({ isOpen, onClose, editing, onSaved }) {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="mb-1.5 block text-sm font-bold text-slate-600">ชื่อธนาคาร *</label>
-                        <input name="bank_name" value={form.bank_name} onChange={handleChange} placeholder="เช่น ธนาคารกรุงไทย" className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none" />
+                        <input name="bank_name" value={form.bank_name} onChange={handleChange} placeholder="เช่น ธนาคารกรุงไทย" className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none" />
                     </div>
                     <div>
                         <label className="mb-1.5 block text-sm font-bold text-slate-600">ชื่อบัญชี *</label>
-                        <input name="account_name" value={form.account_name} onChange={handleChange} placeholder="เช่น วิทยาลัยสารพัดช่าง..." className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none" />
+                        <input name="account_name" value={form.account_name} onChange={handleChange} placeholder="เช่น วิทยาลัยสารพัดช่าง..." className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none" />
                     </div>
                     <div>
                         <label className="mb-1.5 block text-sm font-bold text-slate-600">เลขที่บัญชี *</label>
-                        <input name="account_number" value={form.account_number} onChange={handleChange} placeholder="xxx-x-xxxxx-x" className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-mono focus:border-indigo-500 focus:outline-none" />
+                        <input name="account_number" value={form.account_number} onChange={handleChange} placeholder="xxx-x-xxxxx-x" className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-mono focus:border-blue-500 focus:outline-none" />
                     </div>
                     <div>
                         <label className="mb-1.5 block text-sm font-bold text-slate-600">QR Code รับเงิน</label>
                         <div
                             onClick={() => fileInputRef.current?.click()}
-                            className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 p-3 hover:border-indigo-400"
+                            className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 p-3 hover:border-blue-400"
                         >
                             {form.qr_code_url ? (
                                 <img src={form.qr_code_url} alt="QR" className="h-14 w-14 rounded-lg object-cover" />
@@ -223,13 +223,13 @@ function FormModal({ isOpen, onClose, editing, onSaved }) {
                         <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.webp" onChange={handleFileChange} className="hidden" />
                     </div>
                     <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
-                        <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+                        <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))} className="h-4 w-4 rounded border-slate-300 text-blue-600" />
                         เปิดใช้งานบัญชีนี้
                     </label>
 
                     <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
                         <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100">ยกเลิก</button>
-                        <button type="submit" disabled={saving} className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50">
+                        <button type="submit" disabled={saving} className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
                             {saving ? "กำลังบันทึก..." : "บันทึก"}
                         </button>
                     </div>

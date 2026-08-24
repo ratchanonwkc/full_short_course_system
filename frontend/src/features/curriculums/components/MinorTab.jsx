@@ -12,7 +12,7 @@ import { getMinors, createMinor, updateMinor, deleteMinor } from "../services/ac
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const inputClass =
-    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40";
+    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40";
 
 const EMPTY_FORM = { major_id: "", sub_department_id: "", name_th: "", name_en: "" };
 
@@ -53,7 +53,7 @@ export default function MinorTab({ majors = [] }) {
                 icon: "error",
                 title: "โหลดข้อมูลสาขางานไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setLoading(false);
@@ -100,7 +100,7 @@ export default function MinorTab({ majors = [] }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!form.major_id || !form.sub_department_id.toString().trim() || !form.name_th.trim()) {
-            Swal.fire({ icon: "warning", title: "กรุณากรอกข้อมูลที่จำเป็นให้ครบ", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณากรอกข้อมูลที่จำเป็นให้ครบ", confirmButtonColor: "#0270c7" });
             return;
         }
         setIsSubmitting(true);
@@ -124,7 +124,7 @@ export default function MinorTab({ majors = [] }) {
                 icon: "error",
                 title: "บันทึกข้อมูลไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาตรวจสอบข้อมูลแล้วลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsSubmitting(false);
@@ -159,7 +159,7 @@ export default function MinorTab({ majors = [] }) {
                 icon: "error",
                 title: isConflict ? "ไม่สามารถลบได้" : "เกิดข้อผิดพลาด",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         }
     };
@@ -199,7 +199,7 @@ export default function MinorTab({ majors = [] }) {
     );
 
     const CodeRenderer = (params) => (
-        <span className="font-mono font-semibold text-indigo-700">{minorCodeFor(params.data)}</span>
+        <span className="font-mono font-semibold text-blue-700">{minorCodeFor(params.data)}</span>
     );
 
     const ActionsRenderer = (params) => (
@@ -208,7 +208,7 @@ export default function MinorTab({ majors = [] }) {
                 type="button"
                 title="แก้ไข"
                 onClick={() => handleEdit(params.data)}
-                className="rounded-md p-1.5 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600"
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
             >
                 <Pencil size={15} />
             </button>
@@ -264,14 +264,14 @@ export default function MinorTab({ majors = [] }) {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="ค้นหาสาขางาน..."
-                            className="w-full rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                            className="w-full rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
                         />
                     </div>
                 </div>
                 <button
                     type="button"
                     onClick={handleStartCreate}
-                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
                 >
                     <Plus size={14} />
                     เพิ่มสาขางานใหม่
@@ -314,10 +314,10 @@ export default function MinorTab({ majors = [] }) {
 
             <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
                 {/* Live code preview */}
-                <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3.5">
-                    <p className="mb-1 text-xs font-semibold text-indigo-700">รหัสสาขางาน (Preview)</p>
+                <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3.5">
+                    <p className="mb-1 text-xs font-semibold text-blue-700">รหัสสาขางาน (Preview)</p>
                     <p
-                        className={`font-mono text-lg font-bold ${isPreviewComplete ? "text-indigo-700" : "text-slate-400"
+                        className={`font-mono text-lg font-bold ${isPreviewComplete ? "text-blue-700" : "text-slate-400"
                             }`}
                     >
                         {livePreviewCode}
@@ -385,7 +385,7 @@ export default function MinorTab({ majors = [] }) {
                 <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     <Save size={15} />
                     {isSubmitting ? "กำลังบันทึก..." : isEditMode ? "บันทึกการแก้ไข" : "เพิ่มสาขางาน"}

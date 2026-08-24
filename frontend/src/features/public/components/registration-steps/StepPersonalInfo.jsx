@@ -23,11 +23,11 @@ export default function StepPersonalInfo({ selectedGroup, formData, setFormData,
 
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <IdCard size={18} className="text-indigo-600" /> รูปถ่ายบัตรประชาชน (สำหรับอ้างอิง)
+                    <IdCard size={18} className="text-blue-600" /> รูปถ่ายบัตรประชาชน (สำหรับอ้างอิง)
                 </h3>
                 <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40"
+                    className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-6 text-center transition hover:border-blue-400 hover:bg-blue-50/40"
                 >
                     {preview ? (
                         <>

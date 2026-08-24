@@ -29,7 +29,7 @@ export default function SubjectTypeTab() {
                     icon: "error",
                     title: "โหลดข้อมูลประเภทวิชาไม่สำเร็จ",
                     text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                    confirmButtonColor: "#4f46e5",
+                    confirmButtonColor: "#0270c7",
                 });
             } finally {
                 setLoading(false);

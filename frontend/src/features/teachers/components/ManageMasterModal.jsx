@@ -106,7 +106,7 @@ export default function ManageMasterModal({
     const handleSave = async (item) => {
         const values = editMap[item.id] || {};
         if (!values.primary?.trim()) {
-            Swal.fire({ icon: "warning", title: "กรุณากรอกข้อมูลให้ครบ", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณากรอกข้อมูลให้ครบ", confirmButtonColor: "#0270c7" });
             return;
         }
         setSavingId(item.id);
@@ -129,7 +129,7 @@ export default function ManageMasterModal({
                 icon: "error",
                 title: "บันทึกไม่สำเร็จ",
                 text: err?.response?.data?.message || (isDuplicate ? "ชื่อรายการนี้มีอยู่แล้วในระบบ" : "กรุณาลองใหม่อีกครั้ง"),
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setSavingId(null);
@@ -170,14 +170,14 @@ export default function ManageMasterModal({
                     (isConflict
                         ? "ไม่สามารถลบได้เนื่องจากมีข้อมูลอาจารย์ใช้งานรายการนี้อยู่"
                         : "กรุณาลองใหม่อีกครั้ง"),
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         }
     };
 
     const handleAddNew = async () => {
         if (!newPrimary.trim()) {
-            Swal.fire({ icon: "warning", title: "กรุณากรอกข้อมูลให้ครบ", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณากรอกข้อมูลให้ครบ", confirmButtonColor: "#0270c7" });
             return;
         }
         setIsAdding(true);
@@ -202,7 +202,7 @@ export default function ManageMasterModal({
                 icon: "error",
                 title: "เพิ่มรายการไม่สำเร็จ",
                 text: err?.response?.data?.message || (isDuplicate ? "ชื่อรายการนี้มีอยู่แล้วในระบบ" : "กรุณาลองใหม่อีกครั้ง"),
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsAdding(false);
@@ -232,8 +232,8 @@ export default function ManageMasterModal({
 
                                 {/* Header */}
                                 <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
-                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50">
-                                        <Tag size={16} className="text-indigo-600" />
+                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50">
+                                        <Tag size={16} className="text-blue-600" />
                                     </span>
                                     <Dialog.Title className="flex-1 text-base font-bold text-slate-900">
                                         {meta.title}
@@ -250,8 +250,8 @@ export default function ManageMasterModal({
                                 <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
 
                                     {/* Add-new form */}
-                                    <div className="rounded-xl border border-dashed border-indigo-300 bg-indigo-50/40 p-3">
-                                        <p className="mb-2 text-xs font-semibold text-indigo-600">➕ เพิ่มรายการใหม่</p>
+                                    <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50/40 p-3">
+                                        <p className="mb-2 text-xs font-semibold text-blue-600">➕ เพิ่มรายการใหม่</p>
                                         <div className={`grid gap-2 ${meta.hasSecondary ? "grid-cols-2" : "grid-cols-1"}`}>
                                             <input
                                                 type="text"
@@ -259,7 +259,7 @@ export default function ManageMasterModal({
                                                 onChange={(e) => setNewPrimary(e.target.value)}
                                                 onKeyDown={(e) => e.key === "Enter" && handleAddNew()}
                                                 placeholder={meta.namePlaceholder}
-                                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
                                             />
                                             {meta.hasSecondary && (
                                                 <input
@@ -268,7 +268,7 @@ export default function ManageMasterModal({
                                                     onChange={(e) => setNewSecondary(e.target.value)}
                                                     onKeyDown={(e) => e.key === "Enter" && handleAddNew()}
                                                     placeholder={meta.secondaryPlaceholder}
-                                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
                                                 />
                                             )}
                                         </div>
@@ -276,7 +276,7 @@ export default function ManageMasterModal({
                                             type="button"
                                             onClick={handleAddNew}
                                             disabled={isAdding}
-                                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
                                         >
                                             <Plus size={13} />
                                             {isAdding ? "กำลังเพิ่ม..." : "เพิ่มรายการ"}
@@ -292,7 +292,7 @@ export default function ManageMasterModal({
                                                 value={searchTerm}
                                                 onChange={(e) => setSearchTerm(e.target.value)}
                                                 placeholder="ค้นหารายการ..."
-                                                className="w-full rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                                                className="w-full rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
                                             />
                                         </div>
                                     )}
@@ -324,14 +324,14 @@ export default function ManageMasterModal({
                                                         type="text"
                                                         value={editMap[item.id]?.primary ?? ""}
                                                         onChange={(e) => handleFieldChange(item.id, "primary", e.target.value)}
-                                                        className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
+                                                        className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
                                                     />
                                                     {meta.hasSecondary && (
                                                         <input
                                                             type="text"
                                                             value={editMap[item.id]?.secondary ?? ""}
                                                             onChange={(e) => handleFieldChange(item.id, "secondary", e.target.value)}
-                                                            className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
+                                                            className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
                                                         />
                                                     )}
                                                     <div className="flex items-center gap-1">

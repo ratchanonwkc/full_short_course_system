@@ -24,7 +24,7 @@ export default function Header() {
       showCancelButton: true,
       confirmButtonText: 'ออกจากระบบ',
       cancelButtonText: 'ยกเลิก',
-      confirmButtonColor: '#4f46e5',
+      confirmButtonColor: '#0270c7',
       cancelButtonColor: '#6b7280',
     });
     if (result.isConfirmed) {
@@ -55,7 +55,7 @@ export default function Header() {
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center gap-1 rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+            className="flex items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
           >
             <LogOut size={14} />
             ออกจากระบบ

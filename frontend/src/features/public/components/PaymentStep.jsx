@@ -64,12 +64,12 @@ export default function PaymentStep({ amount, slipFile, setSlipFile }) {
     return (
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                <Landmark size={18} className="text-indigo-600" /> ชำระเงินค่าลงทะเบียน
+                <Landmark size={18} className="text-blue-600" /> ชำระเงินค่าลงทะเบียน
             </h3>
 
-            <div className="mb-5 flex items-center justify-between rounded-xl bg-indigo-50 px-4 py-3">
-                <span className="text-sm font-semibold text-indigo-700">ยอดที่ต้องชำระ</span>
-                <span className="text-xl font-black text-indigo-700">
+            <div className="mb-5 flex items-center justify-between rounded-xl bg-blue-50 px-4 py-3">
+                <span className="text-sm font-semibold text-blue-700">ยอดที่ต้องชำระ</span>
+                <span className="text-xl font-black text-blue-700">
                     {amount === 0 ? "ไม่มีค่าใช้จ่าย" : `${amount.toLocaleString()} บาท`}
                 </span>
             </div>
@@ -98,7 +98,7 @@ export default function PaymentStep({ amount, slipFile, setSlipFile }) {
                                 <button
                                     type="button"
                                     onClick={() => handleCopyAccountNumber(m)}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-600 transition hover:bg-indigo-100"
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100"
                                 >
                                     {copiedId === m.id ? <Check size={14} /> : <Copy size={14} />}
                                     {copiedId === m.id ? "คัดลอกแล้ว" : "คัดลอกเลขบัญชี"}
@@ -110,7 +110,7 @@ export default function PaymentStep({ amount, slipFile, setSlipFile }) {
                     <label className={labelCls()}>อัปโหลดสลิป/หลักฐานการโอนเงิน *</label>
                     <div
                         onClick={() => fileInputRef.current?.click()}
-                        className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40"
+                        className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-6 text-center transition hover:border-blue-400 hover:bg-blue-50/40"
                     >
                         {preview ? (
                             <>

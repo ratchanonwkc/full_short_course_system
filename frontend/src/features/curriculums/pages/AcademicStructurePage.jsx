@@ -59,7 +59,7 @@ export default function AcademicStructurePage() {
                 icon: "error",
                 title: "โหลดข้อมูลตั้งต้นไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setLoadingShared(false);
@@ -86,12 +86,12 @@ export default function AcademicStructurePage() {
                             {({ selected }) => (
                                 <button
                                     type="button"
-                                    className={`relative inline-flex items-center gap-1.5 px-4 py-3 text-sm font-semibold outline-none transition ${selected ? "text-indigo-600" : "text-slate-500 hover:text-slate-700"
+                                    className={`relative inline-flex items-center gap-1.5 px-4 py-3 text-sm font-semibold outline-none transition ${selected ? "text-blue-600" : "text-slate-500 hover:text-slate-700"
                                         }`}
                                 >
                                     <Icon size={15} />
                                     {label}
-                                    {selected && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-indigo-600" />}
+                                    {selected && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-blue-600" />}
                                 </button>
                             )}
                         </Tab>

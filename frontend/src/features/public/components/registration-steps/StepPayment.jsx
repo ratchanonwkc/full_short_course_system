@@ -39,27 +39,27 @@ export default function StepPayment({ amount, paymentMethod, setPaymentMethod, s
     return (
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                <Landmark size={18} className="text-indigo-600" /> ชำระเงินค่าลงทะเบียน
+                <Landmark size={18} className="text-blue-600" /> ชำระเงินค่าลงทะเบียน
             </h3>
 
-            <div className="mb-5 flex items-center justify-between rounded-xl bg-indigo-50 px-4 py-3">
-                <span className="text-sm font-semibold text-indigo-700">ยอดที่ต้องชำระสำหรับวิชานี้</span>
-                <span className="text-xl font-black text-indigo-700">{amount.toLocaleString()} บาท</span>
+            <div className="mb-5 flex items-center justify-between rounded-xl bg-blue-50 px-4 py-3">
+                <span className="text-sm font-semibold text-blue-700">ยอดที่ต้องชำระสำหรับวิชานี้</span>
+                <span className="text-xl font-black text-blue-700">{amount.toLocaleString()} บาท</span>
             </div>
 
             <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <label
-                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm transition ${paymentMethod === "online_transfer" ? "border-indigo-400 bg-indigo-50 font-semibold text-indigo-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm transition ${paymentMethod === "online_transfer" ? "border-blue-400 bg-blue-50 font-semibold text-blue-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"
                         }`}
                 >
-                    <input type="radio" name="reg_payment_method" checked={paymentMethod === "online_transfer"} onChange={() => setPaymentMethod("online_transfer")} className="accent-indigo-600" />
+                    <input type="radio" name="reg_payment_method" checked={paymentMethod === "online_transfer"} onChange={() => setPaymentMethod("online_transfer")} className="accent-blue-600" />
                     <Wallet size={15} /> โอนเงินออนไลน์ / แนบสลิป
                 </label>
                 <label
-                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm transition ${paymentMethod === "counter_cash" ? "border-indigo-400 bg-indigo-50 font-semibold text-indigo-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm transition ${paymentMethod === "counter_cash" ? "border-blue-400 bg-blue-50 font-semibold text-blue-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"
                         }`}
                 >
-                    <input type="radio" name="reg_payment_method" checked={paymentMethod === "counter_cash"} onChange={() => setPaymentMethod("counter_cash")} className="accent-indigo-600" />
+                    <input type="radio" name="reg_payment_method" checked={paymentMethod === "counter_cash"} onChange={() => setPaymentMethod("counter_cash")} className="accent-blue-600" />
                     <Building2 size={15} /> ชำระเงินที่ห้องการเงิน
                 </label>
             </div>
@@ -84,7 +84,7 @@ export default function StepPayment({ amount, paymentMethod, setPaymentMethod, s
                                 <button
                                     type="button"
                                     onClick={() => handleCopy(m)}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-600 transition hover:bg-indigo-100"
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-bold text-blue-600 transition hover:bg-blue-100"
                                 >
                                     {copiedId === m.id ? <Check size={14} /> : <Copy size={14} />}
                                     {copiedId === m.id ? "คัดลอกแล้ว" : "คัดลอกเลขบัญชี"}
@@ -96,7 +96,7 @@ export default function StepPayment({ amount, paymentMethod, setPaymentMethod, s
                     <label htmlFor="reg-slip-upload" className="mb-1.5 mt-2 block text-sm font-bold text-slate-600">
                         อัปโหลดสลิป/หลักฐานการโอนเงิน *
                     </label>
-                    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40">
+                    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 p-6 text-center transition hover:border-blue-400 hover:bg-blue-50/40">
                         <input
                             type="file"
                             id="reg-slip-upload"

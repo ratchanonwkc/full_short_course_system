@@ -74,7 +74,7 @@ export default function SubjectsPage() {
                 icon: "error",
                 title: "โหลดข้อมูลโครงสร้างวิชาไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setStructureLoading(false);
@@ -115,7 +115,7 @@ export default function SubjectsPage() {
                 icon: "error",
                 title: "โหลดข้อมูลรายวิชาไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             if (currentRequestId === requestIdRef.current) setLoading(false);
@@ -178,7 +178,7 @@ export default function SubjectsPage() {
                 icon: "error",
                 title: "ลบข้อมูลไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         }
     };
@@ -199,7 +199,7 @@ export default function SubjectsPage() {
                     type="button"
                     onClick={handleCreate}
                     disabled={structureLoading}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-60"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60"
                 >
                     <Plus size={16} />
                     เพิ่มรายวิชาใหม่
@@ -215,7 +215,7 @@ export default function SubjectsPage() {
                         value={rawSearchTerm}
                         onChange={(e) => setRawSearchTerm(e.target.value)}
                         placeholder="ค้นหารหัสวิชา หรือ ชื่อวิชา..."
-                        className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
+                        className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40"
                     />
                     {/* บอกสถานะตอนกำลังรอ debounce/โหลดผลลัพธ์ ไม่ให้ผู้ใช้งง */}
                     {rawSearchTerm !== searchTerm ? (

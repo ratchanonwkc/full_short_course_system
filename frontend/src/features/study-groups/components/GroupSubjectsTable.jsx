@@ -48,10 +48,10 @@ export default function GroupSubjectsTable({
         <div className="rounded-xl border border-slate-200 p-4">
             <div className="mb-3 flex items-center justify-between">
                 <p className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
-                    <BookOpen size={15} className="text-indigo-500" />
+                    <BookOpen size={15} className="text-blue-500" />
                     ตารางวิชาย่อย (ชุดวิชา)
                 </p>
-                <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-600">
+                <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-600">
                     รวม {totalHours} ชม.
                 </span>
             </div>
@@ -64,10 +64,10 @@ export default function GroupSubjectsTable({
                         options={subjectOptions}
                         placeholder="พิมพ์ค้นหารายวิชาเพื่อเพิ่มเข้ากลุ่ม..."
                         emptyText="ไม่พบรายวิชา"
-                        className="w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
+                        className="w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40"
                     />
                 </div>
-                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-indigo-300 px-3 py-2 text-xs font-semibold text-indigo-500">
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-blue-300 px-3 py-2 text-xs font-semibold text-blue-500">
                     <Plus size={13} />
                     เพิ่มวิชาเข้ากลุ่ม
                 </span>
@@ -99,7 +99,7 @@ export default function GroupSubjectsTable({
                                 value={s.moe_code || ""}
                                 onChange={(e) => onMoeCodeChange?.(s._localId, e.target.value)}
                                 placeholder="เช่น 691101001"
-                                className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs font-mono outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
+                                className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs font-mono outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
                             />
                             <span className="text-right text-sm font-medium text-slate-600">{s.total_hours}</span>
                             <button

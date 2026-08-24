@@ -15,7 +15,7 @@ export default function Stepper({ steps, currentStep }) {
                                     isDone
                                         ? "bg-emerald-500 text-white"
                                         : isActive
-                                        ? "bg-indigo-600 text-white ring-4 ring-indigo-100"
+                                        ? "bg-blue-600 text-white ring-4 ring-blue-100"
                                         : "bg-slate-200 text-slate-400"
                                 }`}
                             >
@@ -23,7 +23,7 @@ export default function Stepper({ steps, currentStep }) {
                             </div>
                             <span
                                 className={`w-20 text-center text-[11px] font-semibold leading-tight sm:w-24 sm:text-xs ${
-                                    isActive ? "text-indigo-600" : isDone ? "text-emerald-600" : "text-slate-400"
+                                    isActive ? "text-blue-600" : isDone ? "text-emerald-600" : "text-slate-400"
                                 }`}
                             >
                                 {label}

@@ -9,7 +9,7 @@ export default function ProtectedRoute() {
             <div className="flex min-h-screen items-center justify-center bg-slate-50">
                 <div className="text-center">
                     {/* Modern dynamic spinner */}
-                    <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+                    <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
                     <p className="mt-4 text-sm font-medium text-slate-500">กำลังตรวจสอบสิทธิ์...</p>
                 </div>
             </div>

@@ -35,8 +35,8 @@ export default function PublicLayout() {
     navigate('/dashboard');
   };
 
-  const activeCls = 'text-indigo-600 font-semibold';
-  const inactiveCls = 'text-slate-600 hover:text-indigo-600 transition';
+  const activeCls = 'text-blue-600 font-semibold';
+  const inactiveCls = 'text-slate-600 hover:text-blue-600 transition';
 
   return (
     <>
@@ -46,7 +46,7 @@ export default function PublicLayout() {
 
           {/* Logo + System name */}
           <Link to="/" className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
               <GraduationCap size={20} strokeWidth={2.2} />
             </span>
             <p className="text-sm font-bold text-slate-900 sm:text-base leading-tight">
@@ -71,7 +71,7 @@ export default function PublicLayout() {
               <button
                 type="button"
                 onClick={() => setStatusOpen(true)}
-                className="inline-flex items-center gap-1.5 text-slate-600 transition hover:text-indigo-600"
+                className="inline-flex items-center gap-1.5 text-slate-600 transition hover:text-blue-600"
               >
                 <FileSearch size={15} />
                 ตรวจสอบสถานะการสมัคร
@@ -84,7 +84,7 @@ export default function PublicLayout() {
             <button
               type="button"
               onClick={() => setLoginOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.98]"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
             >
               <LogIn size={16} />
               <span className="hidden sm:inline">เข้าสู่ระบบเจ้าหน้าที่</span>
@@ -93,7 +93,7 @@ export default function PublicLayout() {
 
             <button
               type="button"
-              className="md:hidden p-2 text-slate-600 hover:text-indigo-600 transition"
+              className="md:hidden p-2 text-slate-600 hover:text-blue-600 transition"
               onClick={() => setMobileMenuOpen((v) => !v)}
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -121,7 +121,7 @@ export default function PublicLayout() {
                 <button
                   type="button"
                   onClick={() => { setMobileMenuOpen(false); setStatusOpen(true); }}
-                  className="inline-flex items-center gap-1.5 text-slate-600 transition hover:text-indigo-600"
+                  className="inline-flex items-center gap-1.5 text-slate-600 transition hover:text-blue-600"
                 >
                   <FileSearch size={15} />
                   ตรวจสอบสถานะการสมัคร

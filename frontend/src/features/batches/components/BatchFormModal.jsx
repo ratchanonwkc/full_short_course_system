@@ -11,7 +11,7 @@ import {
 import VirtualizedCombobox from "../../../components/common/VirtualizedCombobox";
 import MaskedDateInput from "../../../components/common/MaskedDateInput";
 import BatchSequenceFields from "./BatchSequenceFields";
-import { buildBatchDisplayName, getIteration } from "../../../utils/batchName";
+import { buildBatchDisplayName, getIteration, getTerm, getBatchNo } from "../../../utils/batchName";
 
 const STATUS_OPTIONS = [
     { value: "planning", label: "วางแผน" },
@@ -45,10 +45,10 @@ const ALL_ROLES = [...EXEC_ROLES, ...OPS_ROLES];
 const EMPTY_FORM = {
     // Tab 1
     academic_year: "",
-    term: "",
+    term: 1,
     batch_sequence: "",
     iteration: 1,
-    batch_no: "",
+    batch_no: 1,
     batch_name: "",
     status: "planning",
     // Tab 2
@@ -59,13 +59,14 @@ const EMPTY_FORM = {
     study_open_date: "",
     study_close_date: "",
     total_hours: "",
-    // Tab 3 (director_signature_url / head_registration_signature_url ถูกซ่อนไว้ชั่วคราว)
+    // Tab 3
     ...Object.fromEntries(ALL_ROLES.map((r) => [r.key, ""])),
 };
 
 const CURRENT_BE_YEAR = String(new Date().getFullYear() + 543);
 
 const EMPTY_BULK_COMMON = {
+    batch_sequence: "",
     academic_year: CURRENT_BE_YEAR,
     ...Object.fromEntries(ALL_ROLES.map((r) => [r.key, ""])),
 };
@@ -91,29 +92,13 @@ const EMPTY_BULK_ROWS = [1, 2, 3, 4].map((batch_no) => ({
  * - Single Batch: create/edit one batch through a 3-tab form
  * - Bulk Year Setup: create a full academic year (2 terms / 4 batches) at once
  *
- * Performance/UX notes:
- * - ผู้รับผิดชอบ 9 ตำแหน่งใช้ <VirtualizedCombobox> (src/components/common) แทน
- *   Combobox เดิม เพื่อแก้ปัญหา dropdown หน่วงเมื่อรายชื่ออาจารย์มีจำนวนมาก
- * - ทุกช่องวันที่ใช้ <MaskedDateInput> (src/components/common) แทน
- *   <input type="date"> เดิม -> พิมพ์ตัวเลขล้วน ๆ ได้เลย ระบบใส่ "/" ให้อัตโนมัติ
- *   และ validate ทันทีที่ครบ 8 หลักโดยไม่ต้องกด Enter/blur เอง (ยังมีปุ่มปฏิทินไว้เผื่อ
- *   เลือกด้วยเมาส์เหมือนเดิม)
- *
- * Notes on schema mapping:
- * - academic_year is varchar(4) -> plain text input, max length 4
- * - term is smallint (1 or 2) -> select limited to 1 / 2
- * - batch_no is smallint (1-4) -> select limited to 1-4
- * - director_signature_url / head_registration_signature_url are part of the
- *   schema but intentionally hidden from this form for now
- *
  * Props:
  * - isOpen: boolean
  * - initialData: Batch | null       -> null = create mode, object = edit mode (always single-batch)
  * - onClose: () => void
- * - onSaved: (batch) => void        -> called once per saved batch (single mode: 1 call, bulk mode: 4 calls)
- * - teachers: Array<Teacher>        -> รายชื่ออาจารย์จริงจาก GET /teachers (public.teachers, มี prefix_name/
- *                                       first_name_th/last_name_th) ให้หน้า BatchesPage ดึงมาส่งเป็น prop
- * - teachersLoading: boolean        -> true ระหว่างที่ BatchesPage ยังโหลดรายชื่ออาจารย์อยู่
+ * - onSaved: (batch) => void        -> called once per saved batch
+ * - teachers: Array<Teacher>        -> real teachers from GET /teachers
+ * - teachersLoading: boolean
  */
 export default function BatchFormModal({
     isOpen,
@@ -133,15 +118,20 @@ export default function BatchFormModal({
     useEffect(() => {
         if (isOpen) {
             setMode("single");
-            setForm(
-                initialData
-                    ? {
-                          ...EMPTY_FORM,
-                          ...initialData,
-                          iteration: initialData.iteration ?? (initialData.batch_no ? getIteration(initialData.batch_no) : 1),
-                      }
-                    : EMPTY_FORM
-            );
+            if (initialData) {
+                const bNo = Number(initialData.batch_no) || 1;
+                const term = initialData.term ? Number(initialData.term) : getTerm(bNo);
+                const iteration = initialData.iteration ? Number(initialData.iteration) : getIteration(bNo);
+                setForm({
+                    ...EMPTY_FORM,
+                    ...initialData,
+                    term,
+                    iteration,
+                    batch_no: bNo,
+                });
+            } else {
+                setForm(EMPTY_FORM);
+            }
             setBulkCommon(EMPTY_BULK_COMMON);
             setBulkRows(EMPTY_BULK_ROWS);
         }
@@ -152,12 +142,11 @@ export default function BatchFormModal({
         const auto = buildBatchDisplayName({
             batch_sequence: form.batch_sequence,
             batch_no: form.batch_no,
-            term: form.term,
             academic_year: form.academic_year,
         }).slice(0, 50);
         setForm((prev) => (prev.batch_name === auto ? prev : { ...prev, batch_name: auto }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [form.batch_sequence, form.batch_no, form.term, form.academic_year, isEditMode]);
+    }, [form.batch_sequence, form.batch_no, form.academic_year, isEditMode]);
 
     // ── Handlers: normal <input>/<select> (event-based) ─────────────────────
     const handleChange = (field) => (e) => {
@@ -169,7 +158,7 @@ export default function BatchFormModal({
         setForm((prev) => ({ ...prev, [field]: value }));
     };
 
-    // ── Handlers: MaskedDateInput (คืนค่า ISO string ตรง ๆ ไม่ใช่ event) ──────
+    // ── Handlers: MaskedDateInput ───────────────────────────────────────────
     const handleDateChange = (field) => (isoValue) => {
         setForm((prev) => ({ ...prev, [field]: isoValue }));
     };
@@ -192,8 +181,6 @@ export default function BatchFormModal({
         setBulkRows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: isoValue } : row)));
     };
 
-    // ต่อ "คำนำหน้า + ชื่อ + นามสกุล" จากข้อมูลอาจารย์จริงให้เป็น label เดียวใน Combobox
-    // (เผื่อ backend ยังไม่ join prefix_name มาให้ ก็ยัง fallback ไปที่ชื่อ-นามสกุลเฉย ๆ ได้)
     const teacherOptions = useMemo(
         () =>
             teachers.map((t) => ({
@@ -208,7 +195,6 @@ export default function BatchFormModal({
 
     const handleCopyFromLatest = async () => {
         try {
-            // ยิง GET /batches/latest-personnel จริง -> ได้ ID อาจารย์ทั้ง 9 ตำแหน่งจากรุ่นล่าสุด
             const data = await getLatestPersonnel();
 
             setForm((prev) => ({
@@ -239,11 +225,6 @@ export default function BatchFormModal({
 
     const handleCopyFromPreviousYear = async () => {
         try {
-            // หมายเหตุ: ฝั่ง backend (batches.routes.js) ยังมีแค่ endpoint
-            // GET /batches/latest-personnel (ดึงจากรุ่นล่าสุดตาม id ไม่ได้กรองตามปีการศึกษา)
-            // จึงใช้ endpoint เดียวกันไปพลางก่อน ถ้าต้องการดึง "เฉพาะปีก่อนหน้า" จริง ๆ
-            // ควรเพิ่ม endpoint ใหม่ฝั่ง backend เช่น
-            // GET /batches/latest-personnel?academic_year=${Number(bulkCommon.academic_year) - 1}
             const data = await getLatestPersonnel();
 
             setBulkCommon((prev) => ({
@@ -276,7 +257,25 @@ export default function BatchFormModal({
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const { iteration, ...payload } = form; // <-- strip iteration
+            // Strip iteration (not a column in batches table)
+            const { iteration, ...sanitizedForm } = form;
+            const derivedBatchNo = Number(sanitizedForm.batch_no) || getBatchNo(sanitizedForm.term, form.iteration);
+            const derivedTerm = Number(sanitizedForm.term) || getTerm(derivedBatchNo);
+
+            const payload = {
+                ...sanitizedForm,
+                batch_sequence: sanitizedForm.batch_sequence ? Number(sanitizedForm.batch_sequence) : null,
+                batch_no: derivedBatchNo,
+                term: derivedTerm,
+                academic_year: String(sanitizedForm.academic_year || ""),
+                batch_name: sanitizedForm.batch_name || buildBatchDisplayName({
+                    batch_sequence: sanitizedForm.batch_sequence,
+                    batch_no: derivedBatchNo,
+                    academic_year: sanitizedForm.academic_year,
+                }),
+                total_hours: sanitizedForm.total_hours ? Number(sanitizedForm.total_hours) : 0,
+            };
+
             // โหมดแก้ไข -> PUT /batches/:id, โหมดสร้างใหม่ -> POST /batches
             const data = isEditMode ? await updateBatch(form.id, payload) : await createBatch(payload);
 
@@ -286,14 +285,14 @@ export default function BatchFormModal({
                 icon: "success",
                 title: isEditMode ? "บันทึกการแก้ไขสำเร็จ" : "สร้างรุ่นการเรียนสำเร็จ",
                 text: `${data.batch_name || "รุ่นการเรียน"} ถูกบันทึกเรียบร้อยแล้ว`,
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } catch (err) {
             Swal.fire({
                 icon: "error",
                 title: "บันทึกข้อมูลไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาตรวจสอบข้อมูลแล้วลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsSubmitting(false);
@@ -307,33 +306,54 @@ export default function BatchFormModal({
             Swal.fire({
                 icon: "warning",
                 title: "กรุณากรอกปีการศึกษา",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
             return;
         }
 
-        const responsibleFields = Object.fromEntries(ALL_ROLES.map((r) => [r.key, bulkCommon[r.key]]));
+        if (!bulkCommon.batch_sequence) {
+            Swal.fire({
+                icon: "warning",
+                title: "กรุณากรอกรุ่นเริ่มต้น (Starting Sequence)",
+                confirmButtonColor: "#0270c7",
+            });
+            return;
+        }
 
-        const payload = bulkRows.map((row) => ({
-            academic_year: bulkCommon.academic_year,
-            term: row.term,
-            batch_no: row.batch_no,
-            batch_name: `รุ่น ${row.batch_no}/${bulkCommon.academic_year}`,
-            status: "planning",
-            batch_start_date: row.batch_start_date,
-            batch_end_date: row.batch_end_date,
-            admit_open_date: row.admit_open_date,
-            admit_close_date: row.admit_close_date,
-            study_open_date: row.study_open_date,
-            study_close_date: row.study_close_date,
-            total_hours: row.total_hours,
-            ...responsibleFields,
-        }));
+        const baseSeq = Number(bulkCommon.batch_sequence);
+        const responsibleFields = Object.fromEntries(ALL_ROLES.map((r) => [r.key, bulkCommon[r.key] || null]));
+
+        const payload = [1, 2, 3, 4].map((batch_no) => {
+            const row = bulkRows.find((r) => r.batch_no === batch_no) || {};
+            const term = getTerm(batch_no);
+            const seq = batch_no <= 2 ? baseSeq : baseSeq + 1;
+            const batchName = buildBatchDisplayName({
+                batch_sequence: seq,
+                batch_no,
+                academic_year: bulkCommon.academic_year,
+            });
+
+            return {
+                academic_year: String(bulkCommon.academic_year),
+                term,
+                batch_no,
+                batch_sequence: seq,
+                batch_name: batchName,
+                status: "planning",
+                batch_start_date: row.batch_start_date || null,
+                batch_end_date: row.batch_end_date || null,
+                admit_open_date: row.admit_open_date || null,
+                admit_close_date: row.admit_close_date || null,
+                study_open_date: row.study_open_date || null,
+                study_close_date: row.study_close_date || null,
+                total_hours: row.total_hours ? Number(row.total_hours) : 0,
+                ...responsibleFields,
+            };
+        });
 
         setIsSubmitting(true);
         try {
             // ยิง POST /batches/bulk-year ครั้งเดียวพร้อม Array 4 Items
-            // backend (batches.controller.js) จะ insert ทีเดียวแล้วตอบกลับ { message, count, data }
             const { data } = await createBulkYearBatches(payload);
 
             data.forEach((item) => onSaved?.(item));
@@ -341,20 +361,22 @@ export default function BatchFormModal({
             Swal.fire({
                 icon: "success",
                 title: "สร้างรุ่นการเรียนยกปีสำเร็จ",
-                text: `สร้างรุ่นการเรียนปีการศึกษา ${bulkCommon.academic_year} ทั้ง 4 รุ่นเรียบร้อยแล้ว`,
-                confirmButtonColor: "#4f46e5",
+                text: `สร้างรุ่นการเรียนปีการศึกษา ${bulkCommon.academic_year} ทั้ง 4 รุ่น (รุ่นที่ ${baseSeq} - ${baseSeq + 1}) เรียบร้อยแล้ว`,
+                confirmButtonColor: "#0270c7",
             });
         } catch (err) {
             Swal.fire({
                 icon: "error",
                 title: "สร้างรุ่นการเรียนยกปีไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาตรวจสอบข้อมูลแล้วลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsSubmitting(false);
         }
     };
+
+    const bulkBaseSeq = Number(bulkCommon.batch_sequence) || null;
 
     return (
         <Transition appear show={isOpen} as={Fragment}>
@@ -405,7 +427,7 @@ export default function BatchFormModal({
                                                 type="button"
                                                 onClick={() => setMode("single")}
                                                 className={`inline-flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-semibold transition sm:text-sm ${mode === "single"
-                                                    ? "bg-indigo-600 text-white shadow-sm"
+                                                    ? "bg-blue-600 text-white shadow-sm"
                                                     : "text-slate-500 hover:text-slate-700"
                                                     }`}
                                             >
@@ -416,7 +438,7 @@ export default function BatchFormModal({
                                                 type="button"
                                                 onClick={() => setMode("bulk")}
                                                 className={`inline-flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-semibold transition sm:text-sm ${mode === "bulk"
-                                                    ? "bg-indigo-600 text-white shadow-sm"
+                                                    ? "bg-blue-600 text-white shadow-sm"
                                                     : "text-slate-500 hover:text-slate-700"
                                                     }`}
                                             >
@@ -436,12 +458,12 @@ export default function BatchFormModal({
                                                         {({ selected }) => (
                                                             <button
                                                                 type="button"
-                                                                className={`relative px-3 py-3 text-sm font-semibold outline-none transition ${selected ? "text-indigo-600" : "text-slate-500 hover:text-slate-700"
+                                                                className={`relative px-3 py-3 text-sm font-semibold outline-none transition ${selected ? "text-blue-600" : "text-slate-500 hover:text-slate-700"
                                                                     }`}
                                                             >
                                                                 {label}
                                                                 {selected && (
-                                                                    <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-indigo-600" />
+                                                                    <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-blue-600" />
                                                                 )}
                                                             </button>
                                                         )}
@@ -459,20 +481,19 @@ export default function BatchFormModal({
                                                             academic_year: form.academic_year,
                                                             term: form.term,
                                                         }}
-                                                        onChange={(next) =>
+                                                        onChange={(next) => {
+                                                            const nextTerm = Number(next.term) || 1;
+                                                            const nextIteration = Number(next.iteration) || 1;
+                                                            const derivedBatchNo = getBatchNo(nextTerm, nextIteration);
                                                             setForm((prev) => ({
                                                                 ...prev,
                                                                 batch_sequence: next.batch_sequence,
-                                                                iteration: next.iteration,
+                                                                iteration: nextIteration,
                                                                 academic_year: next.academic_year,
-                                                                term: next.term,
-                                                                // batch_no (smallint 1-4, required NOT NULL column) derived
-                                                                // from iteration parity so it stays consistent with the
-                                                                // legacy display (utils/batchName.js#getIteration: odd=1,
-                                                                // even=2). Keeps existing batch_no semantics unchanged.
-                                                                batch_no: Number(next.iteration) === 2 ? 2 : 1,
-                                                            }))
-                                                        }
+                                                                term: nextTerm,
+                                                                batch_no: derivedBatchNo,
+                                                            }));
+                                                        }}
                                                         isEditMode={isEditMode}
                                                     />
 
@@ -494,7 +515,7 @@ export default function BatchFormModal({
                                                                 maxLength={50}
                                                                 value={form.batch_name}
                                                                 onChange={handleChange("batch_name")}
-                                                                placeholder='เช่น "รุ่น 139/1 (2569)" หรือปล่อยว่างให้ระบบ auto-fill จาก preview ด้านบน'
+                                                                placeholder='เช่น "รุ่นที่ 139 ครั้งที่ 1 ปีการศึกษา 2569 ภาคเรียนที่ 1"'
                                                                 className={inputClass}
                                                                 required
                                                             />
@@ -552,7 +573,7 @@ export default function BatchFormModal({
                                                     <button
                                                         type="button"
                                                         onClick={handleCopyFromLatest}
-                                                        className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-100"
+                                                        className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-100"
                                                     >
                                                         <ClipboardCopy size={14} />
                                                         คัดลอกข้อมูลผู้รับผิดชอบจากรุ่นล่าสุด
@@ -609,7 +630,7 @@ export default function BatchFormModal({
                                             <button
                                                 type="submit"
                                                 disabled={isSubmitting}
-                                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                                             >
                                                 <Save size={15} />
                                                 {isSubmitting ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
@@ -619,22 +640,36 @@ export default function BatchFormModal({
                                 ) : (
                                     <form onSubmit={handleBulkSubmit} className="flex min-h-0 flex-1 flex-col">
                                         <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
-                                            {/* ปีการศึกษา + auto-fill ผู้บริหาร */}
+                                            {/* ปีการศึกษา + รุ่นเริ่มต้น + auto-fill ผู้บริหาร */}
                                             <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-                                                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                                                    <Field label="ปีการศึกษา" htmlFor="bulk_academic_year">
-                                                        <input
-                                                            id="bulk_academic_year"
-                                                            type="text"
-                                                            inputMode="numeric"
-                                                            maxLength={4}
-                                                            value={bulkCommon.academic_year}
-                                                            onChange={handleBulkCommonChange("academic_year")}
-                                                            placeholder="เช่น 2570"
-                                                            className={`${inputClass} sm:w-40`}
-                                                            required
-                                                        />
-                                                    </Field>
+                                                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                        <Field label="รุ่นเริ่มต้น (Starting Sequence)" htmlFor="bulk_batch_sequence">
+                                                            <input
+                                                                id="bulk_batch_sequence"
+                                                                type="number"
+                                                                min="1"
+                                                                value={bulkCommon.batch_sequence}
+                                                                onChange={handleBulkCommonChange("batch_sequence")}
+                                                                placeholder="เช่น 139"
+                                                                className={`${inputClass} sm:w-40`}
+                                                                required
+                                                            />
+                                                        </Field>
+                                                        <Field label="ปีการศึกษา" htmlFor="bulk_academic_year">
+                                                            <input
+                                                                id="bulk_academic_year"
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                maxLength={4}
+                                                                value={bulkCommon.academic_year}
+                                                                onChange={handleBulkCommonChange("academic_year")}
+                                                                placeholder="เช่น 2570"
+                                                                className={`${inputClass} sm:w-40`}
+                                                                required
+                                                            />
+                                                        </Field>
+                                                    </div>
                                                     <button
                                                         type="button"
                                                         onClick={handleCopyFromPreviousYear}
@@ -685,69 +720,95 @@ export default function BatchFormModal({
 
                                             {/* กำหนดการรายรุ่น */}
                                             <div className="space-y-4">
-                                                <p className="text-sm font-semibold text-slate-700">
-                                                    กำหนดการรายรุ่น (เทอม 1: รุ่น 1-2 · เทอม 2: รุ่น 3-4)
-                                                </p>
-                                                {bulkRows.map((row, index) => (
-                                                    <div
-                                                        key={row.batch_no}
-                                                        className={`rounded-xl border p-4 ${row.term === 2 ? "border-indigo-100 bg-indigo-50/20" : "border-slate-200"
-                                                            }`}
-                                                    >
-                                                        <div className="mb-3 flex items-center gap-2">
-                                                            <span className="text-sm font-bold text-slate-900">
-                                                                รุ่น {row.batch_no}/{bulkCommon.academic_year || "…"}
-                                                            </span>
-                                                            <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-                                                                เทอม {row.term}
-                                                            </span>
-                                                        </div>
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-sm font-semibold text-slate-700">
+                                                        กำหนดการรายรุ่น (เทอม 1: ครั้งที่ 1-2 · เทอม 2: ครั้งที่ 1-2)
+                                                    </p>
+                                                    {bulkBaseSeq && (
+                                                        <span className="text-xs font-medium text-blue-600">
+                                                            เทอม 1: รุ่น {bulkBaseSeq} | เทอม 2: รุ่น {bulkBaseSeq + 1}
+                                                        </span>
+                                                    )}
+                                                </div>
 
-                                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                                            <DateRangeGroup
-                                                                title="ช่วงเวลารุ่น"
-                                                                startId={`row${index}_batch_start_date`}
-                                                                startValue={row.batch_start_date}
-                                                                onStartChange={handleBulkRowDateChange(index, "batch_start_date")}
-                                                                endId={`row${index}_batch_end_date`}
-                                                                endValue={row.batch_end_date}
-                                                                onEndChange={handleBulkRowDateChange(index, "batch_end_date")}
-                                                            />
-                                                            <DateRangeGroup
-                                                                title="ช่วงรับสมัคร"
-                                                                startId={`row${index}_admit_open_date`}
-                                                                startValue={row.admit_open_date}
-                                                                onStartChange={handleBulkRowDateChange(index, "admit_open_date")}
-                                                                endId={`row${index}_admit_close_date`}
-                                                                endValue={row.admit_close_date}
-                                                                onEndChange={handleBulkRowDateChange(index, "admit_close_date")}
-                                                            />
-                                                            <DateRangeGroup
-                                                                title="ช่วงเวลาเรียน"
-                                                                startId={`row${index}_study_open_date`}
-                                                                startValue={row.study_open_date}
-                                                                onStartChange={handleBulkRowDateChange(index, "study_open_date")}
-                                                                endId={`row${index}_study_close_date`}
-                                                                endValue={row.study_close_date}
-                                                                onEndChange={handleBulkRowDateChange(index, "study_close_date")}
-                                                            />
-                                                        </div>
+                                                {bulkRows.map((row, index) => {
+                                                    const rowTerm = getTerm(row.batch_no);
+                                                    const rowIteration = getIteration(row.batch_no);
+                                                    const rowSequence = bulkBaseSeq ? (row.batch_no <= 2 ? bulkBaseSeq : bulkBaseSeq + 1) : "Base";
+                                                    const rowDisplayName = bulkBaseSeq
+                                                        ? buildBatchDisplayName({
+                                                            batch_sequence: rowSequence,
+                                                            batch_no: row.batch_no,
+                                                            academic_year: bulkCommon.academic_year,
+                                                        })
+                                                        : `รุ่นที่ Base ครั้งที่ ${rowIteration} ปีการศึกษา ${bulkCommon.academic_year || "…"} ภาคเรียนที่ ${rowTerm}`;
 
-                                                        <div className="mt-3">
-                                                            <Field label="จำนวนชั่วโมงรวม" htmlFor={`row${index}_total_hours`}>
-                                                                <input
-                                                                    id={`row${index}_total_hours`}
-                                                                    type="number"
-                                                                    min="0"
-                                                                    value={row.total_hours}
-                                                                    onChange={handleBulkRowChange(index, "total_hours")}
-                                                                    placeholder="เช่น 120"
-                                                                    className={`${inputClass} sm:w-48`}
+                                                    return (
+                                                        <div
+                                                            key={row.batch_no}
+                                                            className={`rounded-xl border p-4 ${rowTerm === 2 ? "border-blue-100 bg-blue-50/20" : "border-slate-200"
+                                                                }`}
+                                                        >
+                                                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-sm font-bold text-slate-900">
+                                                                        {rowDisplayName}
+                                                                    </span>
+                                                                    <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                                                        batch_no: {row.batch_no}
+                                                                    </span>
+                                                                </div>
+                                                                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${rowTerm === 1 ? "bg-blue-100 text-blue-700" : "bg-sky-100 text-sky-700"}`}>
+                                                                    ภาคเรียนที่ {rowTerm} (ครั้งที่ {rowIteration})
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                                                <DateRangeGroup
+                                                                    title="ช่วงเวลารุ่น"
+                                                                    startId={`row${index}_batch_start_date`}
+                                                                    startValue={row.batch_start_date}
+                                                                    onStartChange={handleBulkRowDateChange(index, "batch_start_date")}
+                                                                    endId={`row${index}_batch_end_date`}
+                                                                    endValue={row.batch_end_date}
+                                                                    onEndChange={handleBulkRowDateChange(index, "batch_end_date")}
                                                                 />
-                                                            </Field>
+                                                                <DateRangeGroup
+                                                                    title="ช่วงรับสมัคร"
+                                                                    startId={`row${index}_admit_open_date`}
+                                                                    startValue={row.admit_open_date}
+                                                                    onStartChange={handleBulkRowDateChange(index, "admit_open_date")}
+                                                                    endId={`row${index}_admit_close_date`}
+                                                                    endValue={row.admit_close_date}
+                                                                    onEndChange={handleBulkRowDateChange(index, "admit_close_date")}
+                                                                />
+                                                                <DateRangeGroup
+                                                                    title="ช่วงเวลาเรียน"
+                                                                    startId={`row${index}_study_open_date`}
+                                                                    startValue={row.study_open_date}
+                                                                    onStartChange={handleBulkRowDateChange(index, "study_open_date")}
+                                                                    endId={`row${index}_study_close_date`}
+                                                                    endValue={row.study_close_date}
+                                                                    onEndChange={handleBulkRowDateChange(index, "study_close_date")}
+                                                                />
+                                                            </div>
+
+                                                            <div className="mt-3">
+                                                                <Field label="จำนวนชั่วโมงรวม" htmlFor={`row${index}_total_hours`}>
+                                                                    <input
+                                                                        id={`row${index}_total_hours`}
+                                                                        type="number"
+                                                                        min="0"
+                                                                        value={row.total_hours}
+                                                                        onChange={handleBulkRowChange(index, "total_hours")}
+                                                                        placeholder="เช่น 120"
+                                                                        className={`${inputClass} sm:w-48`}
+                                                                    />
+                                                                </Field>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         </div>
 
@@ -763,7 +824,7 @@ export default function BatchFormModal({
                                             <button
                                                 type="submit"
                                                 disabled={isSubmitting}
-                                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                                             >
                                                 <Save size={15} />
                                                 {isSubmitting ? "กำลังสร้าง 4 รุ่น..." : "สร้างรุ่นการเรียนทั้งปี (4 รุ่น)"}
@@ -781,7 +842,7 @@ export default function BatchFormModal({
 }
 
 const inputClass =
-    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40";
+    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40";
 
 function Field({ label, htmlFor, full = false, children }) {
     return (

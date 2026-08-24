@@ -123,7 +123,7 @@ export default function ThaiDateInput({
                     required={required}
                     className={
                         className ||
-                        "w-full rounded-lg border border-slate-300 py-2 pl-3 pr-16 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                        "w-full rounded-lg border border-slate-300 py-2 pl-3 pr-16 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                     }
                 />
                 <div className="absolute inset-y-0 right-1.5 flex items-center gap-0.5">
@@ -165,7 +165,7 @@ export default function ThaiDateInput({
                             <select
                                 value={viewDate.month()}
                                 onChange={(e) => setViewDate((d) => d.month(Number(e.target.value)))}
-                                className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400"
+                                className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-blue-400"
                             >
                                 {Array.from({ length: 12 }).map((_, m) => (
                                     <option key={m} value={m}>
@@ -176,7 +176,7 @@ export default function ThaiDateInput({
                             <select
                                 value={viewDate.year()}
                                 onChange={(e) => setViewDate((d) => d.year(Number(e.target.value)))}
-                                className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400"
+                                className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-blue-400"
                             >
                                 {yearOptions.map((beYear) => (
                                     <option key={beYear} value={beYear - 543}>
@@ -211,10 +211,10 @@ export default function ThaiDateInput({
                                     type="button"
                                     onClick={() => handleSelectDay(day)}
                                     className={`aspect-square rounded-md text-xs font-medium transition ${selected && day.isSame(selected, "day")
-                                            ? "bg-indigo-600 text-white"
+                                            ? "bg-blue-600 text-white"
                                             : day.isSame(today, "day")
-                                                ? "border border-indigo-400 text-indigo-600"
-                                                : "text-slate-700 hover:bg-indigo-50"
+                                                ? "border border-blue-400 text-blue-600"
+                                                : "text-slate-700 hover:bg-blue-50"
                                         }`}
                                 >
                                     {day.date()}
@@ -236,7 +236,7 @@ export default function ThaiDateInput({
                                 setViewDate(today);
                                 setIsOpen(false);
                             }}
-                            className="text-xs font-semibold text-indigo-600 hover:underline"
+                            className="text-xs font-semibold text-blue-600 hover:underline"
                         >
                             วันนี้
                         </button>

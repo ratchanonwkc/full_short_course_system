@@ -159,7 +159,7 @@ export default function TeacherFormModal({
                 icon: "success",
                 title: isEditMode ? "บันทึกการแก้ไขสำเร็จ" : "เพิ่มอาจารย์สำเร็จ",
                 text: `${[form.first_name_th, form.last_name_th].filter(Boolean).join(" ") || "ข้อมูลอาจารย์"} ถูกบันทึกเรียบร้อยแล้ว`,
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } catch (err) {
             // 400 มาจาก backend กรณีเลขบัตรประชาชน/อีเมลซ้ำ (Unique Violation, code 23505)
@@ -172,7 +172,7 @@ export default function TeacherFormModal({
                     (isDuplicate
                         ? "เลขบัตรประชาชนหรืออีเมลนี้มีในระบบแล้ว"
                         : "กรุณาตรวจสอบข้อมูลแล้วลองใหม่อีกครั้ง"),
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsSubmitting(false);
@@ -363,7 +363,7 @@ export default function TeacherFormModal({
                                             <button
                                                 type="submit"
                                                 disabled={isSubmitting}
-                                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                                             >
                                                 <Save size={15} />
                                                 {isSubmitting ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
@@ -402,7 +402,7 @@ export default function TeacherFormModal({
 }
 
 const inputClass =
-    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40";
+    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40";
 
 function Field({ label, htmlFor, full = false, children }) {
     return (
@@ -441,7 +441,7 @@ function MasterCombobox({ id, value, onChange, options, placeholder, emptyText, 
                 type="button"
                 title="เพิ่มรายการใหม่ด่วน"
                 onClick={onQuickAdd}
-                className="flex shrink-0 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 text-indigo-600 transition hover:bg-indigo-100"
+                className="flex shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-blue-600 transition hover:bg-blue-100"
             >
                 <Plus size={15} />
             </button>
@@ -479,7 +479,7 @@ function QuickAddModal({ isOpen, type, onClose, onCreated }) {
 
     const handleSave = async () => {
         if (!primary.trim()) {
-            Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อรายการ", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อรายการ", confirmButtonColor: "#0270c7" });
             return;
         }
         setIsSaving(true);
@@ -507,7 +507,7 @@ function QuickAddModal({ isOpen, type, onClose, onCreated }) {
                 icon: "error",
                 title: "เพิ่มรายการไม่สำเร็จ",
                 text: err?.response?.data?.message || (isDuplicate ? "รายการนี้มีอยู่แล้วในระบบ" : "กรุณาลองใหม่อีกครั้ง"),
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsSaving(false);
@@ -586,7 +586,7 @@ function QuickAddModal({ isOpen, type, onClose, onCreated }) {
                                         type="button"
                                         onClick={handleSave}
                                         disabled={isSaving}
-                                        className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
                                     >
                                         <Plus size={13} />
                                         {isSaving ? "กำลังบันทึก..." : "เพิ่มและเลือกใช้"}

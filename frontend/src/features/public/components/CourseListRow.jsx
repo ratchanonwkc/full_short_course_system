@@ -14,7 +14,7 @@ function CourseListRow({ course }) {
     const courseCode = course.subject_code || course.subjects?.[0]?.subject_code;
 
     return (
-        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-200 hover:shadow-sm sm:flex-row sm:items-center sm:gap-4">
             {/* Title block */}
             <div className="min-w-0 flex-1">
                 {course.major_short_name && (
@@ -22,28 +22,28 @@ function CourseListRow({ course }) {
                 )}
                 <div className="flex flex-wrap items-center gap-2">
                     {courseCode && (
-                        <span className="rounded-md bg-indigo-50 px-1.5 py-0.5 text-[11px] font-bold text-indigo-600">
+                        <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-bold text-blue-600">
                             {courseCode}
                         </span>
                     )}
                     <h3 className="truncate text-sm font-bold text-slate-900 sm:text-base">{courseName}</h3>
-                    <TimeSlotBadge timeCode={course.time_code} timeRange={course.time_range} size="sm" />
+                    <TimeSlotBadge course={course} timeCode={course.time_code} timeRange={course.time_range} size="sm" />
                 </div>
 
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                     <span className="flex items-center gap-1">
-                        <Clock size={12} className="shrink-0 text-indigo-400" />
+                        <Clock size={12} className="shrink-0 text-blue-400" />
                         {course.schedule_description || `${course.total_hours} ชั่วโมง`}
                     </span>
                     {(course.registration_start_date || course.registration_end_date) && (
                         <span className="flex items-center gap-1">
-                            <Clock size={12} className="shrink-0 text-indigo-400" />
+                            <Clock size={12} className="shrink-0 text-blue-400" />
                             รับสมัคร {formatThaiDate(course.registration_start_date)} -{" "}
                             {formatThaiDate(course.registration_end_date)}
                         </span>
                     )}
                     <span className="flex items-center gap-1">
-                        <MapPin size={12} className="shrink-0 text-indigo-400" />
+                        <MapPin size={12} className="shrink-0 text-blue-400" />
                         {course.location_name || "-"}
                     </span>
                 </div>
@@ -64,7 +64,7 @@ function CourseListRow({ course }) {
                         เรียนฟรี
                     </span>
                 ) : (
-                    <span className="text-sm font-extrabold text-indigo-700 whitespace-nowrap">
+                    <span className="text-sm font-extrabold text-blue-700 whitespace-nowrap">
                         {course.fee.toLocaleString()} บ.
                     </span>
                 )}
@@ -75,7 +75,7 @@ function CourseListRow({ course }) {
                     onClick={(e) => isFull && e.preventDefault()}
                     className={`shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition active:scale-[0.98] ${isFull
                         ? "cursor-not-allowed bg-slate-100 text-slate-400"
-                        : "bg-indigo-600 text-white hover:bg-indigo-700"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
                         }`}
                 >
                     {isFull ? "เต็ม" : "สมัครเรียน"}

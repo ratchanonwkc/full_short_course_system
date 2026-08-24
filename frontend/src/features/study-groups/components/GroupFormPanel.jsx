@@ -30,7 +30,7 @@ import {
 } from "../../../utils/groupCode";
 
 const inputClass =
-    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40";
+    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40";
 
 const GROUP_TYPE_OPTIONS = Object.entries(GROUP_TYPE_LABELS).map(([value, label]) => ({ value, label }));
 const GROUP_STATUS_OPTIONS = Object.entries(GROUP_STATUS_META).map(([value, meta]) => ({ value, ...meta }));
@@ -237,7 +237,7 @@ export default function GroupFormPanel({
             showCancelButton: true,
             confirmButtonText: "เพิ่ม",
             cancelButtonText: "ยกเลิก",
-            confirmButtonColor: "#4f46e5",
+            confirmButtonColor: "#0270c7",
             preConfirm: (value) => {
                 if (!value?.trim()) Swal.showValidationMessage("กรุณากรอกชื่อสถานที่");
                 return value;
@@ -260,7 +260,7 @@ export default function GroupFormPanel({
                 icon: "error",
                 title: "เพิ่มสถานที่ไม่สำเร็จ",
                 text: err?.response?.data?.message || (isDuplicate ? "ชื่อสถานที่นี้มีอยู่แล้ว" : "กรุณาลองใหม่อีกครั้ง"),
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsQuickAddingLocation(false);
@@ -314,12 +314,12 @@ export default function GroupFormPanel({
                 icon: "warning",
                 title: "กรุณาเพิ่มรายวิชาเข้ากลุ่มก่อน",
                 text: "Auto Fill ต้องใช้รหัสวิชาจากตารางวิชาย่อยด้านล่างเพื่อคำนวณรหัสกลุ่มเรียน",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
             return;
         }
         if (!form.time_code || !form.group_no) {
-            Swal.fire({ icon: "warning", title: "กรุณาเลือกรอบเรียนและกรอกกลุ่มที่ก่อน", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณาเลือกรอบเรียนและกรอกกลุ่มที่ก่อน", confirmButtonColor: "#0270c7" });
             return;
         }
         if (!selectedMajor?.department_id || !selectedMajor?.full_major_code) {
@@ -327,7 +327,7 @@ export default function GroupFormPanel({
                 icon: "warning",
                 title: "กรุณาเลือกแผนกวิชาก่อน",
                 text: "ใช้รหัสแผนกของแผนกวิชาที่เลือก เพื่อคำนวณรหัสห้องเรียนและเลข ศธ.",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
             return;
         }
@@ -350,7 +350,7 @@ export default function GroupFormPanel({
             if (roomSeqRes.sequence) {
                 roomCode = buildRoomCode({ fullMajorCode, roomSequence: roomSeqRes.sequence });
             } else if (roomSeqRes.message) {
-                Swal.fire({ icon: "warning", title: "ไม่สามารถคำนวณรหัสห้องเรียนได้", text: roomSeqRes.message, confirmButtonColor: "#4f46e5" });
+                Swal.fire({ icon: "warning", title: "ไม่สามารถคำนวณรหัสห้องเรียนได้", text: roomSeqRes.message, confirmButtonColor: "#0270c7" });
             }
 
             const updatedSubjects = [...subjectsInGroup];
@@ -363,7 +363,7 @@ export default function GroupFormPanel({
                         moe_code: buildMoeCode({ beYear2Digit: beYear2, fullMajorCode, moeSequence: moeSeqRes.sequence }),
                     };
                 } else if (moeSeqRes.message) {
-                    Swal.fire({ icon: "warning", title: "ไม่สามารถคำนวณเลข ศธ. ได้", text: moeSeqRes.message, confirmButtonColor: "#4f46e5" });
+                    Swal.fire({ icon: "warning", title: "ไม่สามารถคำนวณเลข ศธ. ได้", text: moeSeqRes.message, confirmButtonColor: "#0270c7" });
                     break;
                 }
             }
@@ -394,7 +394,7 @@ export default function GroupFormPanel({
                 icon: "error",
                 title: "Auto Fill ไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsAutoFilling(false);
@@ -420,15 +420,15 @@ export default function GroupFormPanel({
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!form.major_id) {
-            Swal.fire({ icon: "warning", title: "กรุณาเลือกแผนกวิชา", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณาเลือกแผนกวิชา", confirmButtonColor: "#0270c7" });
             return;
         }
         if (!form.group_code?.trim()) {
-            Swal.fire({ icon: "warning", title: "กรุณากรอกหรือ Auto Fill รหัสกลุ่มเรียนก่อน", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณากรอกหรือ Auto Fill รหัสกลุ่มเรียนก่อน", confirmButtonColor: "#0270c7" });
             return;
         }
         if (!form.group_name?.trim()) {
-            Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อกลุ่มเรียน", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อกลุ่มเรียน", confirmButtonColor: "#0270c7" });
             return;
         }
 
@@ -484,14 +484,14 @@ export default function GroupFormPanel({
                 icon: "success",
                 title: isEditMode ? "บันทึกการแก้ไขสำเร็จ" : "สร้างกลุ่มเรียนสำเร็จ",
                 text: `${savedGroup.group_code || form.group_code} ถูกบันทึกเรียบร้อยแล้ว`,
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } catch (err) {
             Swal.fire({
                 icon: "error",
                 title: "บันทึกข้อมูลไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาตรวจสอบข้อมูลแล้วลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsSubmitting(false);
@@ -628,7 +628,7 @@ export default function GroupFormPanel({
                             <label
                                 key={opt.value}
                                 className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${form.group_type === opt.value
-                                    ? "border-indigo-400 bg-indigo-50 text-indigo-700 font-semibold"
+                                    ? "border-blue-400 bg-blue-50 text-blue-700 font-semibold"
                                     : "border-slate-200 text-slate-600 hover:bg-slate-50"
                                     }`}
                             >
@@ -638,7 +638,7 @@ export default function GroupFormPanel({
                                     value={opt.value}
                                     checked={form.group_type === opt.value}
                                     onChange={handleChange("group_type")}
-                                    className="accent-indigo-600"
+                                    className="accent-blue-600"
                                 />
                                 {opt.label}
                             </label>
@@ -647,9 +647,9 @@ export default function GroupFormPanel({
                 </Field>
 
                 {/* Auto Fill button + code previews */}
-                <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3.5">
+                <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3.5">
                     <div className="mb-2 flex items-center justify-between">
-                        <p className="text-xs font-semibold text-indigo-700">รหัสกลุ่มเรียน (Preview)</p>
+                        <p className="text-xs font-semibold text-blue-700">รหัสกลุ่มเรียน (Preview)</p>
                         <button
                             type="button"
                             onClick={handleAutoFill}
@@ -660,7 +660,7 @@ export default function GroupFormPanel({
                             {isAutoFilling ? "กำลังคำนวณ..." : "Auto Fill"}
                         </button>
                     </div>
-                    <p className="font-mono text-lg font-bold text-indigo-700">
+                    <p className="font-mono text-lg font-bold text-blue-700">
                         {form.group_code || groupCodePreview}
                     </p>
                     <p className="mt-1 text-[11px] text-slate-400">
@@ -728,7 +728,7 @@ export default function GroupFormPanel({
                             title="เพิ่มสถานที่ใหม่ด่วน"
                             onClick={handleQuickAddLocation}
                             disabled={isQuickAddingLocation}
-                            className="flex shrink-0 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 text-indigo-600 transition hover:bg-indigo-100 disabled:opacity-60"
+                            className="flex shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-blue-600 transition hover:bg-blue-100 disabled:opacity-60"
                         >
                             <Plus size={15} />
                         </button>
@@ -846,7 +846,7 @@ export default function GroupFormPanel({
                                 type="checkbox"
                                 checked={form.is_waived_fee}
                                 onChange={handleToggleFreeTuition}
-                                className="h-4 w-4 accent-indigo-600"
+                                className="h-4 w-4 accent-blue-600"
                             />
                             ฟรีค่าเรียน (ค่าเรียนจะถูกปรับเป็น 0 บาท และล็อกช่องกรอก)
                         </label>
@@ -855,14 +855,14 @@ export default function GroupFormPanel({
                                 type="checkbox"
                                 checked={form.is_ac_maintenance_fee}
                                 onChange={handleChange("is_ac_maintenance_fee")}
-                                className="h-4 w-4 accent-indigo-600"
+                                className="h-4 w-4 accent-blue-600"
                             />
                             ค่าบำรุงแอร์ (+{AC_FEE_PER_HOUR} บาท/ชม.)
                         </label>
                     </div>
                     <p className="mt-3 text-xs text-slate-500">
                         ประมาณการค่าเรียนรวม:{" "}
-                        <span className="font-semibold text-indigo-600">{estimatedTuition.toLocaleString()} บาท</span>
+                        <span className="font-semibold text-blue-600">{estimatedTuition.toLocaleString()} บาท</span>
                     </p>
                 </div>
             </div>
@@ -880,7 +880,7 @@ export default function GroupFormPanel({
                 <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     <Save size={15} />
                     {isSubmitting ? "กำลังบันทึก..." : isEditMode ? "บันทึกการแก้ไข" : "บันทึกข้อมูล"}

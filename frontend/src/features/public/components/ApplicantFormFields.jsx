@@ -4,7 +4,7 @@ import BirthDateField from "./BirthDateField";
 import useThaiAddress from "../../../hooks/useThaiAddress";
 
 const inputCls =
-    "w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none";
+    "w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none";
 const labelCls = "mb-1.5 block text-sm font-bold text-slate-600";
 
 /**
@@ -90,7 +90,7 @@ export default function ApplicantFormFields({
             {/* ส่วนที่ 1: คำนำหน้า + ชื่อ + เพศ + วันเกิด */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <User size={18} className="text-indigo-600" /> [1] ข้อมูลส่วนตัวผู้สมัคร
+                    <User size={18} className="text-blue-600" /> [1] ข้อมูลส่วนตัวผู้สมัคร
                 </h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div>
@@ -133,7 +133,7 @@ export default function ApplicantFormFields({
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
                     <h3 className="flex items-center gap-2 text-base font-black text-[#00204E]">
-                        <IdCard size={18} className="text-indigo-600" /> [2] เอกสารยืนยันตัวตนและอาชีพ
+                        <IdCard size={18} className="text-blue-600" /> [2] เอกสารยืนยันตัวตนและอาชีพ
                     </h3>
                     {showCitizenIdReader && (
                         <button
@@ -180,7 +180,7 @@ export default function ApplicantFormFields({
             {/* ส่วนที่ 3: ที่อยู่ตามทะเบียนบ้าน — Structured fields */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <MapPin size={18} className="text-indigo-600" /> [3] ที่อยู่ตามทะเบียนบ้าน
+                    <MapPin size={18} className="text-blue-600" /> [3] ที่อยู่ตามทะเบียนบ้าน
                 </h3>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     <div>
@@ -203,7 +203,7 @@ export default function ApplicantFormFields({
                 <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                         <label className={labelCls}>
-                            รหัสไปรษณีย์ * {registeredPostalLoading && <span className="text-indigo-500">(กำลังค้นหา...)</span>}
+                            รหัสไปรษณีย์ * {registeredPostalLoading && <span className="text-blue-500">(กำลังค้นหา...)</span>}
                         </label>
                         <input type="text" required maxLength={5} inputMode="numeric" value={formData.postal_code} onChange={handlePostalChange("registered")} placeholder="เช่น 10110" className={inputCls} />
                     </div>
@@ -225,7 +225,7 @@ export default function ApplicantFormFields({
             {/* ส่วนที่ 4: วุฒิการศึกษา */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <GraduationCap size={18} className="text-indigo-600" /> [4] ประวัติการศึกษาสูงสุด
+                    <GraduationCap size={18} className="text-blue-600" /> [4] ประวัติการศึกษาสูงสุด
                 </h3>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div>
@@ -252,7 +252,7 @@ export default function ApplicantFormFields({
             {/* ส่วนที่ 5-6: ที่อยู่ปัจจุบัน (structured) + ช่องทางติดต่อ */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <PhoneCall size={18} className="text-indigo-600" /> [5-6] ที่อยู่ปัจจุบันและช่องทางติดต่อ
+                    <PhoneCall size={18} className="text-blue-600" /> [5-6] ที่อยู่ปัจจุบันและช่องทางติดต่อ
                 </h3>
                 <div className="space-y-4">
                     <div>
@@ -265,7 +265,7 @@ export default function ApplicantFormFields({
                             type="checkbox"
                             checked={Boolean(formData.is_same_address)}
                             onChange={handleSameAddressToggle}
-                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                         />
                         ใช้ที่อยู่เดียวกับที่อยู่ตามทะเบียนบ้าน
                     </label>
@@ -293,7 +293,7 @@ export default function ApplicantFormFields({
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div>
                                     <label className={labelCls}>
-                                        รหัสไปรษณีย์ * {currentPostalLoading && <span className="text-indigo-500">(กำลังค้นหา...)</span>}
+                                        รหัสไปรษณีย์ * {currentPostalLoading && <span className="text-blue-500">(กำลังค้นหา...)</span>}
                                     </label>
                                     <input type="text" required maxLength={5} inputMode="numeric" value={formData.current_postal_code || ""} onChange={handlePostalChange("current")} placeholder="เช่น 10110" className={inputCls} />
                                 </div>

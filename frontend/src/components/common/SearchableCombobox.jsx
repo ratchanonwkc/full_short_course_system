@@ -3,7 +3,7 @@ import { Combobox, Transition } from "@headlessui/react";
 import { Check, ChevronsUpDown, XCircle } from "lucide-react";
 
 const inputClass =
-    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40";
+    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40";
 
 /**
  * SearchableCombobox
@@ -83,7 +83,7 @@ export default function SearchableCombobox({
                                     key={opt.value}
                                     value={opt}
                                     className={({ active }) =>
-                                        `flex cursor-pointer items-center justify-between px-3 py-2 ${active ? "bg-indigo-50 text-indigo-600" : "text-slate-700"
+                                        `flex cursor-pointer items-center justify-between px-3 py-2 ${active ? "bg-blue-50 text-blue-600" : "text-slate-700"
                                         }`
                                     }
                                 >

@@ -44,12 +44,12 @@ function Timeline({ status }) {
                         <div className="flex flex-col items-center gap-1">
                             <div
                                 className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                                    done ? "bg-emerald-500 text-white" : current ? "bg-indigo-600 text-white ring-4 ring-indigo-100" : "bg-slate-200 text-slate-400"
+                                    done ? "bg-emerald-500 text-white" : current ? "bg-blue-600 text-white ring-4 ring-blue-100" : "bg-slate-200 text-slate-400"
                                 }`}
                             >
                                 {done ? <CheckCircle2 size={14} /> : i + 1}
                             </div>
-                            <span className={`w-16 text-center text-[10px] font-semibold leading-tight ${current ? "text-indigo-600" : "text-slate-400"}`}>{step.label}</span>
+                            <span className={`w-16 text-center text-[10px] font-semibold leading-tight ${current ? "text-blue-600" : "text-slate-400"}`}>{step.label}</span>
                         </div>
                         {i < TIMELINE_STEPS.length - 1 && <div className={`mx-1 h-0.5 flex-1 rounded ${done ? "bg-emerald-400" : "bg-slate-200"}`} />}
                     </div>
@@ -93,7 +93,7 @@ function ResubmitPanel({ citizenId, enrollment, onDone }) {
                 type="file"
                 accept=".jpg,.jpeg,.png,.webp,.pdf"
                 onChange={(e) => setNewSlip(e.target.files?.[0] || null)}
-                className="block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-indigo-700"
+                className="block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-blue-700"
             />
             <button
                 onClick={handleSubmit}
@@ -164,7 +164,7 @@ export default function StatusCheckModal({ isOpen, onClose }) {
                         leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
                     >
                         <Dialog.Panel className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-xl">
-                            <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-4">
+                            <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-4">
                                 <Dialog.Title className="flex items-center gap-2 text-base font-bold text-white">
                                     <FileText size={18} /> ตรวจสอบสถานะการสมัคร
                                 </Dialog.Title>
@@ -183,12 +183,12 @@ export default function StatusCheckModal({ isOpen, onClose }) {
                                         value={citizenId}
                                         onChange={(e) => setCitizenId(e.target.value.replace(/\D/g, ""))}
                                         placeholder="กรอกเลขบัตรประชาชน"
-                                        className="flex-1 rounded-lg border border-slate-300 px-3 py-2 font-mono tracking-widest focus:border-indigo-500 focus:outline-none"
+                                        className="flex-1 rounded-lg border border-slate-300 px-3 py-2 font-mono tracking-widest focus:border-blue-500 focus:outline-none"
                                     />
                                     <button
                                         onClick={handleSearch}
                                         disabled={loading}
-                                        className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                                        className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                                     >
                                         <Search size={15} /> {loading ? "กำลังค้นหา..." : "ตรวจสอบ"}
                                     </button>
@@ -229,7 +229,7 @@ export default function StatusCheckModal({ isOpen, onClose }) {
                                                         {en.receipt_number && ` • เลขใบเสร็จ: ${en.receipt_book_no ? `${en.receipt_book_no}/` : ""}${en.receipt_number}`}
                                                     </p>
                                                     {en.slip_url && (
-                                                        <a href={en.slip_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-semibold text-indigo-600 hover:underline">
+                                                        <a href={en.slip_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-semibold text-blue-600 hover:underline">
                                                             ดูสลิปที่อัปโหลด
                                                         </a>
                                                     )}

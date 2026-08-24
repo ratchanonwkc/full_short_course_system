@@ -7,7 +7,7 @@ import Swal from "sweetalert2";
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 function SubjectCodeRenderer({ value }) {
-    return <span className="font-mono font-semibold text-indigo-700">{value}</span>;
+    return <span className="font-mono font-semibold text-blue-700">{value}</span>;
 }
 
 /**
@@ -46,7 +46,7 @@ export default function SubjectTable({ rowData = [], loading = false, onEdit, on
                 type="button"
                 title="แก้ไข"
                 onClick={() => onEdit?.(params.data)}
-                className="rounded-md p-1.5 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600"
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
             >
                 <Pencil size={15} />
             </button>

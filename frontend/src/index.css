@@ -1,18 +1,62 @@
 @import "tailwindcss";
 
 @theme {
-  /* Theme Hijacking: Override purple tokens with Institutional Navy/Blue shades */
+  /* กำหนดโทนสีน้ำเงิน/กรมท่าทางการสำหรับสถาบัน (Institutional Navy / Blue Theme) */
+  --color-primary-50: #f0f7ff;
+  --color-primary-100: #e0effe;
+  --color-primary-200: #bae0fd;
+  --color-primary-300: #7cc5fb;
+  --color-primary-400: #36a7f7;
+  --color-primary-500: #0c8ce9;
+  --color-primary-600: #0270c7;
+  --color-primary-700: #0359a1;
+  --color-primary-800: #074b83;
+  --color-primary-900: #0c3f6d;
+  --color-primary-950: #082847;
+
+  /* Force Override สี indigo ทั้งหมดในระบบให้เป็นสีน้ำเงิน */
+  --color-indigo-50: #f0f7ff;
+  --color-indigo-100: #e0effe;
+  --color-indigo-200: #bae0fd;
+  --color-indigo-300: #7cc5fb;
+  --color-indigo-400: #36a7f7;
+  --color-indigo-500: #0c8ce9;
+  --color-indigo-600: #0270c7;
+  --color-indigo-700: #0359a1;
+  --color-indigo-800: #074b83;
+  --color-indigo-900: #0c3f6d;
+  --color-indigo-950: #082847;
+
+  /* Force Override สีม่วง/violet ทั้งหมดในระบบให้เป็นสีน้ำเงิน */
   --color-purple-50: #f0f7ff;
   --color-purple-100: #e0effe;
   --color-purple-200: #bae0fd;
   --color-purple-300: #7cc5fb;
-  --color-purple-400: #38bdf8;
-  --color-purple-500: #0284c7;
+  --color-purple-400: #36a7f7;
+  --color-purple-500: #0c8ce9;
   --color-purple-600: #0270c7;
-  --color-purple-700: #1d4ed8;
-  --color-purple-800: #1e40af;
-  --color-purple-900: #1e3a8a;
-  --color-purple-950: #0f172a;
+  --color-purple-700: #0359a1;
+  --color-purple-800: #074b83;
+  --color-purple-900: #0c3f6d;
+  --color-purple-950: #082847;
+
+  --color-violet-50: #f0f7ff;
+  --color-violet-100: #e0effe;
+  --color-violet-200: #bae0fd;
+  --color-violet-300: #7cc5fb;
+  --color-violet-400: #36a7f7;
+  --color-violet-500: #0c8ce9;
+  --color-violet-600: #0270c7;
+  --color-violet-700: #0359a1;
+  --color-violet-800: #074b83;
+  --color-violet-900: #0c3f6d;
+  --color-violet-950: #082847;
+}
+
+:root {
+  --primary: #0270c7;
+  --primary-dark: #0359a1;
+  --primary-light: #e0effe;
 }
 
 * {

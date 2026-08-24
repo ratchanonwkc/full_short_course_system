@@ -77,7 +77,7 @@ export default function DateSelector({
                 id={id}
                 disabled={disabled}
                 onClick={() => setOpen((v) => !v)}
-                className="flex w-full items-center justify-between rounded-lg border border-slate-300 bg-white py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                className="flex w-full items-center justify-between rounded-lg border border-slate-300 bg-white py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
             >
                 <span className={selected ? "text-slate-900" : "text-slate-400"}>
                     {selected ? isoToThaiInput(value) : placeholder}
@@ -95,7 +95,7 @@ export default function DateSelector({
                             <select
                                 value={viewDate.month()}
                                 onChange={(e) => setViewDate((d) => d.month(Number(e.target.value)))}
-                                className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400"
+                                className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-blue-400"
                             >
                                 {Array.from({ length: 12 }).map((_, m) => (
                                     <option key={m} value={m}>{dayjs().month(m).format("MMMM")}</option>
@@ -104,7 +104,7 @@ export default function DateSelector({
                             <select
                                 value={viewDate.year()}
                                 onChange={(e) => setViewDate((d) => d.year(Number(e.target.value)))}
-                                className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400"
+                                className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-blue-400"
                             >
                                 {yearOptions.map((beYear) => (
                                     <option key={beYear} value={beYear - 543}>{beYear}</option>
@@ -129,10 +129,10 @@ export default function DateSelector({
                                     onClick={() => handleSelectDay(day)}
                                     className={`aspect-square rounded-md text-xs font-medium transition ${
                                         selected && day.isSame(selected, "day")
-                                            ? "bg-indigo-600 text-white"
+                                            ? "bg-blue-600 text-white"
                                             : day.isSame(today, "day")
-                                            ? "border border-indigo-400 text-indigo-600"
-                                            : "text-slate-700 hover:bg-indigo-50"
+                                            ? "border border-blue-400 text-blue-600"
+                                            : "text-slate-700 hover:bg-blue-50"
                                     }`}
                                 >
                                     {day.date()}
@@ -147,7 +147,7 @@ export default function DateSelector({
                         <button
                             type="button"
                             onClick={() => handleSelectDay(today)}
-                            className="text-xs font-semibold text-indigo-600 hover:underline"
+                            className="text-xs font-semibold text-blue-600 hover:underline"
                         >
                             วันนี้
                         </button>

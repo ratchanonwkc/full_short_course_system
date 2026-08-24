@@ -142,7 +142,7 @@ export default function MaskedDateInput({
                     onClick={openPicker}
                     tabIndex={-1}
                     title="เลือกจากปฏิทิน"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-indigo-600"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-blue-600"
                 >
                     <Calendar size={15} />
                 </button>

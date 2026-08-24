@@ -17,12 +17,12 @@ export default function CourseSummaryBanner({ group }) {
     if (!group) return null;
 
     return (
-        <section className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm sm:p-6">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-indigo-500">
+        <section className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm sm:p-6">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-blue-500">
                 <BookOpen size={13} /> วิชาที่ท่านเลือกสมัครเรียน
             </p>
             <h2 className="text-lg font-black text-[#00204E] sm:text-xl">{group.group_name}</h2>
-            <p className="mt-0.5 font-mono text-xs font-semibold text-indigo-500">รหัสกลุ่มเรียน: {group.group_code}</p>
+            <p className="mt-0.5 font-mono text-xs font-semibold text-blue-500">รหัสกลุ่มเรียน: {group.group_code}</p>
 
             <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                 <InfoItem icon={Clock} label="กำหนดการเรียน">
@@ -42,7 +42,7 @@ export default function CourseSummaryBanner({ group }) {
                     {group.is_free ? (
                         <span className="font-bold text-emerald-600">ไม่มีค่าใช้จ่าย</span>
                     ) : (
-                        <span className="font-bold text-indigo-700">{group.fee.toLocaleString()} บาท</span>
+                        <span className="font-bold text-blue-700">{group.fee.toLocaleString()} บาท</span>
                     )}
                 </InfoItem>
             </div>
@@ -53,7 +53,7 @@ export default function CourseSummaryBanner({ group }) {
 function InfoItem({ icon: Icon, label, children }) {
     return (
         <div className="flex items-start gap-2">
-            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-100 text-indigo-600">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-600">
                 <Icon size={13} />
             </span>
             <div className="min-w-0">

@@ -19,7 +19,7 @@ function GroupStatusRenderer({ value }) {
 const TYPE_BADGE_CLASS = {
     normal: "bg-slate-100 text-slate-600",
     special: "bg-amber-100 text-amber-700",
-    project: "bg-indigo-100 text-indigo-700",
+    project: "bg-blue-100 text-blue-700",
     vocational: "bg-emerald-100 text-emerald-700",
     extra: "bg-fuchsia-100 text-fuchsia-700",
 };
@@ -45,7 +45,7 @@ function SeatsRenderer({ data }) {
 }
 
 function GroupCodeRenderer({ value }) {
-    return <span className="font-mono font-semibold text-indigo-700">{value}</span>;
+    return <span className="font-mono font-semibold text-blue-700">{value}</span>;
 }
 
 /**
@@ -93,7 +93,7 @@ export default function StudyGroupTable({ rowData = [], loading = false, onEdit,
                 type="button"
                 title="แก้ไข"
                 onClick={() => onEdit?.(params.data)}
-                className="rounded-md p-1.5 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600"
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
             >
                 <Pencil size={15} />
             </button>

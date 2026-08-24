@@ -9,7 +9,7 @@ import { createSubject, updateSubject } from "../services/subjectApi";
 import useSingleOptionDefault from "../../../hooks/useSingleOptionDefault";
 
 const inputClass =
-    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40";
+    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40";
 
 const EMPTY_FORM = {
     level_id: "",
@@ -157,15 +157,15 @@ export default function SubjectFormDrawer({
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!form.level_id || !form.subject_type_id || !form.major_id || !form.minor_id || !form.duration_group) {
-            Swal.fire({ icon: "warning", title: "กรุณาเลือกข้อมูลโครงสร้างวิชาให้ครบ", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณาเลือกข้อมูลโครงสร้างวิชาให้ครบ", confirmButtonColor: "#0270c7" });
             return;
         }
         if (!form.name_th.trim()) {
-            Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อวิชา", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อวิชา", confirmButtonColor: "#0270c7" });
             return;
         }
         if (!form.subject_code.trim()) {
-            Swal.fire({ icon: "warning", title: "ไม่พบรหัสวิชา กรุณาตรวจสอบข้อมูล", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "ไม่พบรหัสวิชา กรุณาตรวจสอบข้อมูล", confirmButtonColor: "#0270c7" });
             return;
         }
 
@@ -195,14 +195,14 @@ export default function SubjectFormDrawer({
                 icon: "success",
                 title: isEditMode ? "บันทึกการแก้ไขสำเร็จ" : "เพิ่มรายวิชาสำเร็จ",
                 text: `${form.subject_code} - ${form.name_th}`,
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } catch (err) {
             Swal.fire({
                 icon: "error",
                 title: "บันทึกข้อมูลไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาตรวจสอบข้อมูลแล้วลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsSubmitting(false);
@@ -248,15 +248,15 @@ export default function SubjectFormDrawer({
                                     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
                                         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
                                             {/* Subject code preview */}
-                                            <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4">
+                                            <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4">
                                                 <div className="mb-2 flex items-center justify-between">
-                                                    <label className="text-xs font-semibold text-indigo-700">รหัสวิชา (Subject Code)</label>
+                                                    <label className="text-xs font-semibold text-blue-700">รหัสวิชา (Subject Code)</label>
                                                     <button
                                                         type="button"
                                                         onClick={() => setLocked((v) => !v)}
                                                         title={locked ? "ปลดล็อกเพื่อแก้ไขรหัสวิชาเอง" : "ล็อกกลับไปคำนวณอัตโนมัติ"}
                                                         className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition ${locked
-                                                            ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                                                            ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
                                                             : "bg-amber-100 text-amber-700 hover:bg-amber-200"
                                                             }`}
                                                     >
@@ -274,10 +274,10 @@ export default function SubjectFormDrawer({
                                                         }}
                                                         disabled={locked}
                                                         placeholder="เลือกโครงสร้างวิชาให้ครบเพื่อคำนวณรหัสวิชาอัตโนมัติ"
-                                                        className={`${inputClass} font-mono text-base disabled:bg-white disabled:text-indigo-700 disabled:font-semibold`}
+                                                        className={`${inputClass} font-mono text-base disabled:bg-white disabled:text-blue-700 disabled:font-semibold`}
                                                     />
                                                     {isCalculating && (
-                                                        <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-indigo-400" />
+                                                        <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-blue-400" />
                                                     )}
                                                 </div>
                                                 {isEditMode && locked && (
@@ -432,7 +432,7 @@ export default function SubjectFormDrawer({
                                             <button
                                                 type="submit"
                                                 disabled={isSubmitting}
-                                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                                             >
                                                 <Save size={15} />
                                                 {isSubmitting ? "กำลังบันทึก..." : "บันทึกข้อมูล"}

@@ -34,7 +34,7 @@ export default function Navbar() {
             showCancelButton: true,
             confirmButtonText: "ออกจากระบบ",
             cancelButtonText: "ยกเลิก",
-            confirmButtonColor: "#4f46e5",
+            confirmButtonColor: "#0270c7",
             cancelButtonColor: "#6b7280",
             reverseButtons: true,
         });
@@ -58,7 +58,7 @@ export default function Navbar() {
                     icon: "error",
                     title: "เกิดข้อผิดพลาดในการออกจากระบบ",
                     text: err.message || "กรุณาลองใหม่อีกครั้ง",
-                    confirmButtonColor: "#4f46e5",
+                    confirmButtonColor: "#0270c7",
                 });
             }
         }
@@ -70,7 +70,7 @@ export default function Navbar() {
                 <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                     {/* Logo / System name */}
                     <Link to="/" className="flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
                             <GraduationCap size={20} strokeWidth={2.2} />
                         </span>
                         <div className="leading-tight">
@@ -88,7 +88,7 @@ export default function Navbar() {
                         {user && (
                             <Link
                                 to="/batches"
-                                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 transition"
+                                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 hover:text-blue-600 transition"
                             >
                                 <LayoutDashboard size={15} />
                                 รุ่นการเรียน
@@ -99,7 +99,7 @@ export default function Navbar() {
                             <button
                                 type="button"
                                 onClick={() => setIsLoginOpen(true)}
-                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.98]"
+                                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
                             >
                                 <LogIn size={16} />
                                 เข้าสู่ระบบ
@@ -111,7 +111,7 @@ export default function Navbar() {
                                     onClick={() => setIsMenuOpen((v) => !v)}
                                     className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
                                 >
-                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-600">
                                         <User size={15} />
                                     </span>
                                     <span className="hidden sm:inline">{user.name}</span>

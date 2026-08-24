@@ -48,7 +48,7 @@ axiosInstance.interceptors.response.use(
                 icon: "error",
                 title: "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้",
                 text: "กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต หรือลองใหม่อีกครั้งในภายหลัง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } else if (status >= 500) {
             // Internal Server Error / Bad Gateway ฯลฯ
@@ -56,7 +56,7 @@ axiosInstance.interceptors.response.use(
                 icon: "error",
                 title: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์",
                 text: "ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้งในภายหลัง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         }
 

@@ -62,7 +62,7 @@ export default function FinanceVerificationModal({ enrollment, onClose, onResolv
             showCancelButton: true,
             confirmButtonText: "ยืนยันชำระเงิน",
             cancelButtonText: "ยกเลิก",
-            confirmButtonColor: "#4f46e5",
+            confirmButtonColor: "#0270c7",
         });
         if (!result.isConfirmed) return;
 
@@ -114,7 +114,7 @@ export default function FinanceVerificationModal({ enrollment, onClose, onResolv
             <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
                 <div className="mb-4 flex items-center justify-between">
                     <h2 className="flex items-center gap-2 text-lg font-black text-slate-800">
-                        <ReceiptText size={20} className="text-indigo-600" /> ตรวจสอบและยืนยันการชำระเงิน
+                        <ReceiptText size={20} className="text-blue-600" /> ตรวจสอบและยืนยันการชำระเงิน
                     </h2>
                     <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X size={20} /></button>
                 </div>
@@ -129,7 +129,7 @@ export default function FinanceVerificationModal({ enrollment, onClose, onResolv
                             {paymentTypeLabel}
                         </span>
                     </div>
-                    <div><span className="text-slate-400">ยอดที่ต้องชำระ:</span> <span className="font-bold text-indigo-600">{Number(enrollment.total_amount).toLocaleString()} บาท</span></div>
+                    <div><span className="text-slate-400">ยอดที่ต้องชำระ:</span> <span className="font-bold text-blue-600">{Number(enrollment.total_amount).toLocaleString()} บาท</span></div>
                     <div><span className="text-slate-400">ยอดที่ชำระจริง:</span> <span className="font-bold text-emerald-600">{Number(enrollment.paid_amount ?? enrollment.total_amount).toLocaleString()} บาท</span></div>
                 </div>
 
@@ -184,7 +184,7 @@ export default function FinanceVerificationModal({ enrollment, onClose, onResolv
                             value={receiptBookNo}
                             onChange={(e) => setReceiptBookNo(e.target.value)}
                             placeholder="เช่น 12"
-                            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-mono focus:border-indigo-500 focus:outline-none"
+                            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-mono focus:border-blue-500 focus:outline-none"
                         />
                     </div>
                     <div>
@@ -194,7 +194,7 @@ export default function FinanceVerificationModal({ enrollment, onClose, onResolv
                             value={receiptNumber}
                             onChange={(e) => setReceiptNumber(e.target.value)}
                             placeholder="เช่น 000123"
-                            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-mono focus:border-indigo-500 focus:outline-none"
+                            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-mono focus:border-blue-500 focus:outline-none"
                         />
                     </div>
                 </div>

@@ -49,7 +49,7 @@ export default function LoginFormModal({ isOpen, onClose, onLoginSuccess }) {
                 icon: "error",
                 title: "เข้าสู่ระบบไม่สำเร็จ",
                 text: err.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsSubmitting(false);
@@ -122,7 +122,7 @@ export default function LoginFormModal({ isOpen, onClose, onLoginSuccess }) {
                                                 value={form.email}
                                                 onChange={handleChange("email")}
                                                 placeholder="name@example.com"
-                                                className={`w-full rounded-lg border py-2.5 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-500/40 ${errors.email ? "border-red-400 focus:border-red-400" : "border-slate-300 focus:border-indigo-500"
+                                                className={`w-full rounded-lg border py-2.5 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-blue-500/40 ${errors.email ? "border-red-400 focus:border-red-400" : "border-slate-300 focus:border-blue-500"
                                                     }`}
                                             />
                                         </div>
@@ -142,7 +142,7 @@ export default function LoginFormModal({ isOpen, onClose, onLoginSuccess }) {
                                                 value={form.password}
                                                 onChange={handleChange("password")}
                                                 placeholder="••••••••"
-                                                className={`w-full rounded-lg border py-2.5 pl-10 pr-10 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-500/40 ${errors.password ? "border-red-400 focus:border-red-400" : "border-slate-300 focus:border-indigo-500"
+                                                className={`w-full rounded-lg border py-2.5 pl-10 pr-10 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-blue-500/40 ${errors.password ? "border-red-400 focus:border-red-400" : "border-slate-300 focus:border-blue-500"
                                                     }`}
                                             />
                                             <button
@@ -160,7 +160,7 @@ export default function LoginFormModal({ isOpen, onClose, onLoginSuccess }) {
                                     <button
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                                     >
                                         {isSubmitting ? (
                                             "กำลังเข้าสู่ระบบ..."

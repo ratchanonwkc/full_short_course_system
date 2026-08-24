@@ -44,9 +44,9 @@ export default function IndexPage() {
   const carouselCourses = useMemo(() => filteredCourses.slice(0, 5), [filteredCourses]);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-indigo-50/60 via-white to-white">
+    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-blue-50/60 via-white to-white">
       {/* Full-bleed Hero Section */}
-      <section className="w-full bg-gradient-to-br from-indigo-700 via-indigo-600 to-indigo-500 px-4 pb-14 pt-16 text-center text-white sm:pt-24">
+      <section className="w-full bg-gradient-to-br from-blue-700 via-blue-600 to-blue-500 px-4 pb-14 pt-16 text-center text-white sm:pt-24">
         <div className="mx-auto max-w-4xl">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-1.5 text-xs font-semibold backdrop-blur-sm sm:text-sm">
             <Rocket size={14} />
@@ -55,15 +55,15 @@ export default function IndexPage() {
           <h1 className="text-3xl font-extrabold leading-tight sm:text-5xl">
             หลักสูตรวิชาชีพระยะสั้น
             <br />
-            <span className="text-indigo-100">เปิดรับสมัครแล้ว!</span>
+            <span className="text-blue-100">เปิดรับสมัครแล้ว!</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base text-indigo-100 sm:text-lg">
+          <p className="mx-auto mt-5 max-w-2xl text-base text-blue-100 sm:text-lg">
             เรียนทักษะวิชาชีพที่ตลาดต้องการ ในระยะเวลาสั้น พร้อมวุฒิบัตรรับรองจากสถาบัน
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <a
               href="#open-courses"
-              className="rounded-xl bg-white px-6 py-3 text-sm font-bold text-indigo-700 shadow-lg transition hover:bg-indigo-50 active:scale-[0.98] sm:text-base"
+              className="rounded-xl bg-white px-6 py-3 text-sm font-bold text-blue-700 shadow-lg transition hover:bg-blue-50 active:scale-[0.98] sm:text-base"
             >
               ดูวิชาที่เปิดรับสมัคร
             </a>
@@ -87,14 +87,14 @@ export default function IndexPage() {
           <div className="flex rounded-lg border border-slate-200 bg-white p-1">
             <button
               onClick={() => setView("grid")}
-              className={`rounded-md p-1.5 ${view === "grid" ? "bg-indigo-600 text-white" : "text-slate-500"}`}
+              className={`rounded-md p-1.5 ${view === "grid" ? "bg-blue-600 text-white" : "text-slate-500"}`}
               title="Grid View"
             >
               <LayoutGrid size={15} />
             </button>
             <button
               onClick={() => setView("list")}
-              className={`rounded-md p-1.5 ${view === "list" ? "bg-indigo-600 text-white" : "text-slate-500"}`}
+              className={`rounded-md p-1.5 ${view === "list" ? "bg-blue-600 text-white" : "text-slate-500"}`}
               title="List View"
             >
               <ListIcon size={15} />
@@ -110,7 +110,7 @@ export default function IndexPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="ค้นหาชื่อวิชา / รหัสกลุ่ม / รหัสวิชา..."
-            className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-12 pr-4 text-sm shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 sm:text-base"
+            className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-12 pr-4 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 sm:text-base"
           />
         </div>
 
@@ -122,7 +122,7 @@ export default function IndexPage() {
           <select
             value={filterMajorId}
             onChange={(e) => setFilterMajorId(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-400 sm:text-sm"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 outline-none transition focus:border-blue-400 sm:text-sm"
           >
             <option value="">ทุกแผนกวิชา</option>
             {majors.map((m) => (
@@ -132,7 +132,7 @@ export default function IndexPage() {
           <select
             value={filterTimeCode}
             onChange={(e) => setFilterTimeCode(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-400 sm:text-sm"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 outline-none transition focus:border-blue-400 sm:text-sm"
           >
             <option value="">ทุกรอบเรียน</option>
             {timeSlots.map((t) => (
@@ -142,7 +142,7 @@ export default function IndexPage() {
           {(filterMajorId || filterTimeCode || search) && (
             <button
               onClick={() => { setFilterMajorId(""); setFilterTimeCode(""); setSearch(""); }}
-              className="text-xs font-semibold text-indigo-600 hover:underline"
+              className="text-xs font-semibold text-blue-600 hover:underline"
             >
               ล้างตัวกรอง
             </button>

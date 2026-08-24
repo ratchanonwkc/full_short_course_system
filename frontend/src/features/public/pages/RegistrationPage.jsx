@@ -38,7 +38,7 @@ export default function RegistrationPage() {
                 icon: "info",
                 title: "กรุณาเลือกวิชาที่ต้องการสมัครก่อน",
                 text: "เลือกวิชาที่เปิดรับสมัครจากหน้าแรก แล้วกด 'สมัครเรียน' เพื่อเข้าสู่ขั้นตอนนี้",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             }).then(() => navigate("/"));
             return;
         }
@@ -107,7 +107,7 @@ export default function RegistrationPage() {
                 icon: "success",
                 title: "ส่งใบสมัครออนไลน์สำเร็จ!",
                 text: "เจ้าหน้าที่จะตรวจสอบใบสมัครของท่าน และแจ้งผลผ่านการตรวจสอบสถานะการสมัคร",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             }).then(() => navigate("/"));
         } catch (error) {
             Swal.fire("เกิดข้อผิดพลาด", error.response?.data?.message || "ไม่สามารถส่งใบสมัครได้ โปรดตรวจสอบข้อมูลอีกครั้ง", "error");
@@ -125,7 +125,7 @@ export default function RegistrationPage() {
         <div className="min-h-screen bg-slate-50">
             <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-md">
                 <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-                    <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-indigo-600">
+                    <button onClick={() => navigate("/")} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-blue-600">
                         <ArrowLeft size={18} /> กลับไปหน้าเลือกวิชา
                     </button>
                     <span className="text-sm font-bold text-slate-400">ขั้นตอนที่ {step} จาก 3</span>
@@ -156,7 +156,7 @@ export default function RegistrationPage() {
                                     type="checkbox"
                                     checked={acceptedTerms}
                                     onChange={(e) => setAcceptedTerms(e.target.checked)}
-                                    className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                    className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                                 />
                                 <span className="text-sm font-semibold text-slate-700">
                                     ข้าพเจ้าขอรับรองว่าข้อความดังกล่าวข้างต้นเป็นความจริงทุกประการ และยอมรับระเบียบข้อบังคับของวิทยาลัย
@@ -180,7 +180,7 @@ export default function RegistrationPage() {
                         <button
                             type="button"
                             onClick={handleNext}
-                            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.98]"
+                            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
                         >
                             ถัดไป <ArrowRight size={16} />
                         </button>

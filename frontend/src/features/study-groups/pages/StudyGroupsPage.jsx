@@ -71,14 +71,14 @@ export default function StudyGroupsPage() {
                     icon: "warning",
                     title: "ไม่พบข้อมูลรุ่นการเรียน",
                     text: "รุ่นการเรียนนี้อาจถูกลบไปแล้ว",
-                    confirmButtonColor: "#4f46e5",
+                    confirmButtonColor: "#0270c7",
                 }).then(() => navigate("/batches"));
             } else {
                 Swal.fire({
                     icon: "error",
                     title: "โหลดข้อมูลรุ่นการเรียนไม่สำเร็จ",
                     text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                    confirmButtonColor: "#4f46e5",
+                    confirmButtonColor: "#0270c7",
                 });
             }
         }
@@ -95,7 +95,7 @@ export default function StudyGroupsPage() {
                 icon: "error",
                 title: "โหลดข้อมูลกลุ่มเรียนไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setLoading(false);
@@ -125,7 +125,7 @@ export default function StudyGroupsPage() {
                 icon: "warning",
                 title: "โหลดข้อมูลบางส่วนไม่สำเร็จ",
                 text: "ฟอร์มอาจใช้งานได้ไม่สมบูรณ์ กรุณาลองรีเฟรชหน้าอีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         }
         setRefLoading(false);
@@ -192,7 +192,7 @@ export default function StudyGroupsPage() {
                 icon: "error",
                 title: isConflict ? "ไม่สามารถลบได้" : "เกิดข้อผิดพลาด",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         }
     };
@@ -214,7 +214,7 @@ export default function StudyGroupsPage() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="ค้นหากลุ่มเรียน..."
-                            className="w-full rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                            className="w-full rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
                         />
                     </div>
                     <div className="w-full sm:max-w-[220px]">
@@ -228,7 +228,7 @@ export default function StudyGroupsPage() {
                     <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 py-1.5 px-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 sm:max-w-[160px]"
+                        className="w-full rounded-lg border border-slate-300 py-1.5 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 sm:max-w-[160px]"
                     >
                         {STATUS_FILTER_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -238,7 +238,7 @@ export default function StudyGroupsPage() {
                 <button
                     type="button"
                     onClick={handleCreate}
-                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
                 >
                     <Plus size={14} />
                     เพิ่มกลุ่มเรียนใหม่
@@ -273,7 +273,7 @@ export default function StudyGroupsPage() {
             {/* Breadcrumb / Header */}
             <div className="mb-6 flex flex-col gap-2">
                 <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <Link to="/batches" className="inline-flex items-center gap-1 font-medium text-indigo-600 hover:underline">
+                    <Link to="/batches" className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline">
                         <ChevronLeft size={15} />
                         รุ่นการเรียนทั้งหมด
                     </Link>
@@ -281,7 +281,7 @@ export default function StudyGroupsPage() {
                     <span className="font-medium text-slate-700">จัดการกลุ่มเรียน</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
                         <Layers size={18} />
                     </span>
                     <div>

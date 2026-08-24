@@ -120,7 +120,7 @@ export default function FinanceVerificationPage() {
     const ActionsRenderer = (params) => (
         <button
             onClick={() => setViewing(params.data)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
         >
             <Eye size={14} /> ตรวจสอบ / ยืนยัน
         </button>
@@ -164,7 +164,7 @@ export default function FinanceVerificationPage() {
     return (
         <div className="p-4 sm:p-6">
             <h1 className="mb-1 flex items-center gap-2 text-xl font-black text-slate-800">
-                <Wallet size={22} className="text-indigo-600" /> ตรวจสอบและยืนยันการชำระเงิน (แผนกการเงิน)
+                <Wallet size={22} className="text-blue-600" /> ตรวจสอบและยืนยันการชำระเงิน (แผนกการเงิน)
             </h1>
             <p className="mb-5 text-sm text-slate-500">
                 เลือกรุ่น/กลุ่มเรียน แล้วสลับแท็บเพื่อดูรายการรอตรวจสอบ ประวัติที่ชำระแล้ว หรือรายการที่ถูกปฏิเสธ
@@ -176,11 +176,11 @@ export default function FinanceVerificationPage() {
                     <button
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
-                        className={`relative px-4 py-2.5 text-sm font-semibold transition ${activeTab === tab.key ? "text-indigo-600" : "text-slate-500 hover:text-slate-700"
+                        className={`relative px-4 py-2.5 text-sm font-semibold transition ${activeTab === tab.key ? "text-blue-600" : "text-slate-500 hover:text-slate-700"
                             }`}
                     >
                         {tab.label}
-                        {activeTab === tab.key && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-indigo-600" />}
+                        {activeTab === tab.key && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-blue-600" />}
                     </button>
                 ))}
             </div>

@@ -112,7 +112,7 @@ export default function VirtualizedCombobox({
                                     value={opt}
                                     style={{ height: itemHeight }}
                                     className={({ active }) =>
-                                        `flex cursor-pointer items-center justify-between px-3 ${active ? "bg-indigo-50 text-indigo-600" : "text-slate-700"
+                                        `flex cursor-pointer items-center justify-between px-3 ${active ? "bg-blue-50 text-blue-600" : "text-slate-700"
                                         }`
                                     }
                                 >

@@ -85,7 +85,7 @@ export default function TeacherTable({ rowData = [], loading = false, onEdit, on
                 type="button"
                 title="แก้ไข"
                 onClick={() => onEdit?.(params.data)}
-                className="rounded-md p-1.5 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600"
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
             >
                 <Pencil size={15} />
             </button>

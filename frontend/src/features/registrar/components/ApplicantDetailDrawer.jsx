@@ -94,11 +94,11 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
 
     const handleSave = async () => {
         if (!editForm.full_name.trim()) {
-            Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อ-นามสกุล", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อ-นามสกุล", confirmButtonColor: "#0270c7" });
             return;
         }
         if (editForm.citizen_id.length !== 13) {
-            Swal.fire({ icon: "warning", title: "เลขประจำตัวประชาชนต้องมี 13 หลัก", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "เลขประจำตัวประชาชนต้องมี 13 หลัก", confirmButtonColor: "#0270c7" });
             return;
         }
         setSaving(true);
@@ -129,7 +129,7 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
                 icon: "error",
                 title: "บันทึกไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setSaving(false);
@@ -151,7 +151,7 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
                 icon: "error",
                 title: "ส่งอีเมลไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setSendingEmail(false);
@@ -318,7 +318,7 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
                                                 type="button"
                                                 onClick={handleSave}
                                                 disabled={saving}
-                                                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                                                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
                                             >
                                                 <Save size={14} /> {saving ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
                                             </button>
@@ -335,7 +335,7 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
                                                     type="button"
                                                     onClick={handleSendEmail}
                                                     disabled={sendingEmail || !profile.email}
-                                                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-100 disabled:opacity-50"
+                                                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-100 disabled:opacity-50"
                                                     title={!profile.email ? "ไม่มีอีเมลของผู้สมัคร" : undefined}
                                                 >
                                                     <Send size={14} /> {sendingEmail ? "กำลังส่ง..." : "ส่งอีเมลยืนยัน"}
@@ -357,7 +357,7 @@ function Section({ icon: Icon, title, children }) {
     return (
         <section className="rounded-xl border border-slate-200 p-4 print:border-slate-300 print:break-inside-avoid">
             <h4 className="mb-3 flex items-center gap-1.5 text-sm font-bold text-slate-700">
-                <Icon size={15} className="text-indigo-500 print:hidden" />
+                <Icon size={15} className="text-blue-500 print:hidden" />
                 {title}
             </h4>
             <div className="space-y-2.5">{children}</div>

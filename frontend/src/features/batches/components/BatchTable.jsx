@@ -13,7 +13,8 @@ const STATUS_CONFIG = {
     planning: { label: "วางแผน", className: "bg-slate-100 text-slate-600" },
     admitting: { label: "เปิดรับสมัคร", className: "bg-amber-100 text-amber-700" },
     studying: { label: "กำลังเรียน", className: "bg-emerald-100 text-emerald-700" },
-    ended: { label: "จบหลักสูตรแล้ว", className: "bg-indigo-100 text-indigo-700" },
+    ended: { label: "จบหลักสูตรแล้ว", className: "bg-blue-100 text-blue-700" },
+    cancelled: { label: "ยกเลิก", className: "bg-red-100 text-red-700" },
 };
 
 function StatusBadgeRenderer({ value }) {
@@ -96,7 +97,7 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
                     e.stopPropagation();
                     onEdit?.(params.data);
                 }}
-                className="rounded-md p-1.5 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600"
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
             >
                 <Pencil size={15} />
             </button>
@@ -119,33 +120,33 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
             {
                 headerName: "ชื่อรุ่น",
                 pinned: "left",
-                flex: 2.4,
-                minWidth: 260,
+                flex: 4,
+                minWidth: 360,
                 cellClass: "font-semibold text-slate-900",
                 valueGetter: (p) => buildBatchDisplayName(p.data),
             },
             { field: "academic_year", headerName: "ปีการศึกษา", flex: 1 },
             { field: "term", headerName: "ภาคเรียน", flex: 1 },
-            { field: "batch_no", headerName: "รุ่นที่ (เดิม)", flex: 1 },
+            { field: "batch_no", headerName: "รุ่นที่", flex: 0.8 },
             {
                 field: "status",
                 headerName: "สถานะ",
-                flex: 1.5,
+                flex: 1,
                 cellRenderer: StatusBadgeRenderer,
             },
             {
                 field: "study_open_date",
                 headerName: "วันเริ่มเรียน",
-                flex: 1.4,
+                flex: 1.2,
                 valueFormatter: thaiDateValueFormatter,
             },
             {
                 field: "study_close_date",
                 headerName: "วันสิ้นสุด",
-                flex: 1.4,
+                flex: 1.2,
                 valueFormatter: thaiDateValueFormatter,
             },
-            { field: "total_hours", headerName: "จำนวนชั่วโมง", flex: 1, type: "numericColumn" },
+            { field: "total_hours", headerName: "จำนวนชั่วโมง", flex: 1.2, type: "numericColumn" },
             { field: "director_name", headerName: "ผอ.", flex: 2 },
             {
                 headerName: "จัดการ",

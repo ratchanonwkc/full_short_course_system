@@ -46,6 +46,7 @@ export const createBatch = async (req, res, next) => {
         const {
             id,
             created_at,
+            iteration,
             director,
             head_registration,
             director_name,
@@ -61,7 +62,7 @@ export const createBatch = async (req, res, next) => {
 export const createBulkYearBatches = async (req, res, next) => {
     try {
         const cleanedBatches = Array.isArray(req.body)
-            ? req.body.map(({ id, created_at, director, head_registration, director_name, ...item }) => item)
+            ? req.body.map(({ id, created_at, iteration, director, head_registration, director_name, ...item }) => item)
             : req.body;
         const batches = await createBulkYearBatchesService(cleanedBatches);
         res.status(201).json({
@@ -80,6 +81,7 @@ export const updateBatch = async (req, res, next) => {
         const {
             id: _,
             created_at,
+            iteration,
             director,
             head_registration,
             director_name,

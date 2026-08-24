@@ -9,7 +9,7 @@ import FormStatusBanner from "./FormStatusBanner";
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const inputClass =
-    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40";
+    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40";
 
 /**
  * SimpleLookupSplitTab
@@ -48,7 +48,7 @@ export default function SimpleLookupSplitTab({ title, primaryKey, placeholder, f
                 icon: "error",
                 title: `โหลดข้อมูล${title}ไม่สำเร็จ`,
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setLoading(false);
@@ -98,7 +98,7 @@ export default function SimpleLookupSplitTab({ title, primaryKey, placeholder, f
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!value.trim()) {
-            Swal.fire({ icon: "warning", title: "กรุณากรอกข้อมูลให้ครบ", confirmButtonColor: "#4f46e5" });
+            Swal.fire({ icon: "warning", title: "กรุณากรอกข้อมูลให้ครบ", confirmButtonColor: "#0270c7" });
             return;
         }
         setIsSubmitting(true);
@@ -121,7 +121,7 @@ export default function SimpleLookupSplitTab({ title, primaryKey, placeholder, f
                 icon: "error",
                 title: "บันทึกไม่สำเร็จ",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         } finally {
             setIsSubmitting(false);
@@ -156,7 +156,7 @@ export default function SimpleLookupSplitTab({ title, primaryKey, placeholder, f
                 icon: "error",
                 title: isConflict ? "ไม่สามารถลบได้" : "เกิดข้อผิดพลาด",
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                confirmButtonColor: "#4f46e5",
+                confirmButtonColor: "#0270c7",
             });
         }
     };
@@ -173,7 +173,7 @@ export default function SimpleLookupSplitTab({ title, primaryKey, placeholder, f
                 type="button"
                 title="แก้ไข"
                 onClick={() => handleStartEdit(params.data)}
-                className="rounded-md p-1.5 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600"
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
             >
                 <Pencil size={15} />
             </button>
@@ -215,13 +215,13 @@ export default function SimpleLookupSplitTab({ title, primaryKey, placeholder, f
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder={`ค้นหา${title}...`}
-                        className="w-full rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                        className="w-full rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
                     />
                 </div>
                 <button
                     type="button"
                     onClick={handleStartCreate}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
                 >
                     <Plus size={14} />
                     เพิ่ม{title}ใหม่
@@ -298,7 +298,7 @@ export default function SimpleLookupSplitTab({ title, primaryKey, placeholder, f
                 <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     <Save size={15} />
                     {isSubmitting ? "กำลังบันทึก..." : isEditMode ? "บันทึกการแก้ไข" : "เพิ่มรายการ"}

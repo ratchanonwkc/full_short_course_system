@@ -34,7 +34,7 @@ export default function StepReview({ formData, selectedGroup, paymentMethod, sli
             {/* ข้อมูลส่วนตัว */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <User size={18} className="text-indigo-600" /> ข้อมูลส่วนตัว
+                    <User size={18} className="text-blue-600" /> ข้อมูลส่วนตัว
                 </h3>
                 <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                     <ReviewRow label="คำนำหน้า" value={formData.title_name} />
@@ -55,7 +55,7 @@ export default function StepReview({ formData, selectedGroup, paymentMethod, sli
             {/* ที่อยู่ */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <MapPin size={18} className="text-indigo-600" /> ที่อยู่
+                    <MapPin size={18} className="text-blue-600" /> ที่อยู่
                 </h3>
                 <dl className="grid grid-cols-1 gap-3 text-sm">
                     <ReviewRow label="ที่อยู่ตามทะเบียนบ้าน" value={registeredAddress} full />
@@ -66,7 +66,7 @@ export default function StepReview({ formData, selectedGroup, paymentMethod, sli
             {/* วุฒิการศึกษา */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <GraduationCap size={18} className="text-indigo-600" /> วุฒิการศึกษา
+                    <GraduationCap size={18} className="text-blue-600" /> วุฒิการศึกษา
                 </h3>
                 <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                     <ReviewRow label="ระดับการศึกษา" value={formData.highest_education} />
@@ -78,7 +78,7 @@ export default function StepReview({ formData, selectedGroup, paymentMethod, sli
             {/* ช่องทางติดต่อ */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <PhoneCall size={18} className="text-indigo-600" /> ช่องทางติดต่อ
+                    <PhoneCall size={18} className="text-blue-600" /> ช่องทางติดต่อ
                 </h3>
                 <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                     <ReviewRow label="เบอร์โทรศัพท์" value={formData.phone} />
@@ -89,7 +89,7 @@ export default function StepReview({ formData, selectedGroup, paymentMethod, sli
             {/* วิชาที่สมัครเรียน */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <BookOpen size={18} className="text-indigo-600" /> วิชาที่สมัครเรียน
+                    <BookOpen size={18} className="text-blue-600" /> วิชาที่สมัครเรียน
                 </h3>
                 <p className="text-sm font-bold text-slate-800">{selectedGroup?.group_name}</p>
                 <p className="text-sm text-slate-500">
@@ -103,7 +103,7 @@ export default function StepReview({ formData, selectedGroup, paymentMethod, sli
             {/* การชำระเงิน */}
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <Wallet size={18} className="text-indigo-600" /> การชำระเงิน
+                    <Wallet size={18} className="text-blue-600" /> การชำระเงิน
                 </h3>
                 {selectedGroup?.fee > 0 ? (
                     <>
