@@ -16,9 +16,9 @@ export default function PublicLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { to: '/', label: 'หน้าแรก / วิชาที่เปิดรับสมัคร', end: true },
-    { to: '/how-to-apply', label: 'วิธีสมัครเรียน', end: false },
-    { to: '/contact', label: 'ติดต่อเรา', end: false },
+    { to: '/', label: 'วิชาที่เปิดรับสมัคร', end: true },
+    // { to: '/how-to-apply', label: 'วิธีสมัครเรียน', end: false },
+    // { to: '/contact', label: 'ติดต่อเรา', end: false },
   ];
 
   const handleLoginSuccess = () => {
