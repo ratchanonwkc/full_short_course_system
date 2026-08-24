@@ -119,3 +119,51 @@ export const deleteBatchService = async (id) => {
     if (error) throw error;
     return true;
 };
+
+const FALLBACK_DEFAULTS = {
+    batch_sequence: 139,
+    iteration: 1,
+    academic_year: '2569',
+    semester: 1,
+};
+
+export const getNextBatchDefaultsService = async () => {
+    // Most recently created batch (assumes batches.created_at or serial id ordering)
+    const { data, error } = await supabase
+        .from('batches')
+        .select('batch_sequence, batch_no, term, academic_year, created_at')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) throw error;
+
+    if (!data) {
+        return FALLBACK_DEFAULTS;
+    }
+
+    // Derive iteration from batch_no parity (odd -> 1, even -> 2), same rule as
+    // frontend utils/batchName.js#getIteration. If batch_sequence is null on
+    // legacy rows, fall back to batch_no as the sequence base.
+    const lastSequence = data.batch_sequence ?? Number(data.batch_no) ?? 139;
+    const lastIteration = Number(data.batch_no) % 2 === 0 ? 2 : 1;
+    const lastSemester = Number(data.term) || 1;
+    const lastYear = Number(data.academic_year) || 2569;
+
+    let next;
+    if (lastIteration === 1 && lastSemester === 1) {
+        // Case A
+        next = { batch_sequence: lastSequence, iteration: 2, semester: 1, academic_year: lastYear };
+    } else if (lastIteration === 2 && lastSemester === 1) {
+        // Case B
+        next = { batch_sequence: lastSequence + 1, iteration: 1, semester: 2, academic_year: lastYear };
+    } else if (lastIteration === 2 && lastSemester === 2) {
+        // Case C - end of academic year
+        next = { batch_sequence: lastSequence + 1, iteration: 1, semester: 1, academic_year: lastYear + 1 };
+    } else {
+        // lastIteration === 1 && lastSemester === 2 (mid second-semester state)
+        next = { batch_sequence: lastSequence, iteration: 2, semester: 2, academic_year: lastYear };
+    }
+
+    return { ...next, academic_year: String(next.academic_year) };
+};

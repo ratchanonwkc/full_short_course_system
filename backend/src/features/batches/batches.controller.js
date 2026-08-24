@@ -5,7 +5,8 @@ import {
     createBatchService,
     createBulkYearBatchesService,
     updateBatchService,
-    deleteBatchService
+    deleteBatchService,
+    getNextBatchDefaultsService
 } from './batches.service.js';
 
 export const getBatches = async (req, res, next) => {
@@ -96,6 +97,14 @@ export const deleteBatch = async (req, res, next) => {
         const { id } = req.params;
         await deleteBatchService(id);
         res.json({ message: 'ลบรุ่นการเรียนเรียบร้อยแล้ว' });
+    } catch (error) {
+        next(error);
+    }
+};
+export const getNextBatchDefaults = async (req, res, next) => {
+    try {
+        const defaults = await getNextBatchDefaultsService();
+        res.json(defaults);
     } catch (error) {
         next(error);
     }

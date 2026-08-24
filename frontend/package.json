@@ -16,12 +16,14 @@
     "ag-grid-community": "^36.0.1",
     "ag-grid-react": "^36.0.1",
     "axios": "^1.18.1",
+    "clsx": "^2.1.1",
     "dayjs": "^1.11.21",
     "lucide-react": "^1.25.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",
     "sweetalert2": "^11.26.25",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {

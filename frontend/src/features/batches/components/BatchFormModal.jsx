@@ -10,6 +10,8 @@ import {
 } from "../services/batchApi";
 import VirtualizedCombobox from "../../../components/common/VirtualizedCombobox";
 import MaskedDateInput from "../../../components/common/MaskedDateInput";
+import BatchSequenceFields from "./BatchSequenceFields";
+import { buildBatchDisplayName, getIteration } from "../../../utils/batchName";
 
 const STATUS_OPTIONS = [
     { value: "planning", label: "วางแผน" },
@@ -44,6 +46,8 @@ const EMPTY_FORM = {
     // Tab 1
     academic_year: "",
     term: "",
+    batch_sequence: "",
+    iteration: 1,
     batch_no: "",
     batch_name: "",
     status: "planning",
@@ -129,11 +133,31 @@ export default function BatchFormModal({
     useEffect(() => {
         if (isOpen) {
             setMode("single");
-            setForm(initialData ? { ...EMPTY_FORM, ...initialData } : EMPTY_FORM);
+            setForm(
+                initialData
+                    ? {
+                          ...EMPTY_FORM,
+                          ...initialData,
+                          iteration: initialData.iteration ?? (initialData.batch_no ? getIteration(initialData.batch_no) : 1),
+                      }
+                    : EMPTY_FORM
+            );
             setBulkCommon(EMPTY_BULK_COMMON);
             setBulkRows(EMPTY_BULK_ROWS);
         }
     }, [isOpen, initialData]);
+
+    useEffect(() => {
+        if (isEditMode) return; // don't clobber an existing custom name on edit
+        const auto = buildBatchDisplayName({
+            batch_sequence: form.batch_sequence,
+            batch_no: form.batch_no,
+            term: form.term,
+            academic_year: form.academic_year,
+        }).slice(0, 50);
+        setForm((prev) => (prev.batch_name === auto ? prev : { ...prev, batch_name: auto }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [form.batch_sequence, form.batch_no, form.term, form.academic_year, isEditMode]);
 
     // ── Handlers: normal <input>/<select> (event-based) ─────────────────────
     const handleChange = (field) => (e) => {
@@ -252,8 +276,9 @@ export default function BatchFormModal({
         e.preventDefault();
         setIsSubmitting(true);
         try {
+            const { iteration, ...payload } = form; // <-- strip iteration
             // โหมดแก้ไข -> PUT /batches/:id, โหมดสร้างใหม่ -> POST /batches
-            const data = isEditMode ? await updateBatch(form.id, form) : await createBatch(form);
+            const data = isEditMode ? await updateBatch(form.id, payload) : await createBatch(payload);
 
             onSaved?.(data);
 
@@ -426,61 +451,55 @@ export default function BatchFormModal({
 
                                             <Tab.Panels className="flex-1 overflow-y-auto px-6 py-5">
                                                 {/* Tab 1: ข้อมูลรุ่น */}
-                                                <Tab.Panel className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                                    <Field label="ปีการศึกษา" htmlFor="academic_year">
-                                                        <input
-                                                            id="academic_year"
-                                                            type="text"
-                                                            inputMode="numeric"
-                                                            maxLength={4}
-                                                            value={form.academic_year}
-                                                            onChange={handleChange("academic_year")}
-                                                            placeholder="เช่น 2570"
-                                                            className={inputClass}
-                                                            required
-                                                        />
-                                                    </Field>
+                                                <Tab.Panel className="space-y-5">
+                                                    <BatchSequenceFields
+                                                        value={{
+                                                            batch_sequence: form.batch_sequence,
+                                                            iteration: form.iteration,
+                                                            academic_year: form.academic_year,
+                                                            term: form.term,
+                                                        }}
+                                                        onChange={(next) =>
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                batch_sequence: next.batch_sequence,
+                                                                iteration: next.iteration,
+                                                                academic_year: next.academic_year,
+                                                                term: next.term,
+                                                                // batch_no (smallint 1-4, required NOT NULL column) derived
+                                                                // from iteration parity so it stays consistent with the
+                                                                // legacy display (utils/batchName.js#getIteration: odd=1,
+                                                                // even=2). Keeps existing batch_no semantics unchanged.
+                                                                batch_no: Number(next.iteration) === 2 ? 2 : 1,
+                                                            }))
+                                                        }
+                                                        isEditMode={isEditMode}
+                                                    />
 
-                                                    <Field label="ภาคเรียน" htmlFor="term">
-                                                        <select id="term" value={form.term} onChange={handleChange("term")} className={inputClass} required>
-                                                            <option value="">เลือกภาคเรียน</option>
-                                                            <option value="1">ภาคเรียนที่ 1</option>
-                                                            <option value="2">ภาคเรียนที่ 2</option>
-                                                        </select>
-                                                    </Field>
+                                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                        <Field label="สถานะ" htmlFor="status">
+                                                            <select id="status" value={form.status} onChange={handleChange("status")} className={inputClass}>
+                                                                {STATUS_OPTIONS.map((opt) => (
+                                                                    <option key={opt.value} value={opt.value}>
+                                                                        {opt.label}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </Field>
 
-                                                    <Field label="รุ่นที่" htmlFor="batch_no">
-                                                        <select id="batch_no" value={form.batch_no} onChange={handleChange("batch_no")} className={inputClass} required>
-                                                            <option value="">เลือกรุ่นที่</option>
-                                                            <option value="1">1</option>
-                                                            <option value="2">2</option>
-                                                            <option value="3">3</option>
-                                                            <option value="4">4</option>
-                                                        </select>
-                                                    </Field>
-
-                                                    <Field label="สถานะ" htmlFor="status">
-                                                        <select id="status" value={form.status} onChange={handleChange("status")} className={inputClass}>
-                                                            {STATUS_OPTIONS.map((opt) => (
-                                                                <option key={opt.value} value={opt.value}>
-                                                                    {opt.label}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    </Field>
-
-                                                    <Field label="ชื่อรุ่น" htmlFor="batch_name" full>
-                                                        <input
-                                                            id="batch_name"
-                                                            type="text"
-                                                            maxLength={50}
-                                                            value={form.batch_name}
-                                                            onChange={handleChange("batch_name")}
-                                                            placeholder='เช่น "รุ่น 1/2570"'
-                                                            className={inputClass}
-                                                            required
-                                                        />
-                                                    </Field>
+                                                        <Field label="ชื่อรุ่น (varchar 50, บันทึกไว้ใน DB)" htmlFor="batch_name">
+                                                            <input
+                                                                id="batch_name"
+                                                                type="text"
+                                                                maxLength={50}
+                                                                value={form.batch_name}
+                                                                onChange={handleChange("batch_name")}
+                                                                placeholder='เช่น "รุ่น 139/1 (2569)" หรือปล่อยว่างให้ระบบ auto-fill จาก preview ด้านบน'
+                                                                className={inputClass}
+                                                                required
+                                                            />
+                                                        </Field>
+                                                    </div>
                                                 </Tab.Panel>
 
                                                 {/* Tab 2: กำหนดการ & ชั่วโมง */}

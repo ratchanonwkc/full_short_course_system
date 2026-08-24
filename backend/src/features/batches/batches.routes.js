@@ -1,8 +1,17 @@
+/**
+ * Patch for backend/src/features/batches/batches.routes.js
+ * ─────────────────────────────────────────────────────────────────────────
+ * Add getNextBatchDefaults to the import, and register the route BEFORE
+ * '/:id' (same reason as '/latest-personnel' — Express would otherwise
+ * treat "next-defaults" as an :id param).
+ */
+
 import { Router } from 'express';
 import {
     getBatches,
     getBatchById,
     getLatestPersonnel,
+    getNextBatchDefaults, // <-- add
     createBatch,
     createBulkYearBatches,
     updateBatch,
@@ -12,10 +21,11 @@ import {
 const router = Router();
 
 router.get('/', getBatches);
-router.get('/latest-personnel', getLatestPersonnel); // Endpoint สำหรับปุ่ม Auto-fill
-router.get('/:id', getBatchById);              // ดึงรุ่นเดียวตาม ID
+router.get('/latest-personnel', getLatestPersonnel);
+router.get('/next-defaults', getNextBatchDefaults); // <-- add (before '/:id')
+router.get('/:id', getBatchById);
 router.post('/', createBatch);
-router.post('/bulk-year', createBulkYearBatches);     // Endpoint สำหรับสร้าง 4 รุ่นยกปี
+router.post('/bulk-year', createBulkYearBatches);
 router.put('/:id', updateBatch);
 router.delete('/:id', deleteBatch);
 

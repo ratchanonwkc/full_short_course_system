@@ -65,6 +65,7 @@ CREATE TABLE public.batches (
   head_planning_id bigint,
   head_evaluation_id bigint,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  batch_sequence smallint,
   CONSTRAINT batches_pkey PRIMARY KEY (id),
   CONSTRAINT batches_director_id_fkey FOREIGN KEY (director_id) REFERENCES public.teachers(id),
   CONSTRAINT batches_deputy_academic_id_fkey FOREIGN KEY (deputy_academic_id) REFERENCES public.teachers(id),
