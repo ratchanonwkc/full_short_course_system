@@ -1,11 +1,13 @@
 import { Clock, MapPin, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatThaiDate } from "../../../utils/dateUtils";
+import TimeSlotBadge from "../../../components/common/TimeSlotBadge";
 
 /**
  * CourseCard — Grid/List view card for a study group/course.
- * Seat availability is shown as a badge pinned to the TOP-RIGHT corner of
- * the card (overlapping the border) instead of inline within the body.
+ * Now shows a prominent color-coded Time-Period Badge (รอบเช้า/บ่าย/ค่ำ/เต็มวัน)
+ * next to the subject-code chip, derived from course.time_code (preferred)
+ * or the start hour of course.time_range.
  */
 export default function CourseCard({ course, view = "grid" }) {
     const isFull = course.remaining_seats <= 0;
@@ -32,6 +34,7 @@ export default function CourseCard({ course, view = "grid" }) {
                     <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-600">
                         {course.subject_code || course.subjects?.[0]?.subject_code}
                     </span>
+                    <TimeSlotBadge timeCode={course.time_code} timeRange={course.time_range} size="sm" />
                 </div>
 
                 <h3 className="mb-2 text-sm font-bold text-slate-900 line-clamp-2 sm:text-base">

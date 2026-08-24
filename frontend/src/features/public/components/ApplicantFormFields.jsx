@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { User, MapPin, GraduationCap, PhoneCall, IdCard } from "lucide-react";
-import MaskedDateInput from "../../../components/common/MaskedDateInput";
+import BirthDateField from "./BirthDateField";
 import useThaiAddress from "../../../hooks/useThaiAddress";
 
 const inputCls =
@@ -11,10 +11,8 @@ const labelCls = "mb-1.5 block text-sm font-bold text-slate-600";
  * ApplicantFormFields — ฟอร์มประวัติผู้สมัคร 6 ส่วน (ล้อตามคอลัมน์ตาราง applicants)
  * ใช้ร่วมกันทั้งฟอร์มสมัครออนไลน์ (public) และฟอร์ม Walk-in (registrar staff)
  *
- * Address is now structured (house_no / moo / soi / road / subdistrict / district /
- * province / postal_code) instead of a single free-text textarea, for both the
- * registered address and the current address. Postal code lookup runs entirely
- * client-side via useThaiAddress (no server round-trip).
+ * วันเกิดใช้ <BirthDateField> (ReUI-style DateSelector + live age calc +
+ * BE/CE sanity check) แทน <MaskedDateInput> เดิม
  *
  * props:
  * - formData, setFormData: ควบคุมจากภายนอก (controlled)
@@ -51,7 +49,6 @@ export default function ApplicantFormFields({
 
         if (code.length === 5 && addressReady) {
             setLoading(true);
-            // Client-side lookup — synchronous in practice, wrapped for UX consistency
             const results = lookupByPostalCode(code);
             if (results.length > 0) {
                 const first = results[0];
@@ -116,14 +113,10 @@ export default function ApplicantFormFields({
                             <option value="อื่นๆ">อื่นๆ</option>
                         </select>
                     </div>
-                    <div>
-                        <label className={labelCls}>วัน/เดือน/ปีเกิด *</label>
-                        <MaskedDateInput
-                            value={formData.birth_date}
-                            onChange={(iso) => setFormData((prev) => ({ ...prev, birth_date: iso }))}
-                            className={inputCls}
-                        />
-                    </div>
+                    <BirthDateField
+                        value={formData.birth_date}
+                        onChange={(iso) => setFormData((prev) => ({ ...prev, birth_date: iso }))}
+                    />
                     <div>
                         <label className={labelCls}>สถานภาพสมรส *</label>
                         <select name="marital_status" value={formData.marital_status} onChange={handleChange} className={inputCls}>

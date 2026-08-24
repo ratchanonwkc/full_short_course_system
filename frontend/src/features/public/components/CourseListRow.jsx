@@ -1,11 +1,12 @@
 import { Clock, MapPin, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatThaiDate } from "../../../utils/dateUtils";
+import TimeSlotBadge from "../../../components/common/TimeSlotBadge";
 
 /**
  * CourseListRow — one compact row for the List View.
- * Renders: department (muted, above title) -> course name -> schedule/location
- * -> seat badge -> fee -> CTA. Stacks on mobile, single row on desktop.
+ * Renders: department (muted, above title) -> course name + time-slot badge
+ * -> schedule/location -> seat badge -> fee -> CTA.
  */
 function CourseListRow({ course }) {
     const isFull = course.remaining_seats <= 0;
@@ -26,6 +27,7 @@ function CourseListRow({ course }) {
                         </span>
                     )}
                     <h3 className="truncate text-sm font-bold text-slate-900 sm:text-base">{courseName}</h3>
+                    <TimeSlotBadge timeCode={course.time_code} timeRange={course.time_range} size="sm" />
                 </div>
 
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">

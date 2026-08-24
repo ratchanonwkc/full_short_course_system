@@ -5,6 +5,7 @@ import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-communi
 import { Pencil, Trash2, Layers } from "lucide-react";
 import Swal from "sweetalert2";
 import { thaiDateValueFormatter } from "../../../utils/dateUtils";
+import { buildBatchDisplayName } from "../../../utils/batchName";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -33,6 +34,10 @@ function StatusBadgeRenderer({ value }) {
  * - onEdit: (batch) => void
  * - onDelete: (batch) => void         -> called only after confirm
  *
+ * ชื่อรุ่นที่แสดง (คอลัมน์แรก) ใช้สูตร legacy ตาม utils/batchName.js เสมอ:
+ *   "รุ่นที่ {sequence} ครั้งที่ {iteration} ปีการศึกษา {year} ภาคเรียนที่ {term}"
+ * แทนการอ่าน b.batch_name ตรง ๆ เพื่อให้ตรงกับข้อมูลเดิมของงานทะเบียน
+ *
  * Navigation to Study Groups:
  * - ปุ่ม "จัดการกลุ่มเรียน" ในคอลัมน์ "จัดการ" -> ไป /batches/:batchId/groups
  * - ดับเบิ้ลคลิกที่ Row ใดก็ได้ (นอกเหนือจากคอลัมน์ปุ่ม) -> ไปหน้าเดียวกัน
@@ -44,9 +49,10 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
     const goToGroups = (batch) => navigate(`/batches/${batch.id}/groups`);
 
     const handleDeleteClick = async (batch) => {
+        const displayName = buildBatchDisplayName(batch);
         const result = await Swal.fire({
             title: "ยืนยันการลบรุ่นการเรียน?",
-            html: `ต้องการลบ <b>${batch.batch_name}</b> ใช่หรือไม่<br/><span style="color:#94a3b8;font-size:13px">การกระทำนี้ไม่สามารถย้อนกลับได้</span>`,
+            html: `ต้องการลบ <b>${displayName}</b> ใช่หรือไม่<br/><span style="color:#94a3b8;font-size:13px">การกระทำนี้ไม่สามารถย้อนกลับได้</span>`,
             icon: "warning",
             showCancelButton: true,
             confirmButtonText: "ลบข้อมูล",
@@ -111,22 +117,22 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
     const columnDefs = useMemo(
         () => [
             {
-                field: "batch_name",
                 headerName: "ชื่อรุ่น",
                 pinned: "left",
-                flex: 2,
+                flex: 2.4,
+                minWidth: 260,
                 cellClass: "font-semibold text-slate-900",
+                valueGetter: (p) => buildBatchDisplayName(p.data),
             },
             { field: "academic_year", headerName: "ปีการศึกษา", flex: 1 },
             { field: "term", headerName: "ภาคเรียน", flex: 1 },
-            { field: "batch_no", headerName: "รุ่นที่", flex: 1 },
+            { field: "batch_no", headerName: "รุ่นที่ (เดิม)", flex: 1 },
             {
                 field: "status",
                 headerName: "สถานะ",
                 flex: 1.5,
                 cellRenderer: StatusBadgeRenderer,
             },
-            // คอลัมน์วันที่ -> ใช้ valueFormatter เรียก formatThaiDate เพื่อแสดงเป็นวันที่ไทย + พ.ศ.
             {
                 field: "study_open_date",
                 headerName: "วันเริ่มเรียน",
