@@ -265,17 +265,17 @@ export default function MajorTab({ levels = [], subjectTypes = [], teachers = []
                 </button>
             </div>
 
-            <div className="min-h-[420px] flex-1 overflow-hidden rounded-lg border border-slate-200 lg:min-h-0">
+            <div className="min-h-[360px] flex-1 overflow-hidden rounded-lg border border-slate-200 lg:min-h-0">
                 <AgGridReact
                     theme={themeQuartz}
                     rowData={filteredMajors}
                     columnDefs={columnDefs}
                     defaultColDef={defaultColDef}
                     loading={loading}
+                    domLayout="normal"
                     headerHeight={40}
                     rowHeight={42}
                     animateRows
-                    domLayout={filteredMajors.length === 0 ? "autoHeight" : undefined}
                     overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ยังไม่มีข้อมูลสาขาวิชา</span>"
                     getRowId={(params) => String(params.data.id)}
                     getRowClass={(params) =>

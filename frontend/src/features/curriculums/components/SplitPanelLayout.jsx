@@ -17,14 +17,14 @@ import { X } from "lucide-react";
  */
 export default function SplitPanelLayout({ grid, form, isFormOpen = true, onCloseForm }) {
     return (
-        <div className="flex flex-col gap-4 lg:h-[calc(100vh-14rem)] lg:flex-row">
+        <div className="flex flex-col gap-4 flex-1 min-h-[380px] min-h-0 lg:flex-row">
             {/* ฝั่งซ้าย: Grid */}
-            <div className="flex min-h-[420px] flex-1 flex-col lg:min-h-0 lg:basis-[62%]">
+            <div className="flex min-h-[380px] flex-1 flex-col lg:min-h-0 lg:basis-[62%]">
                 {grid}
             </div>
 
             {/* ฝั่งขวา: Form Panel (desktop เต็มความสูง, ติดหน้าจอเสมอ) */}
-            <div className="hidden lg:block lg:basis-[38%] lg:min-h-0">
+            <div className="hidden lg:block lg:basis-[38%] lg:min-h-0 h-full">
                 <div className="h-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                     {form}
                 </div>

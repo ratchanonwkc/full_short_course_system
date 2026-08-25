@@ -228,7 +228,7 @@ export default function SimpleLookupSplitTab({ title, primaryKey, placeholder, f
                 </button>
             </div>
 
-            <div className="min-h-[380px] flex-1 overflow-hidden rounded-lg border border-slate-200 lg:min-h-0">
+            <div className="min-h-[360px] flex-1 overflow-hidden rounded-lg border border-slate-200 lg:min-h-0">
                 <AgGridReact
                     theme={themeQuartz}
                     ref={gridRef}
@@ -236,10 +236,10 @@ export default function SimpleLookupSplitTab({ title, primaryKey, placeholder, f
                     columnDefs={columnDefs}
                     defaultColDef={defaultColDef}
                     loading={loading}
+                    domLayout="normal"
                     headerHeight={40}
                     rowHeight={42}
                     animateRows
-                    domLayout={filteredItems.length === 0 ? "autoHeight" : undefined}
                     overlayNoRowsTemplate={`<span class='text-sm text-slate-400'>ไม่พบข้อมูล${title}</span>`}
                     getRowId={(params) => String(params.data.id)}
                     getRowClass={(params) =>

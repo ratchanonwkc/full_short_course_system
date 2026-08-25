@@ -7,11 +7,13 @@ import {
     createOnlineApplication,
     getStatusByCitizenId,
     resubmitApplication,
+    lookupApplicantByCitizenId,
 } from './public.controller.js';
 import { uploadSlipMemory, uploadToSupabaseStorage } from '../../middlewares/supabaseUpload.middleware.js';
 
 const router = Router();
 
+router.get('/applicants/lookup/:citizen_id', lookupApplicantByCitizenId);
 router.get('/study-groups/open', getOpenStudyGroups);
 router.get('/study-groups/open/:id', getStudyGroupDetail);
 router.get('/postal-code/:code', lookupPostalCode);

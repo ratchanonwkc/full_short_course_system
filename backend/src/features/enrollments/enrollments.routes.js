@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
     getEnrollments,
+    getEnrollmentById,
     createWalkinEnrollment,
     confirmPayment,
     rejectPayment,
@@ -13,6 +14,7 @@ import {
 const router = Router();
 
 router.get('/', getEnrollments);
+router.get('/:id', getEnrollmentById);
 router.post('/walkin', createWalkinEnrollment);
 router.put('/:id/confirm-payment', confirmPayment);
 router.put('/:id/reject', rejectPayment);

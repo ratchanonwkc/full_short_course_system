@@ -9,16 +9,16 @@ import MinorTab from "../components/MinorTab";
 import {
     getCurriculums, createCurriculum, updateCurriculum, deleteCurriculum,
     getAcademicLevels, createAcademicLevel, updateAcademicLevel, deleteAcademicLevel,
-    getMajors, getSubjectTypes,
+    getMajors, getSubjectTypes, getMinors,
 } from "../services/academicStructureApi";
 import { getTeachers } from "../../teachers/services/teacherApi";
 
 const TABS = [
-    { label: "หลักสูตร", icon: BookOpen },
-    { label: "ระดับชั้น", icon: Layers },
-    { label: "ประเภทวิชา", icon: GraduationCap },
-    { label: "สาขาวิชา/แผนก", icon: Building2 },
-    { label: "สาขางาน/กลุ่มวิชา", icon: Puzzle },
+    { key: "curriculums", label: "หลักสูตร", icon: BookOpen },
+    { key: "levels", label: "ระดับชั้น", icon: Layers },
+    { key: "subjectTypes", label: "ประเภทวิชา", icon: GraduationCap },
+    { key: "majors", label: "สาขาวิชา/แผนก", icon: Building2 },
+    { key: "minors", label: "สาขางาน/กลุ่มวิชา", icon: Puzzle },
 ];
 
 /**
@@ -35,25 +35,31 @@ const TABS = [
  * ผ่าน SplitPanelLayout ร่วมกัน เพื่อความสอดคล้องของ UX ทั้งหน้า
  */
 export default function AcademicStructurePage() {
+    const [curriculumsCount, setCurriculumsCount] = useState(0);
     const [levels, setLevels] = useState([]);
     const [subjectTypes, setSubjectTypes] = useState([]);
     const [majors, setMajors] = useState([]);
+    const [minorsCount, setMinorsCount] = useState(0);
     const [teachers, setTeachers] = useState([]);
     const [loadingShared, setLoadingShared] = useState(true);
 
     const fetchShared = useCallback(async () => {
         setLoadingShared(true);
         try {
-            const [levelsData, subjectTypesData, majorsData, teachersData] = await Promise.all([
+            const [curriculumsData, levelsData, subjectTypesData, majorsData, minorsData, teachersData] = await Promise.all([
+                getCurriculums(),
                 getAcademicLevels(),
                 getSubjectTypes(),
                 getMajors(),
+                getMinors(),
                 getTeachers({ status: "active" }),
             ]);
-            setLevels(levelsData);
-            setSubjectTypes(subjectTypesData);
-            setMajors(majorsData);
-            setTeachers(teachersData);
+            setCurriculumsCount(Array.isArray(curriculumsData) ? curriculumsData.length : 0);
+            setLevels(Array.isArray(levelsData) ? levelsData : []);
+            setSubjectTypes(Array.isArray(subjectTypesData) ? subjectTypesData : []);
+            setMajors(Array.isArray(majorsData) ? majorsData : []);
+            setMinorsCount(Array.isArray(minorsData) ? minorsData.length : 0);
+            setTeachers(Array.isArray(teachersData) ? teachersData : []);
         } catch (err) {
             Swal.fire({
                 icon: "error",
@@ -70,36 +76,60 @@ export default function AcademicStructurePage() {
         fetchShared();
     }, [fetchShared]);
 
+    const getTabCount = (key) => {
+        switch (key) {
+            case "curriculums": return curriculumsCount;
+            case "levels": return levels.length;
+            case "subjectTypes": return subjectTypes.length;
+            case "majors": return majors.length;
+            case "minors": return minorsCount;
+            default: return 0;
+        }
+    };
+
     return (
-        <div className="w-full p-4">
-            <div className="mb-6 flex flex-col gap-1">
+        <div className="w-full flex-1 flex flex-col min-h-0 p-4 sm:p-6">
+            <div className="mb-5 flex flex-col gap-1 shrink-0">
                 <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">โครงสร้างหลักสูตรและวิชาการ</h1>
                 <p className="text-sm text-slate-500">
                     จัดการหลักสูตร ระดับชั้น ประเภทวิชา สาขาวิชา/แผนก และสาขางาน/กลุ่มวิชา
                 </p>
             </div>
 
-            <Tab.Group>
-                <Tab.List className="flex flex-wrap gap-1 border-b border-slate-200">
-                    {TABS.map(({ label, icon: Icon }) => (
-                        <Tab key={label} as={Fragment}>
-                            {({ selected }) => (
-                                <button
-                                    type="button"
-                                    className={`relative inline-flex items-center gap-1.5 px-4 py-3 text-sm font-semibold outline-none transition ${selected ? "text-blue-600" : "text-slate-500 hover:text-slate-700"
+            <Tab.Group as="div" className="flex-1 flex flex-col min-h-0">
+                <Tab.List className="flex flex-wrap gap-1 border-b border-slate-200 shrink-0">
+                    {TABS.map(({ key, label, icon: Icon }) => {
+                        const count = getTabCount(key);
+                        return (
+                            <Tab key={key} as={Fragment}>
+                                {({ selected }) => (
+                                    <button
+                                        type="button"
+                                        className={`relative inline-flex items-center gap-2 px-4 py-3 text-sm font-semibold outline-none transition ${
+                                            selected ? "text-blue-600" : "text-slate-500 hover:text-slate-700"
                                         }`}
-                                >
-                                    <Icon size={15} />
-                                    {label}
-                                    {selected && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-blue-600" />}
-                                </button>
-                            )}
-                        </Tab>
-                    ))}
+                                    >
+                                        <Icon size={16} />
+                                        <span>{label}</span>
+                                        <span
+                                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold transition ${
+                                                selected
+                                                    ? "bg-blue-100 text-blue-700 ring-1 ring-blue-500/20 font-bold"
+                                                    : "bg-slate-100 text-slate-600"
+                                            }`}
+                                        >
+                                            {loadingShared ? "-" : count}
+                                        </span>
+                                        {selected && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-blue-600" />}
+                                    </button>
+                                )}
+                            </Tab>
+                        );
+                    })}
                 </Tab.List>
 
-                <Tab.Panels className="pt-5">
-                    <Tab.Panel>
+                <Tab.Panels className="pt-4 flex-1 flex flex-col min-h-0">
+                    <Tab.Panel className="flex-1 flex flex-col min-h-0">
                         <SimpleLookupSplitTab
                             title="หลักสูตร"
                             primaryKey="curriculum_name"
@@ -111,7 +141,7 @@ export default function AcademicStructurePage() {
                         />
                     </Tab.Panel>
 
-                    <Tab.Panel>
+                    <Tab.Panel className="flex-1 flex flex-col min-h-0">
                         <SimpleLookupSplitTab
                             title="ระดับชั้น"
                             primaryKey="level_name"
@@ -135,11 +165,11 @@ export default function AcademicStructurePage() {
                         />
                     </Tab.Panel>
 
-                    <Tab.Panel>
+                    <Tab.Panel className="flex-1 flex flex-col min-h-0">
                         <SubjectTypeTab />
                     </Tab.Panel>
 
-                    <Tab.Panel>
+                    <Tab.Panel className="flex-1 flex flex-col min-h-0">
                         {loadingShared ? (
                             <p className="py-10 text-center text-sm text-slate-400">กำลังโหลดข้อมูล...</p>
                         ) : (

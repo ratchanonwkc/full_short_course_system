@@ -147,7 +147,7 @@ export default function StudyGroupTable({ rowData = [], loading = false, onEdit,
     );
 
     return (
-        <div className="w-full h-full min-h-[420px] overflow-hidden">
+        <div className="w-full h-full min-h-[360px] overflow-hidden">
             <AgGridReact
                 theme={themeQuartz}
                 ref={gridRef}
@@ -155,8 +155,9 @@ export default function StudyGroupTable({ rowData = [], loading = false, onEdit,
                 columnDefs={columnDefs}
                 defaultColDef={defaultColDef}
                 loading={loading}
-                headerHeight={40}
-                rowHeight={42}
+                domLayout="normal"
+                headerHeight={42}
+                rowHeight={44}
                 animateRows
                 overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ยังไม่มีกลุ่มเรียนในรุ่นนี้</span>"
                 getRowId={(params) => String(params.data.id)}

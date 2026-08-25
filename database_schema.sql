@@ -276,8 +276,35 @@ CREATE TABLE public.enrollments (
   rejection_reason text,
   rejected_at timestamp with time zone,
   rejected_by_user_id uuid,
+  application_no character varying,
   CONSTRAINT enrollments_pkey PRIMARY KEY (id),
   CONSTRAINT enrollments_applicant_id_fkey FOREIGN KEY (applicant_id) REFERENCES public.applicants(id),
   CONSTRAINT enrollments_study_group_id_fkey FOREIGN KEY (study_group_id) REFERENCES public.study_groups(id),
   CONSTRAINT enrollments_payment_method_id_fkey FOREIGN KEY (payment_method_id) REFERENCES public.payment_methods(id)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL,
+  email text NOT NULL UNIQUE,
+  full_name text NOT NULL,
+  role text NOT NULL DEFAULT 'registrar'::text CHECK (role = ANY (ARRAY['admin'::text, 'planning'::text, 'registrar'::text, 'finance'::text])),
+  status text NOT NULL DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'inactive'::text])),
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.audit_logs (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  actor_id uuid,
+  action_type text NOT NULL,
+  target_table text,
+  target_id text,
+  description text,
+  old_data jsonb,
+  new_data jsonb,
+  ip_address text,
+  user_agent text,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT audit_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT audit_logs_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.users(id)
 );

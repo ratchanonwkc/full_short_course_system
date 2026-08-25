@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 import Swal from "sweetalert2";
-import { Users, UserPlus, IdCard, X, Search, Eye, BadgeCheck } from "lucide-react";
+import { Users, UserPlus, IdCard, X, Search, Eye, BadgeCheck, UserCheck, AlertCircle, GraduationCap } from "lucide-react";
 import Combobox from "../../../components/common/Combobox";
+import SummaryCard from "../../../components/common/SummaryCard";
 import { getStudyGroups } from "../../study-groups/services/studyGroupApi";
 import { getBatches } from "../../batches/services/batchApi";
 import { getEnrollments, createWalkinEnrollment, cancelEnrollment } from "../../enrollments/services/enrollmentApi";
@@ -46,6 +47,7 @@ function matchesStatusFilter(enrollmentStatus, filterValue) {
 /**
  * RegistrarEnrollmentsPage — Flat global applicant table.
  * - Auto-selects the Active Batch on load (findActiveBatch), manual override via Combobox.
+ * - Lightweight Metric Summary Cards (Total Applicants, Assigned, Unassigned, Ready for Class).
  * - Global search across name/phone/email/citizen_id.
  * - Status quick filters.
  * - Row click -> ApplicantDetailDrawer (slide-over, full profile + registrar full-edit).
@@ -89,7 +91,7 @@ export default function RegistrarEnrollmentsPage() {
                 ? { study_group_id: selectedGroupId }
                 : { batch_id: selectedBatchId };
             const data = await getEnrollments(params);
-            setEnrollments(data);
+            setEnrollments(Array.isArray(data) ? data : []);
         } finally {
             setLoading(false);
         }
@@ -98,6 +100,16 @@ export default function RegistrarEnrollmentsPage() {
     useEffect(() => {
         loadEnrollments();
     }, [loadEnrollments]);
+
+    // ── Computed Statistics for Summary Cards ───────────────────────────────
+    const stats = useMemo(() => {
+        const total = enrollments.length;
+        const assigned = enrollments.filter((e) => Boolean(e.study_group_id || e.group_code)).length;
+        const unassigned = enrollments.filter((e) => !e.study_group_id && !e.group_code).length;
+        const readyForClass = enrollments.filter((e) => e.status === "paid").length;
+
+        return { total, assigned, unassigned, readyForClass };
+    }, [enrollments]);
 
     const batchOptions = useMemo(
         () =>
@@ -220,8 +232,6 @@ export default function RegistrarEnrollmentsPage() {
             setModalGroupOptions([]);
             return;
         }
-        // If viewing an applicant from the currently selected batch, reuse `groups`;
-        // otherwise fetch groups for that applicant's batch specifically.
         const batchIdForApplicant = detailEnrollment.batch_id || selectedBatchId;
         getStudyGroups({ batch_id: batchIdForApplicant })
             .then((data) => setModalGroupOptions(data.map((g) => ({ value: g.id, label: `${g.group_code} — ${g.group_name}` }))))
@@ -229,27 +239,64 @@ export default function RegistrarEnrollmentsPage() {
     }, [detailEnrollment, selectedBatchId]);
 
     return (
-        <div className="p-4 sm:p-6">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="w-full flex-1 flex flex-col min-h-0 p-4 sm:p-6">
+            {/* Header */}
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-4 shrink-0">
                 <div>
-                    <h1 className="flex items-center gap-2 text-xl font-black text-slate-800">
-                        <Users size={22} className="text-blue-600" /> จัดการผู้สมัครเรียน (งานทะเบียน)
+                    <h1 className="flex items-center gap-2 text-xl font-black text-slate-800 sm:text-2xl">
+                        <UserCheck size={24} className="text-blue-600" /> จัดการรายชื่อผู้สมัคร &amp; จัดกลุ่มเรียน
                     </h1>
                     <p className="text-sm text-slate-500">
-                        ระบบเลือกรุ่นปัจจุบันให้อัตโนมัติ — ค้นหาและกรองผู้สมัครได้จากตารางด้านล่าง
+                        ค้นหา ตรวจสอบสถานะการชำระเงิน และกำหนดกลุ่มเรียนให้ผู้สมัคร
                     </p>
                 </div>
                 <button
                     onClick={() => setWalkinOpen(true)}
                     disabled={!selectedBatchId}
-                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 disabled:opacity-50"
                 >
                     <UserPlus size={16} /> ลงทะเบียน Walk-in
                 </button>
             </div>
 
+            {/* 📊 1. Lightweight Metric Summary Cards */}
+            <div className="mb-5 grid grid-cols-2 gap-3.5 sm:grid-cols-2 lg:grid-cols-4 shrink-0">
+                <SummaryCard
+                    title="ผู้สมัครทั้งหมด (Total Applicants)"
+                    value={loading ? "-" : stats.total.toLocaleString()}
+                    subtitle="ยอดผู้ลงทะเบียนในรุ่นนี้"
+                    icon={Users}
+                    variant="navy"
+                    loading={loading}
+                />
+                <SummaryCard
+                    title="จัดกลุ่มเรียนแล้ว (Assigned)"
+                    value={loading ? "-" : stats.assigned.toLocaleString()}
+                    subtitle="มีกลุ่มเรียนและห้องเรียนแล้ว"
+                    icon={UserCheck}
+                    variant="indigo"
+                    loading={loading}
+                />
+                <SummaryCard
+                    title="ยังไม่ระบุกลุ่ม (Unassigned)"
+                    value={loading ? "-" : stats.unassigned.toLocaleString()}
+                    subtitle="รอกำหนดกลุ่มเรียน"
+                    icon={AlertCircle}
+                    variant="amber"
+                    loading={loading}
+                />
+                <SummaryCard
+                    title="ชำระเงินเรียบร้อย (Ready for Class)"
+                    value={loading ? "-" : stats.readyForClass.toLocaleString()}
+                    subtitle="สถานะพร้อมเข้าเรียน"
+                    icon={GraduationCap}
+                    variant="emerald"
+                    loading={loading}
+                />
+            </div>
+
             {/* Global filter bar */}
-            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 shrink-0">
                 <div>
                     <label className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-400">
                         รุ่นการเรียน
@@ -304,12 +351,12 @@ export default function RegistrarEnrollmentsPage() {
             </div>
 
             {currentGroup && (
-                <p className="mb-3 text-sm font-semibold text-slate-500">
+                <p className="mb-3 text-sm font-semibold text-slate-500 shrink-0">
                     ที่นั่ง {currentGroup.current_seats}/{currentGroup.max_seats}
                 </p>
             )}
 
-            <div className="h-[calc(100vh-20rem)] min-h-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="h-[calc(100vh-260px)] min-h-[480px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
                 <AgGridReact
                     theme={themeQuartz}
                     rowData={filteredEnrollments}
@@ -318,8 +365,10 @@ export default function RegistrarEnrollmentsPage() {
                     loading={loading}
                     pagination
                     paginationPageSize={25}
+                    paginationPageSizeSelector={[10, 25, 50, 100]}
+                    domLayout="normal"
                     headerHeight={42}
-                    rowHeight={46}
+                    rowHeight={44}
                     animateRows
                     overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ยังไม่มีผู้ลงทะเบียน</span>"
                     getRowId={(params) => String(params.data.id)}

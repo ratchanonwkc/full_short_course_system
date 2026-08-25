@@ -1,57 +1,86 @@
 // src/routes/AppRoutes.jsx
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Layouts
-import PublicLayout from '../components/layout/PublicLayout'; // Topnav สำหรับนักเรียน
-import MainLayout from '../components/layout/MainLayout';     // Sidebar สำหรับเจ้าหน้าที่
+import PublicLayout from '../components/layout/PublicLayout'; // Topnav layout for students & public
+import MainLayout from '../components/layout/MainLayout';     // Sidebar layout for staff & admin
 
 // Guards
-import ProtectedRoute from './ProtectedRoute';
+import ProtectedRoute from '../components/auth/ProtectedRoute';
 
 // Public Pages
-import IndexPage from '../features/landing/pages/IndexPage';   // หน้าดูวิชาเปิดสอน + สมัครเรียน
-import RegistrationPage from '../features/public/pages/RegistrationPage'; // Multi-step ฟอร์มสมัครเรียนออนไลน์ + ชำระเงิน
+import IndexPage from '../features/landing/pages/IndexPage';             // Course catalog & enrollment entrance
+import RegistrationPage from '../features/public/pages/RegistrationPage'; // Multi-step registration & payment
 import LoginPage from '../features/auth/pages/LoginPage';
 
-// Admin/Staff Pages
+// Admin Pages
+import UserManagementPage from '../pages/admin/UserManagementPage';
+import AuditLogsPage from '../pages/admin/AuditLogsPage';
+
+// Admin / Planning Pages
 import TeachersPage from '../features/teachers/pages/TeachersPage';
 import BatchesPage from '../features/batches/pages/BatchesPage';
 import AcademicStructurePage from '../features/curriculums/pages/AcademicStructurePage';
 import SubjectsPage from '../features/subjects/pages/SubjectsPage';
 import StudyGroupsPage from '../features/study-groups/pages/StudyGroupsPage';
+
+// Registrar Pages
 import RegistrarEnrollmentsPage from '../features/registrar/pages/RegistrarEnrollmentsPage';
+
+// Finance Pages
 import FinanceVerificationPage from '../features/finance/pages/FinanceVerificationPage';
 import PaymentMethodSettingsPage from '../features/finance/pages/PaymentMethodSettingsPage';
 
 export default function AppRoutes() {
     return (
         <Routes>
-            {/* 🌐 1. Public Zone ( Topnav Layout ) */}
+            {/* 🌐 1. Public Zone ( Public Topnav Layout ) */}
             <Route element={<PublicLayout />}>
                 <Route path="/" element={<IndexPage />} />
-                {/* studyGroupId is optional — omit it to let the applicant pick a course in Step 2 */}
+                {/* studyGroupId is optional — allows direct or catalog selection */}
                 <Route path="/register/:studyGroupId?" element={<RegistrationPage />} />
                 <Route path="/login" element={<LoginPage />} />
             </Route>
 
-            {/* 🔐 2. Admin/Staff Zone ( Sidebar Layout + Auth Guard ) */}
+            {/* 🔐 2. Admin & Staff Zone ( Sidebar Layout + Role Guards ) */}
             <Route element={<ProtectedRoute />}>
                 <Route element={<MainLayout />}>
-                    <Route path="/dashboard" element={<div>Dashboard ภาพรวม</div>} />
-                    <Route path="/teachers" element={<TeachersPage />} />
-                    <Route path="/batches" element={<BatchesPage />} />
-                    <Route path="/batches/:batchId/groups" element={<StudyGroupsPage />} />
-                    <Route path="/academic-structure" element={<AcademicStructurePage />} />
-                    <Route path="/subjects" element={<SubjectsPage />} />
+                    {/* Common Staff / General Overview */}
+                    <Route path="/dashboard" element={<BatchesPage />} />
 
-                    {/* 📋 Registrar Portal */}
-                    <Route path="/registrar/enrollments" element={<RegistrarEnrollmentsPage />} />
+                    {/* 🛡️ Admin Only Module */}
+                    <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                        <Route path="/admin/users" element={<UserManagementPage />} />
+                        <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
+                    </Route>
 
-                    {/* 💰 Finance Portal */}
-                    <Route path="/finance/verification" element={<FinanceVerificationPage />} />
-                    <Route path="/finance/payment-methods" element={<PaymentMethodSettingsPage />} />
+                    {/* 📚 Academic & Planning Module (Admin + Planning) */}
+                    <Route element={<ProtectedRoute allowedRoles={['admin', 'planning']} />}>
+                        <Route path="/batches" element={<BatchesPage />} />
+                        <Route path="/batches/:batchId/groups" element={<StudyGroupsPage />} />
+                        <Route path="/planning/study-groups" element={<StudyGroupsPage />} />
+                        <Route path="/planning/study-groups/:batchId" element={<StudyGroupsPage />} />
+                        <Route path="/teachers" element={<TeachersPage />} />
+                        <Route path="/academic-structure" element={<AcademicStructurePage />} />
+                        <Route path="/subjects" element={<SubjectsPage />} />
+                    </Route>
+
+                    {/* 📋 Registrar Module (Admin + Registrar) */}
+                    <Route element={<ProtectedRoute allowedRoles={['admin', 'registrar']} />}>
+                        <Route path="/registrar/enrollments" element={<RegistrarEnrollmentsPage />} />
+                    </Route>
+
+                    {/* 💰 Finance Module (Admin + Finance) */}
+                    <Route element={<ProtectedRoute allowedRoles={['admin', 'finance']} />}>
+                        <Route path="/finance/verification" element={<FinanceVerificationPage />} />
+                        <Route path="/finance/verifications" element={<FinanceVerificationPage />} />
+                        <Route path="/finance/payment-methods" element={<PaymentMethodSettingsPage />} />
+                    </Route>
                 </Route>
             </Route>
+
+            {/* 🔄 3. Fallback Catch-all Route */}
+            <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
 }

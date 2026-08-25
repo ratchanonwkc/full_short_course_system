@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Search, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight, BookMarked, Building2, Puzzle, Layers } from "lucide-react";
 import Swal from "sweetalert2";
 import SearchableCombobox from "../../../components/common/SearchableCombobox";
+import SummaryCard from "../../../components/common/SummaryCard";
 import SubjectTable from "../components/SubjectTable";
 import SubjectFormDrawer from "../components/SubjectFormDrawer";
 import { getSubjects, deleteSubject } from "../services/subjectApi";
@@ -189,25 +190,63 @@ export default function SubjectsPage() {
     };
 
     return (
-        <div className="w-full p-4">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="w-full flex-1 flex flex-col min-h-0 p-4 sm:p-6">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-4 shrink-0">
                 <div>
-                    <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">จัดการรายวิชา</h1>
-                    <p className="text-sm text-slate-500">ค้นหา กรอง เพิ่ม และแก้ไขรายวิชาในระบบ</p>
+                    <h1 className="flex items-center gap-2 text-xl font-black text-slate-800 sm:text-2xl">
+                        <BookMarked size={24} className="text-blue-600" /> จัดการรายวิชา
+                    </h1>
+                    <p className="text-sm text-slate-500">ค้นหา กรอง เพิ่ม และแก้ไขรายวิชาในหลักสูตรทั้งหมด</p>
                 </div>
                 <button
                     type="button"
                     onClick={handleCreate}
                     disabled={structureLoading}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60"
                 >
                     <Plus size={16} />
                     เพิ่มรายวิชาใหม่
                 </button>
             </div>
 
+            {/* 📊 1. Lightweight Metric Summary Cards */}
+            <div className="mb-5 grid grid-cols-2 gap-3.5 sm:grid-cols-2 lg:grid-cols-4 shrink-0">
+                <SummaryCard
+                    title="รายวิชาทั้งหมด (Total)"
+                    value={loading ? "-" : pagination.total.toLocaleString()}
+                    subtitle="หลักสูตรวิชาชีพระยะสั้น"
+                    icon={BookMarked}
+                    variant="navy"
+                    loading={loading}
+                />
+                <SummaryCard
+                    title="สาขาวิชา/แผนก (Majors)"
+                    value={structureLoading ? "-" : majors.length.toLocaleString()}
+                    subtitle="สาขาวิชาทั้งหมดในระบบ"
+                    icon={Building2}
+                    variant="indigo"
+                    loading={structureLoading}
+                />
+                <SummaryCard
+                    title="สาขางาน (Minors)"
+                    value={structureLoading ? "-" : minors.length.toLocaleString()}
+                    subtitle="กลุ่มวิชาชีพเฉพาะทาง"
+                    icon={Puzzle}
+                    variant="emerald"
+                    loading={structureLoading}
+                />
+                <SummaryCard
+                    title="ประเภทวิชา (Types)"
+                    value={structureLoading ? "-" : subjectTypes.length.toLocaleString()}
+                    subtitle="หมวดวิชาตามโครงสร้าง"
+                    icon={Layers}
+                    variant="blue"
+                    loading={structureLoading}
+                />
+            </div>
+
             {/* Toolbar */}
-            <div className="mb-4 flex flex-col gap-3">
+            <div className="mb-4 flex flex-col gap-3 shrink-0">
                 <div className="relative max-w-md">
                     <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
@@ -285,7 +324,7 @@ export default function SubjectsPage() {
             <SubjectTable rowData={subjects} loading={loading || structureLoading} onEdit={handleEdit} onDelete={handleDelete} />
 
             {/* Pagination */}
-            <div className="mt-3 flex items-center justify-between text-sm text-slate-500">
+            <div className="mt-3 flex items-center justify-between text-sm text-slate-500 shrink-0">
                 <span>
                     พบทั้งหมด {pagination.total.toLocaleString()} รายวิชา — หน้า {pagination.page} / {pagination.totalPages}
                 </span>

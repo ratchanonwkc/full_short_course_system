@@ -6,7 +6,19 @@ import {
     createOnlineApplicationService,
     getStatusByCitizenIdService,
     resubmitApplicationService,
+    lookupApplicantByCitizenIdService,
 } from './public.service.js';
+
+export const lookupApplicantByCitizenId = async (req, res, next) => {
+    try {
+        const { citizen_id } = req.params;
+        const applicant = await lookupApplicantByCitizenIdService(citizen_id);
+        res.json(applicant);
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ message: error.message });
+        next(error);
+    }
+};
 
 export const getOpenStudyGroups = async (req, res, next) => {
     try {

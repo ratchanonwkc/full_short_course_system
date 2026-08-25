@@ -14,7 +14,7 @@ export default function MainLayout() {
         <Header />
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-y-auto flex flex-col min-h-0">
           <Outlet />
         </main>
       </div>

@@ -11,7 +11,7 @@ export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const navigate = useNavigate();
 
-    const handleLoginSuccess = () => {
+    const handleLoginSuccess = (userData) => {
         setIsLoginOpen(false);
         Swal.fire({
             toast: true,
@@ -22,8 +22,13 @@ export default function Navbar() {
             timer: 2500,
             timerProgressBar: true,
         });
-        // เมื่อเข้าสู่ระบบสำเร็จ ส่งไปยังหน้าจัดการรุ่นการเรียน
-        navigate("/dashboard");
+        const currentUser = userData || user;
+        const targetPath = currentUser?.role ? (
+            currentUser.role.toLowerCase().includes('registrar') || currentUser.role.includes('ทะเบียน') ? '/registrar/enrollments' :
+            currentUser.role.toLowerCase().includes('finance') || currentUser.role.includes('การเงิน') ? '/finance/verification' :
+            '/batches'
+        ) : '/batches';
+        navigate(targetPath);
     };
 
     const handleLogoutClick = async () => {

@@ -1,15 +1,17 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, useRef } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import {
     X, User, Phone, GraduationCap, Wallet, Printer, Save, Send, Pencil,
-    IdCard as IdCardIcon, MapPin, ZoomIn, ZoomOut, RotateCw,
+    IdCard as IdCardIcon, MapPin, ZoomIn, ZoomOut, RotateCw, CheckCircle2,
 } from "lucide-react";
+import { useReactToPrint } from "react-to-print";
 import Swal from "sweetalert2";
 import Combobox from "../../../components/common/Combobox";
 import { formatThaiDate, formatThaiFullDate } from "../../../utils/dateUtils";
 import { formatReceiptCode } from "../../../utils/receiptFormat";
-import { updateApplicantDetails, sendConfirmationEmail } from "../services/registrarApi";
+import { updateApplicantDetails, sendConfirmationEmail, getEnrollmentById } from "../services/registrarApi";
 import ApplicantFormFields, { EMPTY_APPLICANT } from "./ApplicantFormFields";
+import ApplicationFormPrint from "../../../components/print/ApplicationFormPrint";
 
 const STATUS_META = {
     pending_payment: { label: "รอชำระเงิน", className: "bg-amber-100 text-amber-700" },
@@ -22,20 +24,16 @@ const STATUS_META = {
 /**
  * ApplicantDetailDrawer
  * -------------------------------------------------------------------------
- * Slide-over Side Sheet (right side) replacing the old centered modal, to
- * match the study-group management UX. Shows the applicant's ENTIRE
- * submitted profile (personal, address, education, ID card, payment/slip,
- * receipt), and lets the Registrar switch into a full Edit Mode covering
- * every field via the shared <ApplicantFormFields> component.
- *
- * Props:
- * - isOpen, onClose
- * - enrollment: flattened enrollment row (must include `applicant_profile`
- *   — the full nested applicant record — see enrollments.service.js)
- * - groupOptionsForBatch: Array<{ value, label }>
- * - onReassigned: (updatedEnrollment) => void
+ * Slide-over Side Sheet (right side) for detailed applicant profile view,
+ * full registrar editing, and direct 1:1 Application Form printing.
  */
-export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, groupOptionsForBatch = [], onReassigned }) {
+export default function ApplicantDetailDrawer({
+    isOpen,
+    onClose,
+    enrollment,
+    groupOptionsForBatch = [],
+    onReassigned,
+}) {
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState(EMPTY_APPLICANT);
     const [selectedGroupId, setSelectedGroupId] = useState("");
@@ -43,6 +41,14 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
     const [sendingEmail, setSendingEmail] = useState(false);
     const [zoom, setZoom] = useState(1);
     const [rotation, setRotation] = useState(0);
+    const [detailedData, setDetailedData] = useState(null);
+
+    const printComponentRef = useRef(null);
+
+    const handlePrint = useReactToPrint({
+        contentRef: printComponentRef,
+        documentTitle: `ใบสมัคร_${enrollment?.applicant_name || enrollment?.application_no || "application"}`,
+    });
 
     useEffect(() => {
         if (isOpen && enrollment) {
@@ -51,17 +57,41 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
             setIsEditing(false);
             setZoom(1);
             setRotation(0);
+
+            // Fetch fresh detailed enrollment data via REST API
+            if (enrollment.id) {
+                getEnrollmentById(enrollment.id)
+                    .then((data) => {
+                        if (data) {
+                            setDetailedData(data);
+                            if (data.applicant_profile) {
+                                setEditForm({ ...EMPTY_APPLICANT, ...data.applicant_profile });
+                            }
+                        }
+                    })
+                    .catch((err) => {
+                        console.error("Failed to load enrollment detail via REST API:", err);
+                    });
+            }
+        } else {
+            setDetailedData(null);
         }
     }, [isOpen, enrollment]);
 
-    const meta = STATUS_META[enrollment?.status] || STATUS_META.pending_payment;
+    const activeEnrollment = detailedData || enrollment;
+
     const hasGroupChanged = useMemo(
-        () => enrollment && String(selectedGroupId) !== String(enrollment.study_group_id ?? ""),
-        [selectedGroupId, enrollment]
+        () => Boolean(activeEnrollment && String(selectedGroupId) !== String(activeEnrollment.study_group_id ?? "")),
+        [selectedGroupId, activeEnrollment]
     );
 
-    if (!enrollment) return null;
-    const profile = enrollment.applicant_profile || {};
+    const profile = useMemo(() => activeEnrollment?.applicant_profile || {}, [activeEnrollment]);
+    const studentNo = activeEnrollment?.student_no ?? null;
+
+    // All hooks called above unconditionally. Now safe to check if enrollment exists.
+    if (!activeEnrollment) return null;
+
+    const meta = STATUS_META[enrollment.status] || STATUS_META.pending_payment;
     const receiptCode = formatReceiptCode(enrollment.receipt_book_no, enrollment.receipt_number);
 
     const registeredAddress = [
@@ -93,11 +123,11 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
             .join(" ");
 
     const handleSave = async () => {
-        if (!editForm.full_name.trim()) {
+        if (!editForm.full_name?.trim()) {
             Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อ-นามสกุล", confirmButtonColor: "#0270c7" });
             return;
         }
-        if (editForm.citizen_id.length !== 13) {
+        if (editForm.citizen_id?.length !== 13) {
             Swal.fire({ icon: "warning", title: "เลขประจำตัวประชาชนต้องมี 13 หลัก", confirmButtonColor: "#0270c7" });
             return;
         }
@@ -135,8 +165,6 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
             setSaving(false);
         }
     };
-
-    const handlePrint = () => window.print();
 
     const handleSendEmail = async () => {
         setSendingEmail(true);
@@ -201,14 +229,10 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
                                         </div>
                                     </div>
 
-                                    <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5 print:overflow-visible print:px-10 print:py-8">
-                                        <div className="mb-4 hidden border-b-2 border-slate-800 pb-3 text-center print:block">
-                                            <p className="text-lg font-black">ใบสมัครเรียนหลักสูตรวิชาชีพระยะสั้น</p>
-                                            <p className="text-sm text-slate-500">Application Form</p>
-                                        </div>
-
+                                    {/* Screen View Body */}
+                                    <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5 print:hidden">
                                         {isEditing ? (
-                                            /* ── Full edit mode: reuse the exact same fields as the Walk-in form ── */
+                                            /* ── Full edit mode ── */
                                             <ApplicantFormFields formData={editForm} setFormData={setEditForm} />
                                         ) : (
                                             <>
@@ -216,6 +240,7 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
                                                     <InfoRow label="คำนำหน้า" value={profile.title_name} />
                                                     <InfoRow label="ชื่อ-นามสกุล" value={enrollment.applicant_name} />
                                                     <InfoRow label="เลขบัตรประชาชน" value={enrollment.citizen_id} mono />
+                                                    <InfoRow label="สถานะนักศึกษา" value={profile.student_type || enrollment.student_type || "นักศึกษาใหม่"} />
                                                     <InfoRow label="เพศ" value={profile.gender} />
                                                     <InfoRow label="วันเกิด" value={formatThaiDate(profile.birth_date)} />
                                                     <InfoRow label="สถานภาพสมรส" value={profile.marital_status} />
@@ -237,12 +262,12 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
                                                                 <RotateCw size={15} />
                                                             </button>
                                                         </div>
-                                                        <div className="flex max-h-72 items-center justify-center overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2 print:max-h-none print:overflow-visible">
+                                                        <div className="flex max-h-72 items-center justify-center overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
                                                             <img
                                                                 src={enrollment.id_card_url}
                                                                 alt="บัตรประชาชน"
                                                                 style={{ transform: `scale(${zoom}) rotate(${rotation}deg)`, transition: "transform 0.15s ease" }}
-                                                                className="max-h-64 object-contain print:max-h-72"
+                                                                className="max-h-64 object-contain"
                                                             />
                                                         </div>
                                                     </Section>
@@ -265,6 +290,8 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
                                                 </Section>
 
                                                 <Section icon={GraduationCap} title="ข้อมูลการลงทะเบียน">
+                                                    <InfoRow label="ใบสมัครเลขที่" value={enrollment.application_no || String(enrollment.id || "").padStart(5, "0")} mono />
+                                                    <InfoRow label="เลขที่นักศึกษา (ในกลุ่ม)" value={studentNo ? String(studentNo).padStart(2, "0") : "-"} mono />
                                                     <InfoRow label="รุ่นการเรียน" value={enrollment.batch_name || "-"} />
                                                     <div>
                                                         <label className="mb-1.5 block text-xs font-semibold text-slate-500">กลุ่มเรียน</label>
@@ -289,25 +316,19 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
                                             </>
                                         )}
 
-                                        {/* Reassign group — shown alongside edit mode since it's part of "edit everything" */}
+                                        {/* Reassign group */}
                                         {isEditing && (
                                             <Section icon={GraduationCap} title="กลุ่มเรียนที่ลงทะเบียน">
                                                 <Combobox value={selectedGroupId} onChange={setSelectedGroupId} options={groupOptionsForBatch} placeholder="เลือกกลุ่มเรียน..." />
                                                 {hasGroupChanged && <p className="mt-1 text-xs font-semibold text-amber-600">* จะถูกย้ายกลุ่มเรียนเมื่อกด "บันทึกการแก้ไข"</p>}
                                             </Section>
                                         )}
+                                    </div>
 
-                                        <div className="hidden pt-8 print:block">
-                                            <div className="grid grid-cols-2 gap-8 text-center text-sm">
-                                                <div>
-                                                    <div className="mb-1 border-b border-slate-400 pb-8" />
-                                                    <p>ลายเซ็นผู้สมัคร</p>
-                                                </div>
-                                                <div>
-                                                    <div className="mb-1 border-b border-slate-400 pb-8" />
-                                                    <p>ลายเซ็นเจ้าหน้าที่ทะเบียน</p>
-                                                </div>
-                                            </div>
+                                    {/* Isolated Printable Application Form Container */}
+                                    <div className="hidden">
+                                        <div ref={printComponentRef}>
+                                            <ApplicationFormPrint enrollment={activeEnrollment} studentNo={studentNo} />
                                         </div>
                                     </div>
 
@@ -326,10 +347,10 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
                                             <>
                                                 <button
                                                     type="button"
-                                                    onClick={handlePrint}
-                                                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                                                    onClick={() => handlePrint()}
+                                                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-95"
                                                 >
-                                                    <Printer size={14} /> พิมพ์ใบสมัคร
+                                                    <Printer size={16} /> พิมพ์ใบสมัคร
                                                 </button>
                                                 <button
                                                     type="button"
@@ -355,9 +376,9 @@ export default function ApplicantDetailDrawer({ isOpen, onClose, enrollment, gro
 
 function Section({ icon: Icon, title, children }) {
     return (
-        <section className="rounded-xl border border-slate-200 p-4 print:border-slate-300 print:break-inside-avoid">
+        <section className="rounded-xl border border-slate-200 p-4">
             <h4 className="mb-3 flex items-center gap-1.5 text-sm font-bold text-slate-700">
-                <Icon size={15} className="text-blue-500 print:hidden" />
+                <Icon size={15} className="text-blue-500" />
                 {title}
             </h4>
             <div className="space-y-2.5">{children}</div>

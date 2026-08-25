@@ -40,9 +40,9 @@ export default function LoginFormModal({ isOpen, onClose, onLoginSuccess }) {
         setIsSubmitting(true);
         try {
             // เรียกเข้าสู่ระบบด้วย Supabase Auth
-            await loginWithEmail(form.email, form.password);
+            const authData = await loginWithEmail(form.email, form.password);
 
-            onLoginSuccess?.();
+            onLoginSuccess?.(authData?.user);
             setForm({ email: "", password: "" });
         } catch (err) {
             Swal.fire({

@@ -1,5 +1,6 @@
 import {
     getEnrollmentsService,
+    getEnrollmentByIdService,
     createWalkinEnrollmentService,
     confirmPaymentService,
     rejectPaymentService,
@@ -18,6 +19,16 @@ export const getEnrollments = async (req, res, next) => {
             batchId: batch_id,
         });
         res.json(enrollments);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getEnrollmentById = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const enrollment = await getEnrollmentByIdService(id);
+        res.json(enrollment);
     } catch (error) {
         next(error);
     }

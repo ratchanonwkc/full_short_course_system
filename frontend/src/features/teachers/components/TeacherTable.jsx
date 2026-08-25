@@ -157,7 +157,7 @@ export default function TeacherTable({ rowData = [], loading = false, onEdit, on
     );
 
     return (
-        <div className="w-full h-[calc(100vh-15rem)] overflow-hidden">
+        <div className="w-full flex-1 min-h-[360px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
             <AgGridReact
                 theme={themeQuartz}
                 ref={gridRef}
@@ -167,10 +167,13 @@ export default function TeacherTable({ rowData = [], loading = false, onEdit, on
                 loading={loading}
                 pagination
                 paginationPageSize={20}
-                headerHeight={44}
+                domLayout="normal"
+                headerHeight={42}
+                rowHeight={44}
                 animateRows
                 overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ไม่พบข้อมูลอาจารย์</span>"
                 getRowId={(params) => String(params.data.id)}
+                className="h-full w-full"
             />
         </div>
     );

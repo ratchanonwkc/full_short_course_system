@@ -44,19 +44,20 @@ export default function SubjectTypeTab() {
     ];
 
     return (
-        <div className="space-y-3">
-            <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500">
+        <div className="space-y-3 flex-1 flex flex-col min-h-0">
+            <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 shrink-0">
                 <Info size={14} className="mt-0.5 shrink-0 text-slate-400" />
                 <p>ประเภทวิชาเป็นชุดข้อมูลอ้างอิงตามระเบียบ ไม่สามารถเพิ่ม/แก้ไข/ลบได้จากหน้านี้</p>
             </div>
 
-            <div className="h-[420px] overflow-hidden rounded-lg border border-slate-200">
+            <div className="flex-1 min-h-[360px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
                 <AgGridReact
                     theme={themeQuartz}
                     rowData={items}
                     columnDefs={columnDefs}
                     defaultColDef={{ resizable: true, sortable: true, filter: true }}
                     loading={loading}
+                    domLayout="normal"
                     headerHeight={40}
                     rowHeight={42}
                     animateRows

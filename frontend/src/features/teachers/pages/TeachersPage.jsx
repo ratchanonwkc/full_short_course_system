@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, ListFilter } from "lucide-react";
+import { Plus, Search, ListFilter, GraduationCap, UserCheck, UserX, Award } from "lucide-react";
 import Swal from "sweetalert2";
 import axiosInstance from "../../../config/axiosInstance";
 import TeacherTable from "../components/TeacherTable";
 import TeacherFormModal from "../components/TeacherFormModal";
+import SummaryCard from "../../../components/common/SummaryCard";
 
 const STATUS_OPTIONS = [
     { value: "all", label: "ทุกสถานะ" },
@@ -66,6 +67,15 @@ export default function TeachersPage() {
         fetchTeachers();
         fetchMasters();
     }, [fetchTeachers, fetchMasters]);
+
+    // ── Computed Statistics for Summary Cards ───────────────────────────────
+    const stats = useMemo(() => {
+        const total = teachers.length;
+        const active = teachers.filter((t) => t.is_active).length;
+        const inactive = teachers.filter((t) => !t.is_active).length;
+        const withSpecialRole = teachers.filter((t) => Boolean(t.sub_position_id || t.sub_position_name)).length;
+        return { total, active, inactive, withSpecialRole };
+    }, [teachers]);
 
     const filteredTeachers = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
@@ -133,24 +143,65 @@ export default function TeachersPage() {
     };
 
     return (
-        <div className="w-full p-4">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="w-full flex-1 flex flex-col min-h-0 p-4 sm:p-6">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-4 shrink-0">
                 <div>
-                    <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">จัดการข้อมูลอาจารย์</h1>
+                    <h1 className="flex items-center gap-2 text-xl font-black text-slate-800 sm:text-2xl">
+                        <GraduationCap size={24} className="text-blue-600" /> จัดการข้อมูลอาจารย์ผู้สอน
+                    </h1>
                     <p className="text-sm text-slate-500">ข้อมูลอาจารย์ผู้บรรยายและผู้รับผิดชอบหลักสูตรระยะสั้น</p>
                 </div>
                 <button
                     type="button"
                     onClick={handleCreate}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
                 >
                     <Plus size={16} />
                     เพิ่มอาจารย์ใหม่
                 </button>
             </div>
 
+            {/* 📊 1. Lightweight Metric Summary Cards */}
+            <div className="mb-5 grid grid-cols-2 gap-3.5 sm:grid-cols-2 lg:grid-cols-4 shrink-0">
+                <SummaryCard
+                    title="อาจารย์ทั้งหมด (Total)"
+                    value={loading ? "-" : stats.total.toLocaleString()}
+                    subtitle="จำนวนอาจารย์ในระบบทั้งหมด"
+                    icon={GraduationCap}
+                    variant="navy"
+                    loading={loading}
+                    onClick={() => setStatusFilter("all")}
+                />
+                <SummaryCard
+                    title="สถานะพร้อมสอน (Active)"
+                    value={loading ? "-" : stats.active.toLocaleString()}
+                    subtitle="อาจารย์ที่เปิดใช้งานอยู่"
+                    icon={UserCheck}
+                    variant="emerald"
+                    loading={loading}
+                    onClick={() => setStatusFilter("active")}
+                />
+                <SummaryCard
+                    title="ระงับการใช้งาน (Inactive)"
+                    value={loading ? "-" : stats.inactive.toLocaleString()}
+                    subtitle="อาจารย์ที่ปิดการใช้งาน"
+                    icon={UserX}
+                    variant="rose"
+                    loading={loading}
+                    onClick={() => setStatusFilter("inactive")}
+                />
+                <SummaryCard
+                    title="มีหน้าที่พิเศษ (Special Roles)"
+                    value={loading ? "-" : stats.withSpecialRole.toLocaleString()}
+                    subtitle="หัวหน้าแผนก / ผู้ประสานงาน"
+                    icon={Award}
+                    variant="blue"
+                    loading={loading}
+                />
+            </div>
+
             {/* Toolbar */}
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center shrink-0">
                 <div className="relative">
                     <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input

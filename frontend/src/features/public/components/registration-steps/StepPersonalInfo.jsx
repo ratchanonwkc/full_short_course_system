@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { IdCard, Upload, CheckCircle2 } from "lucide-react";
+import { IdCard, Upload, CheckCircle2, Image as ImageIcon } from "lucide-react";
 import ApplicantFormFields from "../ApplicantFormFields";
 import CourseSummaryBanner from "../CourseSummaryBanner";
 
@@ -21,9 +21,11 @@ export default function StepPersonalInfo({ selectedGroup, formData, setFormData,
         <div className="space-y-6">
             <CourseSummaryBanner group={selectedGroup} />
 
+            <ApplicantFormFields formData={formData} setFormData={setFormData} />
+
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <IdCard size={18} className="text-blue-600" /> รูปถ่ายบัตรประชาชน (สำหรับอ้างอิง)
+                <h3 className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
+                    <ImageIcon size={18} className="text-[#0270c7]" /> [6] แนบรูปถ่ายบัตรประชาชน (ทางเลือก / สำหรับอ้างอิง)
                 </h3>
                 <div
                     onClick={() => fileInputRef.current?.click()}
@@ -31,15 +33,21 @@ export default function StepPersonalInfo({ selectedGroup, formData, setFormData,
                 >
                     {preview ? (
                         <>
-                            <img src={preview} alt="บัตรประชาชน" className="max-h-48 rounded-lg object-contain" />
-                            <p className="flex items-center gap-1 text-sm font-semibold text-emerald-600">
-                                <CheckCircle2 size={14} /> แนบไฟล์แล้ว: {idCardFile?.name}
+                            <img src={preview} alt="บัตรประชาชน" className="max-h-44 rounded-lg object-contain shadow-xs" />
+                            <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
+                                <CheckCircle2 size={15} /> แนบไฟล์เรียบร้อย: {idCardFile?.name}
                             </p>
+                            <span className="text-xs text-slate-400">คลิกเพื่อเปลี่ยนรูปภาพ</span>
                         </>
                     ) : (
                         <>
-                            <Upload size={28} className="text-slate-400" />
-                            <p className="text-sm font-semibold text-slate-500">คลิกเพื่ออัปโหลดรูปบัตรประชาชน (JPG, PNG)</p>
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                                <Upload size={22} />
+                            </div>
+                            <p className="text-sm font-semibold text-slate-600">
+                                คลิกเพื่ออัปโหลดรูปบัตรประชาชน (JPG, PNG)
+                            </p>
+                            <p className="text-xs text-slate-400">ขนาดไฟล์ไม่เกิน 5MB</p>
                         </>
                     )}
                 </div>
@@ -51,8 +59,6 @@ export default function StepPersonalInfo({ selectedGroup, formData, setFormData,
                     className="hidden"
                 />
             </section>
-
-            <ApplicantFormFields formData={formData} setFormData={setFormData} />
         </div>
     );
 }

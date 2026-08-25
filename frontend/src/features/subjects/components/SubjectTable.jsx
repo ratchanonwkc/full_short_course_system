@@ -101,7 +101,7 @@ export default function SubjectTable({ rowData = [], loading = false, onEdit, on
     );
 
     return (
-        <div className="w-full h-[calc(100vh-19rem)] overflow-hidden">
+        <div className="w-full flex-1 min-h-[360px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
             <AgGridReact
                 theme={themeQuartz}
                 ref={gridRef}
@@ -109,10 +109,13 @@ export default function SubjectTable({ rowData = [], loading = false, onEdit, on
                 columnDefs={columnDefs}
                 defaultColDef={defaultColDef}
                 loading={loading}
-                headerHeight={44}
+                domLayout="normal"
+                headerHeight={42}
+                rowHeight={44}
                 animateRows
                 overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ไม่พบข้อมูลรายวิชา</span>"
                 getRowId={(params) => String(params.data.id)}
+                className="h-full w-full"
             />
         </div>
     );

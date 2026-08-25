@@ -73,7 +73,7 @@ export function buildGroupName({ subjectName, groupType, scheduleDescription, ti
 
     const dayLabel = TIME_CODE_DAY_LABEL[timeCode] || "";
     if (timeCode || groupNo) {
-        parts.push(`(รอบ ${timeCode || "?"}/${groupNo || "?"}${dayLabel ? ` ${dayLabel}` : ""})`);
+        parts.push(`(รอบ ${timeCode || "?"}/${groupNo || "?"})`);
     }
 
     return parts.join(" ").trim();

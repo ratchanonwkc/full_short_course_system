@@ -57,6 +57,11 @@ export const submitApplication = async (payload) => {
     return data;
 };
 
+export const lookupApplicantByCitizenId = async (citizenId) => {
+    const { data } = await axiosInstance.get(`/public/applicants/lookup/${citizenId}`);
+    return data;
+};
+
 export const checkApplicationStatus = async (citizenId) => {
     const { data } = await axiosInstance.get(`/public/applications/status/${citizenId}`);
     return data;

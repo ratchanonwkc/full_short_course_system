@@ -8,6 +8,11 @@ import axiosInstance from "../../../config/axiosInstance";
  *   POST /enrollments/:id/send-email     -> sendConfirmationEmail(id)
  */
 
+export const getEnrollmentById = async (enrollmentId) => {
+    const { data } = await axiosInstance.get(`/enrollments/${enrollmentId}`);
+    return data;
+};
+
 export const reassignStudyGroup = async (enrollmentId, payload) => {
     const { data } = await axiosInstance.put(`/enrollments/${enrollmentId}/reassign-group`, payload);
     return data;

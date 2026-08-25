@@ -1,42 +1,46 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronLeft, Search, Plus, ListFilter, Layers } from "lucide-react";
+import { ChevronLeft, Search, Plus, Layers, Armchair, Users, BadgeCheck } from "lucide-react";
 import Swal from "sweetalert2";
 import StudyGroupTable from "../components/StudyGroupTable";
 import GroupFormPanel from "../components/GroupFormPanel";
 import SplitPanelLayout from "../../curriculums/components/SplitPanelLayout";
 import SearchableCombobox from "../../../components/common/SearchableCombobox";
+import Combobox from "../../../components/common/Combobox";
+import SummaryCard from "../../../components/common/SummaryCard";
 import { getStudyGroups, deleteStudyGroup, getLocations, getTimeSlots } from "../services/studyGroupApi";
-import { getBatchById } from "../../batches/services/batchApi";
+import { getBatches } from "../../batches/services/batchApi";
 import { getMajors } from "../../curriculums/services/academicStructureApi";
 import { getSubjects } from "../../subjects/services/subjectApi";
 import { getTeachers } from "../../teachers/services/teacherApi";
+import { findActiveBatch, isBatchActive } from "../../../utils/activeBatch";
+
+const STATUS_FILTER_OPTIONS = [
+    { value: "all", label: "ทุกสถานะ" },
+    { value: "draft", label: "📝 ร่าง" },
+    { value: "open", label: "🟢 เปิดสอน" },
+    { value: "full", label: "🔴 เต็ม" },
+    { value: "cancelled", label: "⚪ ยกเลิก" },
+];
 
 /**
  * StudyGroupsPage
  * -------------------------------------------------------------------------
- * หน้าจัดการ "กลุ่มเรียน" (study_groups) ของรุ่นการเรียนหนึ่งๆ — route: /batches/:batchId/groups
- *
- * โครงสร้าง:
- * - Header/Breadcrumb ระบุชัดเจนว่ากำลังจัดการกลุ่มเรียนของรุ่นใด + ปุ่มย้อนกลับไปหน้า Batches
+ * หน้าจัดการ "กลุ่มเรียน" (study_groups)
+ * - Auto-selects the Active Batch on load (findActiveBatch), manual override via Combobox.
  * - Split View: ฝั่งซ้าย (60%) AG-Grid รายการกลุ่มเรียน + Filter, ฝั่งขวา (40%) Form Panel
- *
- * Performance notes (refactored):
- * - fetchBatch  → GET /batches/:id  (ไม่ดึงทั้งหมดแล้ว)
- * - fetchGroups  และ fetchBatch ทำงานพร้อมกัน, ตารางแสดงผลทันที
- * - fetchReferenceData (majors/subjects/teachers/locations/timeSlots) โหลดพร้อมกันแบบ non-blocking
- *   ตารางไม่รอ refLoading; เฉพาะ GroupFormPanel เท่านั้นที่ใช้ข้อมูลนี้
- * - ไม่มี fetchLocations แยกซ้ำอีกต่อไป — onLocationsRefresh ใช้ inline setter โดยตรง
  */
 export default function StudyGroupsPage() {
     const { batchId } = useParams();
     const navigate = useNavigate();
 
-    const [batch, setBatch] = useState(null);
+    const [batches, setBatches] = useState([]);
+    const [selectedBatchId, setSelectedBatchId] = useState(batchId ? String(batchId) : "");
     const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterMajorId, setFilterMajorId] = useState("");
+    const [filterStatus, setFilterStatus] = useState("all");
     const [editingGroup, setEditingGroup] = useState(null);
     const [isMobileFormOpen, setIsMobileFormOpen] = useState(false);
 
@@ -48,48 +52,48 @@ export default function StudyGroupsPage() {
     const [timeSlots, setTimeSlots] = useState([]);
     const [refLoading, setRefLoading] = useState(true);
 
-    // add near other filter state
-    const [filterStatus, setFilterStatus] = useState("all");
+    // ── Load Batches and Auto-select Active Batch ─────────────────────────────
+    useEffect(() => {
+        getBatches()
+            .then((data) => {
+                const batchList = Array.isArray(data) ? data : [];
+                setBatches(batchList);
+                if (batchId) {
+                    setSelectedBatchId(String(batchId));
+                } else {
+                    const active = findActiveBatch(batchList);
+                    if (active) setSelectedBatchId(String(active.id));
+                    else if (batchList.length > 0) setSelectedBatchId(String(batchList[0].id));
+                }
+            })
+            .catch(() => setBatches([]));
+    }, [batchId]);
 
-    const STATUS_FILTER_OPTIONS = [
-        { value: "all", label: "ทุกสถานะ" },
-        { value: "draft", label: "📝 ร่าง" },
-        { value: "open", label: "🟢 เปิดสอน" },
-        { value: "full", label: "🔴 เต็ม" },
-        { value: "cancelled", label: "⚪ ยกเลิก" },
-    ];
+    const batch = useMemo(
+        () => batches.find((b) => String(b.id) === String(selectedBatchId)) || null,
+        [batches, selectedBatchId]
+    );
 
-    // ── โหลดข้อมูลรุ่นการเรียน ด้วย GET /batches/:id โดยตรง ───────────────────
-    const fetchBatch = useCallback(async () => {
-        try {
-            const found = await getBatchById(batchId);
-            setBatch(found);
-        } catch (err) {
-            const isNotFound = err?.response?.status === 404;
-            if (isNotFound) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "ไม่พบข้อมูลรุ่นการเรียน",
-                    text: "รุ่นการเรียนนี้อาจถูกลบไปแล้ว",
-                    confirmButtonColor: "#0270c7",
-                }).then(() => navigate("/batches"));
-            } else {
-                Swal.fire({
-                    icon: "error",
-                    title: "โหลดข้อมูลรุ่นการเรียนไม่สำเร็จ",
-                    text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                    confirmButtonColor: "#0270c7",
-                });
-            }
-        }
-    }, [batchId, navigate]);
+    const batchOptions = useMemo(
+        () =>
+            batches.map((b) => ({
+                value: b.id,
+                label: isBatchActive(b) ? `${b.batch_name} (รุ่นปัจจุบัน)` : b.batch_name,
+            })),
+        [batches]
+    );
 
-    // ── โหลดกลุ่มเรียนของรุ่นนี้ ─────────────────────────────────────────────
+    // ── โหลดกลุ่มเรียนของรุ่นที่เลือก ─────────────────────────────────────────
     const fetchGroups = useCallback(async () => {
+        if (!selectedBatchId) {
+            setGroups([]);
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
-            const data = await getStudyGroups({ batch_id: batchId, major_id: filterMajorId || undefined });
-            setGroups(data);
+            const data = await getStudyGroups({ batch_id: selectedBatchId, major_id: filterMajorId || undefined });
+            setGroups(Array.isArray(data) ? data : []);
         } catch (err) {
             Swal.fire({
                 icon: "error",
@@ -97,10 +101,11 @@ export default function StudyGroupsPage() {
                 text: err?.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
                 confirmButtonColor: "#0270c7",
             });
+            setGroups([]);
         } finally {
             setLoading(false);
         }
-    }, [batchId, filterMajorId]);
+    }, [selectedBatchId, filterMajorId]);
 
     // ── โหลดข้อมูลอ้างอิงสำหรับ GroupFormPanel (non-blocking ต่อตาราง) ─────────
     const fetchReferenceData = useCallback(async () => {
@@ -113,40 +118,36 @@ export default function StudyGroupsPage() {
             getTimeSlots(),
         ]);
 
-        setMajors(majorsRes.status === "fulfilled" ? majorsRes.value : []);
-        setSubjects(subjectsRes.status === "fulfilled" ? (subjectsRes.value.data || subjectsRes.value) : []);
-        setTeachers(teachersRes.status === "fulfilled" ? teachersRes.value : []);
-        setLocations(locationsRes.status === "fulfilled" ? locationsRes.value : []);
-        setTimeSlots(timeSlotsRes.status === "fulfilled" ? timeSlotsRes.value : []);
+        setMajors(majorsRes.status === "fulfilled" ? (Array.isArray(majorsRes.value) ? majorsRes.value : []) : []);
+        setSubjects(
+            subjectsRes.status === "fulfilled"
+                ? Array.isArray(subjectsRes.value?.data)
+                    ? subjectsRes.value.data
+                    : Array.isArray(subjectsRes.value)
+                    ? subjectsRes.value
+                    : []
+                : []
+        );
+        setTeachers(teachersRes.status === "fulfilled" ? (Array.isArray(teachersRes.value) ? teachersRes.value : []) : []);
+        setLocations(locationsRes.status === "fulfilled" ? (Array.isArray(locationsRes.value) ? locationsRes.value : []) : []);
+        setTimeSlots(timeSlotsRes.status === "fulfilled" ? (Array.isArray(timeSlotsRes.value) ? timeSlotsRes.value : []) : []);
 
-        const failed = [majorsRes, subjectsRes, teachersRes, locationsRes, timeSlotsRes].some((r) => r.status === "rejected");
-        if (failed) {
-            Swal.fire({
-                icon: "warning",
-                title: "โหลดข้อมูลบางส่วนไม่สำเร็จ",
-                text: "ฟอร์มอาจใช้งานได้ไม่สมบูรณ์ กรุณาลองรีเฟรชหน้าอีกครั้ง",
-                confirmButtonColor: "#0270c7",
-            });
-        }
         setRefLoading(false);
     }, []);
 
-    // ── mount: โหลด batch + groups + reference data พร้อมกัน ────────────────────
-    // ตาราง render ทันทีตาม `loading`; ฟอร์มรอ `refLoading` แยกต่างหาก
     useEffect(() => {
-        fetchBatch();
         fetchReferenceData();
-    }, [fetchBatch, fetchReferenceData]);
+    }, [fetchReferenceData]);
 
     useEffect(() => {
         fetchGroups();
     }, [fetchGroups]);
 
-    // ── refresh locations หลัง Quick Add / Manage — เรียกเดี่ยว ไม่ซ้ำ ──────────
+    // ── refresh locations หลัง Quick Add / Manage ──────────────────────────────
     const handleLocationsRefresh = useCallback(async () => {
         try {
             const data = await getLocations();
-            setLocations(data);
+            setLocations(Array.isArray(data) ? data : []);
         } catch {
             /* non-blocking */
         }
@@ -154,7 +155,6 @@ export default function StudyGroupsPage() {
 
     const majorOptions = useMemo(() => majors.map((m) => ({ value: m.id, label: m.name_th })), [majors]);
 
-    // update filteredGroups
     const filteredGroups = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
         return groups.filter((g) => {
@@ -172,10 +172,12 @@ export default function StudyGroupsPage() {
         setEditingGroup(null);
         setIsMobileFormOpen(true);
     };
+
     const handleEdit = (group) => {
         setEditingGroup(group);
         setIsMobileFormOpen(true);
     };
+
     const handleCancelEdit = () => {
         setEditingGroup(null);
         setIsMobileFormOpen(false);
@@ -231,21 +233,24 @@ export default function StudyGroupsPage() {
                         className="w-full rounded-lg border border-slate-300 py-1.5 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 sm:max-w-[160px]"
                     >
                         {STATUS_FILTER_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                            </option>
                         ))}
                     </select>
                 </div>
                 <button
                     type="button"
                     onClick={handleCreate}
-                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                    disabled={!selectedBatchId}
+                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
                 >
                     <Plus size={14} />
                     เพิ่มกลุ่มเรียนใหม่
                 </button>
             </div>
 
-            <div className="min-h-[420px] flex-1 overflow-hidden rounded-lg border border-slate-200 lg:min-h-0">
+            <div className="min-h-[480px] flex-1 overflow-hidden rounded-lg border border-slate-200 lg:min-h-0">
                 <StudyGroupTable rowData={filteredGroups} loading={loading} onEdit={handleEdit} onDelete={handleDelete} />
             </div>
         </>
@@ -253,7 +258,7 @@ export default function StudyGroupsPage() {
 
     const form = (
         <GroupFormPanel
-            batchId={batchId}
+            batchId={selectedBatchId}
             batch={batch}
             initialData={editingGroup}
             onSaved={handleSaved}
@@ -268,10 +273,24 @@ export default function StudyGroupsPage() {
         />
     );
 
+    // ── Computed Stats for Study Groups ─────────────────────────────────────
+    const stats = useMemo(() => {
+        const totalGroups = groups.length;
+        const availableSeats = groups.reduce((sum, g) => {
+            const max = Number(g.max_seats) || 0;
+            const current = Number(g.current_seats) || 0;
+            return sum + Math.max(0, max - current);
+        }, 0);
+        const totalEnrolled = groups.reduce((sum, g) => sum + (Number(g.current_seats) || 0), 0);
+        const totalCapacity = groups.reduce((sum, g) => sum + (Number(g.max_seats) || 0), 0);
+
+        return { totalGroups, availableSeats, totalEnrolled, totalCapacity };
+    }, [groups]);
+
     return (
-        <div className="w-full p-4">
+        <div className="w-full flex-1 flex flex-col min-h-0 p-4 sm:p-6">
             {/* Breadcrumb / Header */}
-            <div className="mb-6 flex flex-col gap-2">
+            <div className="mb-5 flex flex-col gap-2 shrink-0">
                 <div className="flex items-center gap-2 text-sm text-slate-500">
                     <Link to="/batches" className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline">
                         <ChevronLeft size={15} />
@@ -280,24 +299,75 @@ export default function StudyGroupsPage() {
                     <span>/</span>
                     <span className="font-medium text-slate-700">จัดการกลุ่มเรียน</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
-                        <Layers size={18} />
-                    </span>
-                    <div>
-                        <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
-                            {batch ? batch.batch_name : "กำลังโหลด..."}
-                        </h1>
-                        <p className="text-sm text-slate-500">
-                            {batch
-                                ? `ปีการศึกษา ${batch.academic_year} · ภาคเรียนที่ ${batch.term} · จัดการกลุ่มเรียน/ชุดวิชาในรุ่นนี้`
-                                : "กำลังโหลดข้อมูลรุ่นการเรียน..."}
-                        </p>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+                            <Layers size={18} />
+                        </span>
+                        <div>
+                            <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
+                                {batch ? `จัดการกลุ่มเรียน — ${batch.batch_name}` : "จัดการกลุ่มเรียน"}
+                            </h1>
+                            <p className="text-sm text-slate-500">
+                                {batch
+                                    ? `ปีการศึกษา ${batch.academic_year} · ภาคเรียนที่ ${batch.term} · จัดการกลุ่มเรียนและตารางเรียนในรุ่นนี้`
+                                    : "เลือกรุ่นการเรียนเพื่อจัดการกลุ่มเรียน"}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Batch Combobox Selector */}
+                    <div className="w-full sm:w-72">
+                        <label className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                            รุ่นการเรียน
+                            {batch && isBatchActive(batch) && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                                    <BadgeCheck size={10} /> รุ่นปัจจุบัน
+                                </span>
+                            )}
+                        </label>
+                        <Combobox
+                            value={selectedBatchId}
+                            onChange={(val) => {
+                                setSelectedBatchId(val);
+                                setEditingGroup(null);
+                            }}
+                            options={batchOptions}
+                            placeholder="เลือกรุ่นการเรียน..."
+                        />
                     </div>
                 </div>
             </div>
 
-            {/* ตารางแสดงผลทันที โดยไม่รอ refLoading */}
+            {/* 📊 Lightweight Metric Summary Cards */}
+            <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-3 shrink-0">
+                <SummaryCard
+                    title="กลุ่มเรียนทั้งหมด (Total Groups)"
+                    value={loading ? "-" : stats.totalGroups.toLocaleString()}
+                    subtitle="กลุ่มเรียนในรุ่นการเรียนนี้"
+                    icon={Layers}
+                    variant="indigo"
+                    loading={loading}
+                />
+                <SummaryCard
+                    title="จำนวนที่นั่งคงเหลือ (Available Seats)"
+                    value={loading ? "-" : stats.availableSeats.toLocaleString()}
+                    subtitle={`ความจุทั้งหมด ${stats.totalCapacity.toLocaleString()} ที่นั่ง`}
+                    icon={Armchair}
+                    variant="emerald"
+                    loading={loading}
+                />
+                <SummaryCard
+                    title="ผู้สมัครที่เข้ากลุ่มแล้ว (Enrolled)"
+                    value={loading ? "-" : stats.totalEnrolled.toLocaleString()}
+                    subtitle="จำนวนที่นั่งที่ถูกจองแล้ว"
+                    icon={Users}
+                    variant="blue"
+                    loading={loading}
+                />
+            </div>
+
+            {/* Split view */}
             <SplitPanelLayout
                 grid={grid}
                 form={form}

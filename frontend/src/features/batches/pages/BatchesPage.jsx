@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Search, Plus, ListFilter, CalendarRange } from "lucide-react";
+import { Search, Plus, ListFilter, CalendarRange, Sparkles, Layers, Armchair, Users } from "lucide-react";
 import Swal from "sweetalert2";
 import BatchTable from "../components/BatchTable";
 import BatchFormModal from "../components/BatchFormModal";
+import SummaryCard from "../../../components/common/SummaryCard";
 import { getBatches, deleteBatch } from "../services/batchApi";
 import { getTeachers } from "../../teachers/services/teacherApi";
+import { getStudyGroups } from "../../study-groups/services/studyGroupApi";
 
 const STATUS_OPTIONS = [
     { value: "all", label: "ทุกสถานะ" },
@@ -21,11 +23,13 @@ const CURRENT_BE_YEAR = new Date().getFullYear() + 543;
  * BatchesPage
  * -------------------------------------------------------------------------
  * Dashboard page for managing "batches" (รุ่นการเรียน).
- * Wires together search, academic-year filter, status filter, BatchTable
- * (AG Grid) and BatchFormModal (create single / create bulk-year / edit).
+ * - Lightweight Metric Summary Cards (Admitting Batches, Total Groups, Available Seats).
+ * - Wires together search, academic-year filter, status filter, BatchTable
+ *   (AG Grid) and BatchFormModal (create single / create bulk-year / edit).
  */
 export default function BatchesPage() {
     const [batches, setBatches] = useState([]);
+    const [studyGroups, setStudyGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -37,14 +41,17 @@ export default function BatchesPage() {
     const [teachers, setTeachers] = useState([]);
     const [teachersLoading, setTeachersLoading] = useState(true);
 
-    // ยิง GET /batches พร้อม query params { year, term }
-    // - ตอน Quick Search อยู่ (isQuickSearching) เราอยากค้นข้ามทุกปี จึงไม่ส่ง year ไปกรองที่ backend
-    // - term ยังไม่มี dropdown filter ในหน้านี้ จึงเว้นว่างไว้ (backend รองรับแล้วถ้าจะเพิ่มในอนาคต)
     const fetchBatches = useCallback(async (params = {}) => {
         setLoading(true);
         try {
-            const data = await getBatches(params);
-            setBatches(data);
+            const [batchData, groupData] = await Promise.allSettled([
+                getBatches(params),
+                getStudyGroups(),
+            ]);
+            setBatches(batchData.status === "fulfilled" ? batchData.value : []);
+            if (groupData.status === "fulfilled") {
+                setStudyGroups(Array.isArray(groupData.value) ? groupData.value : []);
+            }
         } catch (err) {
             Swal.fire({
                 icon: "error",
@@ -60,7 +67,6 @@ export default function BatchesPage() {
     }, []);
 
     // ดึงรายชื่ออาจารย์ที่ "ใช้งานอยู่" มาให้เลือกเป็นผู้รับผิดชอบในรุ่นการเรียน
-    // (คนที่ระงับการใช้งานแล้วไม่ควรถูกเลือกมาเป็น ผอ./รองฯ/หัวหน้างานรุ่นใหม่)
     const fetchTeachers = useCallback(async () => {
         setTeachersLoading(true);
         try {
@@ -89,14 +95,26 @@ export default function BatchesPage() {
     const isQuickSearching = searchTerm.trim().length > 0;
 
     useEffect(() => {
-        // ถ้ากำลัง Quick Search อยู่ -> ดึงข้อมูลทุกปีการศึกษามาก่อน แล้วค่อยกรองฝั่ง client
-        // ถ้าไม่ได้ค้นหา -> ส่ง year ไปกรองที่ backend เลย (ยกเว้นเลือก "ทุกปีการศึกษา")
         const params = {};
         if (!isQuickSearching && academicYearFilter !== "all") {
             params.year = academicYearFilter;
         }
         fetchBatches(params);
     }, [fetchBatches, academicYearFilter, isQuickSearching]);
+
+    // ── Computed Statistics for Summary Cards ───────────────────────────────
+    const stats = useMemo(() => {
+        const admittingBatches = batches.filter((b) => b.status === "admitting").length;
+        const totalGroups = studyGroups.length;
+        const availableSeats = studyGroups.reduce((sum, g) => {
+            const max = Number(g.max_seats) || 0;
+            const current = Number(g.current_seats) || 0;
+            return sum + Math.max(0, max - current);
+        }, 0);
+        const totalEnrolled = studyGroups.reduce((sum, g) => sum + (Number(g.current_seats) || 0), 0);
+
+        return { admittingBatches, totalGroups, availableSeats, totalEnrolled };
+    }, [batches, studyGroups]);
 
     // รายการปีการศึกษาทั้งหมดที่มีข้อมูลอยู่ (สำหรับ dropdown filter)
     const academicYearOptions = useMemo(() => {
@@ -132,7 +150,6 @@ export default function BatchesPage() {
 
     const handleDelete = async (batch) => {
         try {
-            // ยิง DELETE /batches/:id จริง แล้วค่อยตัดออกจาก state เมื่อ backend ตอบ OK
             await deleteBatch(batch.id);
             setBatches((prev) => prev.filter((b) => b.id !== batch.id));
         } catch (err) {
@@ -145,7 +162,6 @@ export default function BatchesPage() {
         }
     };
 
-    // ใช้กับทั้งโหมดสร้างทีละรุ่น (เรียก 1 ครั้ง) และโหมดสร้างยกปี (เรียก 4 ครั้ง)
     const handleSaved = (savedBatch) => {
         setBatches((prev) => {
             const exists = prev.some((b) => b.id === savedBatch.id);
@@ -160,12 +176,42 @@ export default function BatchesPage() {
     };
 
     return (
-        <div className="w-full p-4">
-            <div className="mb-6 flex flex-col gap-1">
-                <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">จัดการรุ่นการเรียน</h1>
-                <p className="text-sm text-slate-500">
-                    สร้าง แก้ไข และติดตามสถานะรุ่นการเรียนทั้งหมดในระบบ
-                </p>
+        <div className="w-full flex-1 flex flex-col min-h-0 p-4 sm:p-6">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-4 shrink-0">
+                <div>
+                    <h1 className="flex items-center gap-2 text-xl font-black text-slate-800 sm:text-2xl">
+                        <CalendarRange size={24} className="text-blue-600" /> จัดการรุ่นการเรียน
+                    </h1>
+                    <p className="text-sm text-slate-500">จัดการรุ่นการเรียนและกำหนดการรับสมัคร/ตารางสอน</p>
+                </div>
+            </div>
+
+            {/* 📊 1. Lightweight Metric Summary Cards */}
+            <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-3 shrink-0">
+                <SummaryCard
+                    title="รุ่นที่เปิดรับสมัคร (Admitting Batches)"
+                    value={loading ? "-" : stats.admittingBatches.toLocaleString()}
+                    subtitle="รุ่นที่เปิดรับลงทะเบียนขณะนี้"
+                    icon={Sparkles}
+                    variant="blue"
+                    loading={loading}
+                />
+                <SummaryCard
+                    title="กลุ่มเรียนทั้งหมด (Total Groups)"
+                    value={loading ? "-" : stats.totalGroups.toLocaleString()}
+                    subtitle="กลุ่มเรียน/ห้องเรียนทุกแผนก"
+                    icon={Layers}
+                    variant="indigo"
+                    loading={loading}
+                />
+                <SummaryCard
+                    title="จำนวนที่นั่งคงเหลือ (Available Seats)"
+                    value={loading ? "-" : stats.availableSeats.toLocaleString()}
+                    subtitle={`จากผู้ลงทะเบียนแล้ว ${stats.totalEnrolled.toLocaleString()} คน`}
+                    icon={Armchair}
+                    variant="emerald"
+                    loading={loading}
+                />
             </div>
 
             {/* Toolbar */}

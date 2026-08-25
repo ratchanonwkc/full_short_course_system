@@ -171,7 +171,7 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
     );
 
     return (
-        <div className="w-full h-[calc(100vh-15rem)] overflow-hidden">
+        <div className="w-full flex-1 min-h-[360px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
             <AgGridReact
                 theme={themeQuartz}
                 ref={gridRef}
@@ -181,12 +181,15 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
                 loading={loading}
                 pagination
                 paginationPageSize={20}
-                headerHeight={44}
+                domLayout="normal"
+                headerHeight={42}
+                rowHeight={44}
                 animateRows
                 overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ไม่พบข้อมูลรุ่นการเรียน</span>"
                 getRowId={(params) => String(params.data.id)}
                 onRowDoubleClicked={(params) => goToGroups(params.data)}
                 rowStyle={{ cursor: "pointer" }}
+                className="h-full w-full"
             />
         </div>
     );

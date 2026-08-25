@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
-import { Wallet, Eye, BadgeCheck } from "lucide-react";
+import { Wallet, Eye, BadgeCheck, Clock, CheckCircle2, AlertCircle, Banknote } from "lucide-react";
 import Combobox from "../../../components/common/Combobox";
+import SummaryCard from "../../../components/common/SummaryCard";
 import { getEnrollments } from "../../enrollments/services/enrollmentApi";
 import { getBatches } from "../../batches/services/batchApi";
 import { getStudyGroups } from "../../study-groups/services/studyGroupApi";
@@ -24,12 +25,12 @@ const PAYMENT_TYPE_LABELS = {
     counter_cash: "ชำระที่ห้องการเงิน",
 };
 
-// Tab definitions — each maps to the enrollment statuses it should query for.
+// Tab definitions — each maps to the enrollment statuses it should display
 const TABS = [
     { key: "pending", label: "รอตรวจสอบ", statuses: ["pending_payment", "pending_verification"] },
     { key: "paid", label: "ชำระแล้ว", statuses: ["paid"] },
     { key: "rejected", label: "สลิปไม่ถูกต้อง", statuses: ["rejected"] },
-    { key: "all", label: "ทั้งหมด", statuses: null }, // null = no status filter
+    { key: "all", label: "ทั้งหมด", statuses: null },
 ];
 
 function StatusBadgeRenderer({ value }) {
@@ -49,12 +50,13 @@ function PaymentTypeRenderer({ value }) {
 
 /**
  * FinanceVerificationPage — Tabbed audit-friendly payment verification dashboard.
+ * - Lightweight Metric Summary Cards (Pending, Paid, Rejected, Total Revenue).
  * - Auto-selects the Active Batch on load.
  * - Tabs: Pending Verification (default) / Paid / Rejected / All.
  * - Row action opens FinanceVerificationModal (zoom/rotate slip, approve/reject, audit log).
  */
 export default function FinanceVerificationPage() {
-    const [enrollments, setEnrollments] = useState([]);
+    const [allEnrollments, setAllEnrollments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewing, setViewing] = useState(null);
     const [activeTab, setActiveTab] = useState("pending");
@@ -90,22 +92,46 @@ export default function FinanceVerificationPage() {
             if (filterGroupId) params.study_group_id = filterGroupId;
             else if (filterBatchId) params.batch_id = filterBatchId;
 
-            const tab = TABS.find((t) => t.key === activeTab);
-            if (!tab?.statuses) {
-                const data = await getEnrollments(params);
-                setEnrollments(data);
-            } else {
-                const results = await Promise.all(tab.statuses.map((status) => getEnrollments({ ...params, status })));
-                setEnrollments(results.flat());
-            }
+            const data = await getEnrollments(params);
+            setAllEnrollments(Array.isArray(data) ? data : []);
+        } catch {
+            setAllEnrollments([]);
         } finally {
             setLoading(false);
         }
-    }, [filterBatchId, filterGroupId, activeTab]);
+    }, [filterBatchId, filterGroupId]);
 
     useEffect(() => {
         load();
     }, [load]);
+
+    // ── Computed Metrics & Stats for Summary Cards ──────────────────────────
+    const stats = useMemo(() => {
+        let pending = 0;
+        let paid = 0;
+        let rejected = 0;
+        let totalRevenue = 0;
+
+        for (const item of allEnrollments) {
+            if (item.status === "pending_payment" || item.status === "pending_verification") {
+                pending++;
+            } else if (item.status === "paid") {
+                paid++;
+                totalRevenue += Number(item.total_amount) || 0;
+            } else if (item.status === "rejected") {
+                rejected++;
+            }
+        }
+
+        return { pending, paid, rejected, totalRevenue };
+    }, [allEnrollments]);
+
+    // ── Filtered rows for current Tab ───────────────────────────────────────
+    const filteredEnrollments = useMemo(() => {
+        const tab = TABS.find((t) => t.key === activeTab);
+        if (!tab?.statuses) return allEnrollments;
+        return allEnrollments.filter((item) => tab.statuses.includes(item.status));
+    }, [allEnrollments, activeTab]);
 
     const batchOptions = useMemo(
         () => batches.map((b) => ({ value: b.id, label: isBatchActive(b) ? `${b.batch_name} (รุ่นปัจจุบัน)` : b.batch_name })),
@@ -120,7 +146,7 @@ export default function FinanceVerificationPage() {
     const ActionsRenderer = (params) => (
         <button
             onClick={() => setViewing(params.data)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-blue-700 active:scale-95"
         >
             <Eye size={14} /> ตรวจสอบ / ยืนยัน
         </button>
@@ -162,31 +188,58 @@ export default function FinanceVerificationPage() {
     const defaultColDef = useMemo(() => ({ resizable: true, sortable: true, filter: true }), []);
 
     return (
-        <div className="p-4 sm:p-6">
-            <h1 className="mb-1 flex items-center gap-2 text-xl font-black text-slate-800">
-                <Wallet size={22} className="text-blue-600" /> ตรวจสอบและยืนยันการชำระเงิน (แผนกการเงิน)
-            </h1>
-            <p className="mb-5 text-sm text-slate-500">
-                เลือกรุ่น/กลุ่มเรียน แล้วสลับแท็บเพื่อดูรายการรอตรวจสอบ ประวัติที่ชำระแล้ว หรือรายการที่ถูกปฏิเสธ
-            </p>
+        <div className="w-full flex-1 flex flex-col min-h-0 p-4 sm:p-6">
+            {/* Header */}
+            <div className="mb-5 flex flex-col gap-1 shrink-0">
+                <h1 className="flex items-center gap-2 text-xl font-black text-slate-800 sm:text-2xl">
+                    <Wallet size={24} className="text-blue-600" /> ตรวจสอบและยืนยันการชำระเงิน (แผนกการเงิน)
+                </h1>
+                <p className="text-sm text-slate-500">
+                    ตรวจสอบหลักฐานการโอนเงิน ออกใบเสร็จรับเงิน และสรุปยอดรายได้ค่าลงทะเบียน
+                </p>
+            </div>
 
-            {/* Tabs */}
-            <div className="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
-                {TABS.map((tab) => (
-                    <button
-                        key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
-                        className={`relative px-4 py-2.5 text-sm font-semibold transition ${activeTab === tab.key ? "text-blue-600" : "text-slate-500 hover:text-slate-700"
-                            }`}
-                    >
-                        {tab.label}
-                        {activeTab === tab.key && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-blue-600" />}
-                    </button>
-                ))}
+            {/* 📊 1. Lightweight Metric Summary Cards */}
+            <div className="mb-5 grid grid-cols-2 gap-3.5 sm:grid-cols-2 lg:grid-cols-4 shrink-0">
+                <SummaryCard
+                    title="รอตรวจสอบ (Pending)"
+                    value={loading ? "-" : stats.pending.toLocaleString()}
+                    subtitle="สลิปรอการตรวจสอบ/ยืนยัน"
+                    icon={Clock}
+                    variant="amber"
+                    loading={loading}
+                    onClick={() => setActiveTab("pending")}
+                />
+                <SummaryCard
+                    title="ชำระแล้ว (Paid)"
+                    value={loading ? "-" : stats.paid.toLocaleString()}
+                    subtitle="รายการที่อนุมัติเรียบร้อย"
+                    icon={CheckCircle2}
+                    variant="emerald"
+                    loading={loading}
+                    onClick={() => setActiveTab("paid")}
+                />
+                <SummaryCard
+                    title="ปฏิเสธ/มีปัญหา (Rejected)"
+                    value={loading ? "-" : stats.rejected.toLocaleString()}
+                    subtitle="สลิปไม่ถูกต้อง/ยอดไม่ตรง"
+                    icon={AlertCircle}
+                    variant="rose"
+                    loading={loading}
+                    onClick={() => setActiveTab("rejected")}
+                />
+                <SummaryCard
+                    title="ยอดเงินรวม (Total Revenue)"
+                    value={loading ? "-" : `฿${stats.totalRevenue.toLocaleString()}`}
+                    subtitle="ยอดค่าธรรมเนียมที่ชำระแล้ว"
+                    icon={Banknote}
+                    variant="blue"
+                    loading={loading}
+                />
             </div>
 
             {/* Quick filters */}
-            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-[36rem] lg:grid-cols-2">
+            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-[36rem] lg:grid-cols-2 shrink-0">
                 <div>
                     <label className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-400">
                         รุ่นการเรียน
@@ -210,15 +263,51 @@ export default function FinanceVerificationPage() {
                 </div>
             </div>
 
-            <div className="h-[calc(100vh-20rem)] min-h-[420px] overflow-hidden rounded-xl border border-slate-200 bg-white">
+            {/* Tabs */}
+            <div className="mb-4 flex flex-wrap gap-1 border-b border-slate-200 shrink-0">
+                {TABS.map((tab) => {
+                    let count = 0;
+                    if (tab.key === "pending") count = stats.pending;
+                    else if (tab.key === "paid") count = stats.paid;
+                    else if (tab.key === "rejected") count = stats.rejected;
+                    else count = allEnrollments.length;
+
+                    const isSelected = activeTab === tab.key;
+                    let badgeCls = "bg-slate-100 text-slate-600";
+                    if (tab.key === "pending") badgeCls = isSelected ? "bg-amber-100 text-amber-700 ring-1 ring-amber-400/30 font-bold" : "bg-amber-50 text-amber-600 font-semibold";
+                    else if (tab.key === "paid") badgeCls = isSelected ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-400/30 font-bold" : "bg-emerald-50 text-emerald-600 font-semibold";
+                    else if (tab.key === "rejected") badgeCls = isSelected ? "bg-rose-100 text-rose-700 ring-1 ring-rose-400/30 font-bold" : "bg-rose-50 text-rose-600 font-semibold";
+                    else badgeCls = isSelected ? "bg-blue-100 text-blue-700 ring-1 ring-blue-400/30 font-bold" : "bg-slate-100 text-slate-600 font-semibold";
+
+                    return (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            className={`relative inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition ${
+                                isSelected ? "text-blue-600" : "text-slate-500 hover:text-slate-700"
+                            }`}
+                        >
+                            <span>{tab.label}</span>
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs transition ${badgeCls}`}>
+                                {loading ? "-" : count}
+                            </span>
+                            {isSelected && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-blue-600" />}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Ag Grid Table */}
+            <div className="w-full flex-1 min-h-[360px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
                 <AgGridReact
                     theme={themeQuartz}
-                    rowData={enrollments}
+                    rowData={filteredEnrollments}
                     columnDefs={columnDefs}
                     defaultColDef={defaultColDef}
                     loading={loading}
                     pagination
                     paginationPageSize={20}
+                    domLayout="normal"
                     headerHeight={42}
                     rowHeight={44}
                     animateRows

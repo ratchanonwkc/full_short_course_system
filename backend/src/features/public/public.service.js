@@ -126,15 +126,20 @@ const upsertApplicant = async (applicantData) => {
     const { citizen_id } = applicantData;
     const { data: existing, error: findErr } = await supabase
         .from('applicants')
-        .select('id')
+        .select('id, student_type')
         .eq('citizen_id', citizen_id)
         .maybeSingle();
     if (findErr) throw findErr;
 
+    const payload = {
+        ...applicantData,
+        student_type: existing ? 'นักศึกษาเก่า' : (applicantData.student_type || 'นักศึกษาใหม่'),
+    };
+
     if (existing) {
         const { data, error } = await supabase
             .from('applicants')
-            .update(applicantData)
+            .update(payload)
             .eq('id', existing.id)
             .select()
             .single();
@@ -142,7 +147,7 @@ const upsertApplicant = async (applicantData) => {
         return data;
     }
 
-    const { data, error } = await supabase.from('applicants').insert([applicantData]).select().single();
+    const { data, error } = await supabase.from('applicants').insert([payload]).select().single();
     if (error) throw error;
     return data;
 };
@@ -190,6 +195,17 @@ export const createOnlineApplicationService = async ({ applicant, study_group_id
         .single();
     if (error) throw error;
 
+    if (enrollment && !enrollment.application_no) {
+        const appNo = String(enrollment.id).padStart(5, '0');
+        const { data: updatedEnrollment } = await supabase
+            .from('enrollments')
+            .update({ application_no: appNo })
+            .eq('id', enrollment.id)
+            .select()
+            .single();
+        return { applicant: savedApplicant, enrollment: updatedEnrollment || enrollment };
+    }
+
     return { applicant: savedApplicant, enrollment };
 };
 
@@ -220,6 +236,23 @@ export const getStatusByCitizenIdService = async (citizenId) => {
  * Self-service correction: applicant edits & resubmits a REJECTED application.
  * Identity is verified server-side by matching citizen_id — no auth required.
  */
+export const lookupApplicantByCitizenIdService = async (citizenId) => {
+    if (!citizenId || citizenId.length !== 13) {
+        const err = new Error('เลขประจำตัวประชาชนไม่ถูกต้อง (ต้องมี 13 หลัก)');
+        err.status = 400;
+        throw err;
+    }
+
+    const { data, error } = await supabase
+        .from('applicants')
+        .select('*')
+        .eq('citizen_id', citizenId)
+        .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
+};
+
 export const resubmitApplicationService = async (enrollmentId, { citizen_id, slip_url, applicant }) => {
     const { data: enrollment, error: findErr } = await supabase
         .from('enrollments')

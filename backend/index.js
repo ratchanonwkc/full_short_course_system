@@ -16,6 +16,7 @@ import studyGroupSubjectsRoutes from './src/features/study-group-subjects/studyG
 import publicRoutes from './src/features/public/public.routes.js';
 import enrollmentsRoutes from './src/features/enrollments/enrollments.routes.js';
 import paymentMethodsRoutes from './src/features/payment-methods/paymentMethods.routes.js';
+import adminRoutes from './src/features/admin/admin.routes.js';
 
 dotenv.config();
 
@@ -41,6 +42,8 @@ app.use('/api/study-group-subjects', studyGroupSubjectsRoutes);
 app.use('/api/public', publicRoutes); // Public Portal: open groups, postal lookup, upload slip, applications, status check
 app.use('/api/enrollments', enrollmentsRoutes); // Registrar/Finance: enrollment list, walk-in, confirm payment, cancel
 app.use('/api/payment-methods', paymentMethodsRoutes); // Finance: bank account CRUD + QR upload
+app.use('/api/admin', adminRoutes); // Admin: user management, credentials, audit logs
+app.use('/api', adminRoutes); // Alias for direct /api/users & /api/audit-logs
 app.use('/api', masterDataRoutes); // รองรับ /api/prefixes, /api/positions, /api/sub-positions,
 // /api/curriculums, /api/academic-levels, /api/subject-types,
 // /api/locations, /api/time-slots
