@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { Search, Plus, ListFilter, CalendarRange, Sparkles, Layers, Armchair, Users } from "lucide-react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { Search, Plus, ListFilter, CalendarRange, Sparkles, Layers, Armchair, Users, Printer } from "lucide-react";
+import { useReactToPrint } from "react-to-print";
 import Swal from "sweetalert2";
 import BatchTable from "../components/BatchTable";
 import BatchFormModal from "../components/BatchFormModal";
 import SummaryCard from "../../../components/common/SummaryCard";
 import { getBatches, deleteBatch } from "../services/batchApi";
 import { getTeachers } from "../../teachers/services/teacherApi";
-import { getStudyGroups } from "../../study-groups/services/studyGroupApi";
+import { getStudyGroups, getBlankPrintTemplate } from "../../study-groups/services/studyGroupApi";
+import ApplicationFormPrint from "../../../components/print/ApplicationFormPrint";
 
 const STATUS_OPTIONS = [
     { value: "all", label: "ทุกสถานะ" },
@@ -36,6 +38,27 @@ export default function BatchesPage() {
     const [academicYearFilter, setAcademicYearFilter] = useState(String(CURRENT_BE_YEAR));
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingBatch, setEditingBatch] = useState(null);
+
+    // Blank Application Printing state
+    const [blankPrintData, setBlankPrintData] = useState(null);
+    const blankPrintRef = useRef(null);
+
+    const handlePrintBlankDoc = useReactToPrint({
+        contentRef: blankPrintRef,
+        documentTitle: `ใบสมัครเปล่า_${blankPrintData?.group_name || "blank_application"}`,
+    });
+
+    const handlePrintPureBlank = async () => {
+        try {
+            const data = await getBlankPrintTemplate("");
+            setBlankPrintData(data);
+            setTimeout(() => {
+                handlePrintBlankDoc();
+            }, 150);
+        } catch (err) {
+            Swal.fire("ไม่สามารถพิมพ์ได้", "เกิดข้อผิดพลาดในการโหลดแบบฟอร์มเปล่า", "error");
+        }
+    };
 
     // รายชื่ออาจารย์จริง (ใช้เติม Combobox ผู้รับผิดชอบ 9 ตำแหน่งใน BatchFormModal)
     const [teachers, setTeachers] = useState([]);
@@ -264,14 +287,24 @@ export default function BatchesPage() {
                     </div>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={handleCreate}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
-                >
-                    <Plus size={16} />
-                    สร้างรุ่นการเรียนใหม่
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={handlePrintPureBlank}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-blue-600 active:scale-[0.98]"
+                    >
+                        <Printer size={16} />
+                        พิมพ์ใบสมัครเปล่า
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleCreate}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
+                    >
+                        <Plus size={16} />
+                        สร้างรุ่นการเรียนใหม่
+                    </button>
+                </div>
             </div>
 
             {isQuickSearching && (
@@ -290,6 +323,17 @@ export default function BatchesPage() {
                 teachers={teachers}
                 teachersLoading={teachersLoading}
             />
+
+            {/* ── Hidden Print Component for Blank Application ──────── */}
+            <div className="hidden">
+                {blankPrintData && (
+                    <ApplicationFormPrint
+                        ref={blankPrintRef}
+                        enrollment={blankPrintData}
+                        studentNo=""
+                    />
+                )}
+            </div>
         </div>
     );
 }

@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Users, FileText, Printer } from "lucide-react";
 import Swal from "sweetalert2";
 import { GROUP_TYPE_LABELS, GROUP_STATUS_META } from "../../../utils/groupCode";
 
@@ -56,8 +56,17 @@ function GroupCodeRenderer({ value }) {
  * - loading: boolean
  * - onEdit: (group) => void
  * - onDelete: (group) => void
+ * - onViewRoster: (group) => void
+ * - onPrintGroupBlank: (group) => void
  */
-export default function StudyGroupTable({ rowData = [], loading = false, onEdit, onDelete }) {
+export default function StudyGroupTable({
+    rowData = [],
+    loading = false,
+    onEdit,
+    onDelete,
+    onViewRoster,
+    onPrintGroupBlank,
+}) {
     const gridRef = useRef(null);
 
     const handleDeleteClick = async (group) => {
@@ -88,12 +97,28 @@ export default function StudyGroupTable({ rowData = [], loading = false, onEdit,
     };
 
     const ActionsRenderer = (params) => (
-        <div className="flex h-full items-center gap-1.5">
+        <div className="flex h-full items-center gap-1">
+            <button
+                type="button"
+                title="ดูรายชื่อนักศึกษา (ศธ.02)"
+                onClick={() => onViewRoster?.(params.data)}
+                className="rounded-md p-1.5 text-blue-600 transition hover:bg-blue-100 hover:text-blue-800"
+            >
+                <Users size={15} />
+            </button>
+            <button
+                type="button"
+                title="พิมพ์ใบสมัครเปล่าประจำกลุ่ม"
+                onClick={() => onPrintGroupBlank?.(params.data)}
+                className="rounded-md p-1.5 text-emerald-600 transition hover:bg-emerald-100 hover:text-emerald-800"
+            >
+                <Printer size={15} />
+            </button>
             <button
                 type="button"
                 title="แก้ไข"
                 onClick={() => onEdit?.(params.data)}
-                className="rounded-md p-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600"
             >
                 <Pencil size={15} />
             </button>
@@ -128,13 +153,13 @@ export default function StudyGroupTable({ rowData = [], loading = false, onEdit,
             {
                 headerName: "จัดการ",
                 pinned: "right",
-                width: 100,
+                width: 150,
                 sortable: false,
                 filter: false,
                 cellRenderer: ActionsRenderer,
             },
         ],
-        [onEdit]
+        [onEdit, onViewRoster, onPrintGroupBlank]
     );
 
     const defaultColDef = useMemo(

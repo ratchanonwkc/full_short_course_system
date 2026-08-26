@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { GraduationCap, LogIn, Menu, X, FileSearch } from 'lucide-react';
+import { GraduationCap, LogIn, Menu, X } from 'lucide-react';
 import LoginFormModal from '../../features/auth/components/LoginFormModal';
-import StatusCheckModal from '../../features/public/components/StatusCheckModal';
 import Swal from 'sweetalert2';
 
 /**
@@ -12,13 +11,11 @@ import Swal from 'sweetalert2';
 export default function PublicLayout() {
   const navigate = useNavigate();
   const [loginOpen, setLoginOpen] = useState(false);
-  const [statusOpen, setStatusOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
     { to: '/', label: 'วิชาที่เปิดรับสมัคร', end: true },
-    // { to: '/how-to-apply', label: 'วิธีสมัครเรียน', end: false },
-    // { to: '/contact', label: 'ติดต่อเรา', end: false },
+    { to: '/track', label: 'ตรวจสอบสถานะการสมัคร', end: false },
   ];
 
   const handleLoginSuccess = () => {
@@ -35,13 +32,13 @@ export default function PublicLayout() {
     navigate('/dashboard');
   };
 
-  const activeCls = 'text-blue-600 font-semibold';
-  const inactiveCls = 'text-slate-600 hover:text-blue-600 transition';
+  const activeCls = 'text-blue-600 font-bold border-b-2 border-blue-600 pb-1';
+  const inactiveCls = 'text-slate-600 hover:text-blue-600 font-semibold transition pb-1';
 
   return (
     <>
       {/* ── Top Navigation Bar ─────────────────────────────── */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
+      <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white shadow-xs">
         <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
 
           {/* Logo + System name */}
@@ -55,7 +52,7 @@ export default function PublicLayout() {
           </Link>
 
           {/* Desktop nav links */}
-          <ul className="hidden md:flex items-center gap-6 text-sm font-medium">
+          <ul className="hidden md:flex items-center gap-7 text-sm font-medium">
             {navLinks.map(({ to, label, end }) => (
               <li key={to}>
                 <NavLink
@@ -67,16 +64,6 @@ export default function PublicLayout() {
                 </NavLink>
               </li>
             ))}
-            <li>
-              <button
-                type="button"
-                onClick={() => setStatusOpen(true)}
-                className="inline-flex items-center gap-1.5 text-slate-600 transition hover:text-blue-600"
-              >
-                <FileSearch size={15} />
-                ตรวจสอบสถานะการสมัคร
-              </button>
-            </li>
           </ul>
 
           {/* Right side: staff login + hamburger */}
@@ -117,16 +104,6 @@ export default function PublicLayout() {
                   </NavLink>
                 </li>
               ))}
-              <li>
-                <button
-                  type="button"
-                  onClick={() => { setMobileMenuOpen(false); setStatusOpen(true); }}
-                  className="inline-flex items-center gap-1.5 text-slate-600 transition hover:text-blue-600"
-                >
-                  <FileSearch size={15} />
-                  ตรวจสอบสถานะการสมัคร
-                </button>
-              </li>
             </ul>
           </div>
         )}
@@ -143,9 +120,6 @@ export default function PublicLayout() {
         onClose={() => setLoginOpen(false)}
         onLoginSuccess={handleLoginSuccess}
       />
-
-      {/* ── Status check modal (No-Login) ───────────────────── */}
-      <StatusCheckModal isOpen={statusOpen} onClose={() => setStatusOpen(false)} />
     </>
   );
 }

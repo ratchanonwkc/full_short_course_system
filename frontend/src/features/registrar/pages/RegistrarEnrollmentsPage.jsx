@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
+import { useReactToPrint } from "react-to-print";
 import Swal from "sweetalert2";
-import { Users, UserPlus, IdCard, X, Search, Eye, BadgeCheck, UserCheck, AlertCircle, GraduationCap } from "lucide-react";
+import { Users, UserPlus, IdCard, X, Search, Eye, BadgeCheck, UserCheck, AlertCircle, GraduationCap, Printer } from "lucide-react";
 import Combobox from "../../../components/common/Combobox";
 import SummaryCard from "../../../components/common/SummaryCard";
-import { getStudyGroups } from "../../study-groups/services/studyGroupApi";
+import { getStudyGroups, getBlankPrintTemplate } from "../../study-groups/services/studyGroupApi";
 import { getBatches } from "../../batches/services/batchApi";
 import { getEnrollments, createWalkinEnrollment, cancelEnrollment } from "../../enrollments/services/enrollmentApi";
 import ApplicantFormFields, { EMPTY_APPLICANT } from "../../public/components/ApplicantFormFields";
 import ApplicantDetailDrawer from "../components/ApplicantDetailDrawer";
+import ApplicationFormPrint from "../../../components/print/ApplicationFormPrint";
 import { findActiveBatch, isBatchActive } from "../../../utils/activeBatch";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -63,6 +65,27 @@ export default function RegistrarEnrollmentsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [detailEnrollment, setDetailEnrollment] = useState(null);
+
+    // Blank Application Printing state
+    const [blankPrintData, setBlankPrintData] = useState(null);
+    const blankPrintRef = useRef(null);
+
+    const handlePrintBlankDoc = useReactToPrint({
+        contentRef: blankPrintRef,
+        documentTitle: `ใบสมัครเปล่า_${blankPrintData?.group_name || "blank_application"}`,
+    });
+
+    const handlePrintPureBlank = async () => {
+        try {
+            const data = await getBlankPrintTemplate("");
+            setBlankPrintData(data);
+            setTimeout(() => {
+                handlePrintBlankDoc();
+            }, 150);
+        } catch (err) {
+            Swal.fire("ไม่สามารถพิมพ์ได้", "เกิดข้อผิดพลาดในการโหลดแบบฟอร์มเปล่า", "error");
+        }
+    };
 
     // ── Load batches, auto-select Active Batch ──────────────────────────────
     useEffect(() => {
@@ -250,13 +273,22 @@ export default function RegistrarEnrollmentsPage() {
                         ค้นหา ตรวจสอบสถานะการชำระเงิน และกำหนดกลุ่มเรียนให้ผู้สมัคร
                     </p>
                 </div>
-                <button
-                    onClick={() => setWalkinOpen(true)}
-                    disabled={!selectedBatchId}
-                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 disabled:opacity-50"
-                >
-                    <UserPlus size={16} /> ลงทะเบียน Walk-in
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={handlePrintPureBlank}
+                        className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-blue-600 active:scale-95"
+                    >
+                        <Printer size={16} /> พิมพ์ใบสมัครเปล่า
+                    </button>
+                    <button
+                        onClick={() => setWalkinOpen(true)}
+                        disabled={!selectedBatchId}
+                        className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 disabled:opacity-50"
+                    >
+                        <UserPlus size={16} /> ลงทะเบียน Walk-in
+                    </button>
+                </div>
             </div>
 
             {/* 📊 1. Lightweight Metric Summary Cards */}
@@ -398,6 +430,17 @@ export default function RegistrarEnrollmentsPage() {
                 groupOptionsForBatch={modalGroupOptions}
                 onReassigned={handleReassigned}
             />
+
+            {/* ── Hidden Print Component for Blank Application ──────── */}
+            <div className="hidden">
+                {blankPrintData && (
+                    <ApplicationFormPrint
+                        ref={blankPrintRef}
+                        enrollment={blankPrintData}
+                        studentNo=""
+                    />
+                )}
+            </div>
         </div>
     );
 }

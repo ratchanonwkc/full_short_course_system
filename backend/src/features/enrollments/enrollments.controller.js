@@ -8,6 +8,7 @@ import {
     reassignGroupService,
     sendConfirmationEmailService,
     updateApplicantDetailsService,
+    updateApplicantSelfService,
 } from './enrollments.service.js';
 
 export const getEnrollments = async (req, res, next) => {
@@ -130,3 +131,16 @@ export const updateApplicantDetails = async (req, res, next) => {
         next(error);
     }
 };
+
+export const applicantUpdate = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { applicant, slip_url, payment_method } = req.body;
+        const result = await updateApplicantSelfService(id, { applicant, slip_url, payment_method });
+        res.json(result);
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ message: error.message });
+        next(error);
+    }
+};
+

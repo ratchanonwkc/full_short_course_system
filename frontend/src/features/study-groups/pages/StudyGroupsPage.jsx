@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronLeft, Search, Plus, Layers, Armchair, Users, BadgeCheck } from "lucide-react";
+import { ChevronLeft, Search, Plus, Layers, Armchair, Users, BadgeCheck, Printer, FileText } from "lucide-react";
+import { useReactToPrint } from "react-to-print";
 import Swal from "sweetalert2";
 import StudyGroupTable from "../components/StudyGroupTable";
 import GroupFormPanel from "../components/GroupFormPanel";
+import StudyGroupRosterModal from "../components/StudyGroupRosterModal";
+import ApplicationFormPrint from "../../../components/print/ApplicationFormPrint";
 import SplitPanelLayout from "../../curriculums/components/SplitPanelLayout";
 import SearchableCombobox from "../../../components/common/SearchableCombobox";
 import Combobox from "../../../components/common/Combobox";
 import SummaryCard from "../../../components/common/SummaryCard";
-import { getStudyGroups, deleteStudyGroup, getLocations, getTimeSlots } from "../services/studyGroupApi";
+import { getStudyGroups, deleteStudyGroup, getLocations, getTimeSlots, getBlankPrintTemplate } from "../services/studyGroupApi";
 import { getBatches } from "../../batches/services/batchApi";
 import { getMajors } from "../../curriculums/services/academicStructureApi";
 import { getSubjects } from "../../subjects/services/subjectApi";
@@ -43,6 +46,49 @@ export default function StudyGroupsPage() {
     const [filterStatus, setFilterStatus] = useState("all");
     const [editingGroup, setEditingGroup] = useState(null);
     const [isMobileFormOpen, setIsMobileFormOpen] = useState(false);
+
+    // Study Group Roster Modal state
+    const [rosterGroupId, setRosterGroupId] = useState(null);
+    const [rosterGroupTitle, setRosterGroupTitle] = useState("");
+
+    // Blank Application Printing state
+    const [blankPrintData, setBlankPrintData] = useState(null);
+    const blankPrintRef = useRef(null);
+
+    const handlePrintBlankDoc = useReactToPrint({
+        contentRef: blankPrintRef,
+        documentTitle: `ใบสมัครเปล่า_${blankPrintData?.group_name || "blank_application"}`,
+    });
+
+    const triggerPrintBlank = (data) => {
+        setBlankPrintData(data);
+        setTimeout(() => {
+            handlePrintBlankDoc();
+        }, 150);
+    };
+
+    const handlePrintPureBlank = async () => {
+        try {
+            const data = await getBlankPrintTemplate("");
+            triggerPrintBlank(data);
+        } catch (err) {
+            Swal.fire("ไม่สามารถพิมพ์ได้", "เกิดข้อผิดพลาดในการโหลดแบบฟอร์มเปล่า", "error");
+        }
+    };
+
+    const handlePrintGroupBlank = async (group) => {
+        try {
+            const data = await getBlankPrintTemplate(group.id);
+            triggerPrintBlank(data);
+        } catch (err) {
+            Swal.fire("ไม่สามารถพิมพ์ได้", "เกิดข้อผิดพลาดในการโหลดแบบฟอร์มประจำกลุ่ม", "error");
+        }
+    };
+
+    const handleViewRoster = (group) => {
+        setRosterGroupId(group.id);
+        setRosterGroupTitle(group.group_name);
+    };
 
     // Shared reference data (สำหรับ GroupFormPanel เท่านั้น)
     const [majors, setMajors] = useState([]);
@@ -251,7 +297,14 @@ export default function StudyGroupsPage() {
             </div>
 
             <div className="min-h-[480px] flex-1 overflow-hidden rounded-lg border border-slate-200 lg:min-h-0">
-                <StudyGroupTable rowData={filteredGroups} loading={loading} onEdit={handleEdit} onDelete={handleDelete} />
+                <StudyGroupTable
+                    rowData={filteredGroups}
+                    loading={loading}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onViewRoster={handleViewRoster}
+                    onPrintGroupBlank={handlePrintGroupBlank}
+                />
             </div>
         </>
     );
@@ -316,25 +369,37 @@ export default function StudyGroupsPage() {
                         </div>
                     </div>
 
-                    {/* Batch Combobox Selector */}
-                    <div className="w-full sm:w-72">
-                        <label className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-400">
-                            รุ่นการเรียน
-                            {batch && isBatchActive(batch) && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                                    <BadgeCheck size={10} /> รุ่นปัจจุบัน
-                                </span>
-                            )}
-                        </label>
-                        <Combobox
-                            value={selectedBatchId}
-                            onChange={(val) => {
-                                setSelectedBatchId(val);
-                                setEditingGroup(null);
-                            }}
-                            options={batchOptions}
-                            placeholder="เลือกรุ่นการเรียน..."
-                        />
+                    {/* Top Action Buttons (Pure Blank Form & Batch Selector) */}
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                        <button
+                            type="button"
+                            onClick={handlePrintPureBlank}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition shadow-2xs"
+                        >
+                            <Printer size={14} />
+                            <span>พิมพ์ใบสมัครเปล่า</span>
+                        </button>
+
+                        {/* Batch Combobox Selector */}
+                        <div className="w-full sm:w-72">
+                            <label className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                                รุ่นการเรียน
+                                {batch && isBatchActive(batch) && (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                                        <BadgeCheck size={10} /> รุ่นปัจจุบัน
+                                    </span>
+                                )}
+                            </label>
+                            <Combobox
+                                value={selectedBatchId}
+                                onChange={(val) => {
+                                    setSelectedBatchId(val);
+                                    setEditingGroup(null);
+                                }}
+                                options={batchOptions}
+                                placeholder="เลือกรุ่นการเรียน..."
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -374,6 +439,25 @@ export default function StudyGroupsPage() {
                 isFormOpen={isMobileFormOpen}
                 onCloseForm={() => setIsMobileFormOpen(false)}
             />
+
+            {/* ── Study Group Student Roster (ศธ.02) Modal ─────────── */}
+            <StudyGroupRosterModal
+                isOpen={Boolean(rosterGroupId)}
+                onClose={() => setRosterGroupId(null)}
+                studyGroupId={rosterGroupId}
+                groupTitle={rosterGroupTitle}
+            />
+
+            {/* ── Hidden Print Component for Blank Application ──────── */}
+            <div className="hidden">
+                {blankPrintData && (
+                    <ApplicationFormPrint
+                        ref={blankPrintRef}
+                        enrollment={blankPrintData}
+                        studentNo=""
+                    />
+                )}
+            </div>
         </div>
     );
 }

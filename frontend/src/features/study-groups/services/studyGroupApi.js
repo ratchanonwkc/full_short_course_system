@@ -32,6 +32,17 @@ export const getStudyGroupById = async (id) => {
     return data;
 };
 
+export const getStudyGroupRosterBySubject = async (id) => {
+    const { data } = await axiosInstance.get(`/v1/study-groups/${id}/roster-by-subject`);
+    return data;
+};
+
+export const getBlankPrintTemplate = async (studyGroupId = "") => {
+    const path = studyGroupId ? `/v1/print/blank-template/${studyGroupId}` : `/v1/print/blank-template`;
+    const { data } = await axiosInstance.get(path);
+    return data;
+};
+
 export const getNextRoomSequence = async (departmentPrefix) => {
     const { data } = await axiosInstance.get("/study-groups/next-room-sequence", {
         params: { department_prefix: departmentPrefix },

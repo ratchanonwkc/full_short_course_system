@@ -6,6 +6,7 @@ import {
     deleteStudyGroupService,
     getNextRoomSequenceService,
     getNextMoeSequenceService,
+    getStudyGroupRosterBySubjectService,
 } from './studyGroups.service.js';
 
 export const getStudyGroups = async (req, res, next) => {
@@ -123,3 +124,15 @@ export const deleteStudyGroup = async (req, res, next) => {
         next(error);
     }
 };
+
+export const getStudyGroupRosterBySubject = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await getStudyGroupRosterBySubjectService(id);
+        res.json(result);
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ message: error.message });
+        next(error);
+    }
+};
+

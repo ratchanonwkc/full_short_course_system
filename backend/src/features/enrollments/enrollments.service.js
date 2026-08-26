@@ -461,3 +461,109 @@ export const updateApplicantDetailsService = async (enrollmentId, { applicant, s
     if (error) throw error;
     return flatten(fresh);
 };
+
+/**
+ * Applicant self-service update endpoint with Edit Guard
+ * PUT /api/v1/enrollments/:id/applicant-update
+ * 
+ * Rules:
+ * - If status === 'paid': Return 403 Forbidden ('ไม่อนุญาตให้แก้ไขข้อมูล เนื่องจากได้รับการยืนยันการชำระเงินแล้ว')
+ * - If status === 'pending_payment' || 'pending_verification' || 'rejected': Execute update on applicants and enrollments tables and return 200 OK.
+ */
+export const updateApplicantSelfService = async (enrollmentId, { applicant, slip_url, payment_method } = {}) => {
+    const { data: enrollment, error: findErr } = await supabase
+        .from('enrollments')
+        .select('id, status, applicant_id, study_group_id, slip_url, payment_method')
+        .eq('id', enrollmentId)
+        .maybeSingle();
+
+    if (findErr) throw findErr;
+    if (!enrollment) {
+        const err = new Error('ไม่พบข้อมูลใบสมัคร');
+        err.status = 404;
+        throw err;
+    }
+
+    if (enrollment.status === 'paid') {
+        const err = new Error('ไม่อนุญาตให้แก้ไขข้อมูล เนื่องจากได้รับการยืนยันการชำระเงินแล้ว');
+        err.status = 403;
+        throw err;
+    }
+
+    if (enrollment.status === 'cancelled') {
+        const err = new Error('ใบสมัครนี้ถูกยกเลิกแล้ว ไม่สามารถแก้ไขได้');
+        err.status = 400;
+        throw err;
+    }
+
+    // 1. Update applicant table if applicant object is provided
+    let updatedApplicant = null;
+    if (applicant && Object.keys(applicant).length > 0) {
+        const { id, created_at, ...safeApplicant } = applicant;
+        const { data: appData, error: appErr } = await supabase
+            .from('applicants')
+            .update(safeApplicant)
+            .eq('id', enrollment.applicant_id)
+            .select()
+            .single();
+
+        if (appErr) {
+            if (appErr.code === '23505') {
+                const err = new Error('เลขประจำตัวประชาชนนี้มีอยู่แล้วในระบบ');
+                err.status = 400;
+                throw err;
+            }
+            throw appErr;
+        }
+        updatedApplicant = appData;
+    }
+
+    // 2. Update enrollments table if slip_url or payment_method or status reset is needed
+    const enrollmentUpdates = {};
+    if (slip_url !== undefined) {
+        enrollmentUpdates.slip_url = slip_url;
+        if (slip_url) {
+            enrollmentUpdates.payment_date = new Date().toISOString();
+            enrollmentUpdates.status = 'pending_verification';
+        }
+    }
+    if (payment_method !== undefined) {
+        enrollmentUpdates.payment_method = payment_method;
+    }
+    if (enrollment.status === 'rejected') {
+        enrollmentUpdates.rejection_reason = null;
+        enrollmentUpdates.rejected_at = null;
+        enrollmentUpdates.rejected_by_user_id = null;
+        if (slip_url || enrollment.slip_url) {
+            enrollmentUpdates.status = 'pending_verification';
+        }
+    }
+
+    let updatedEnrollment = enrollment;
+    if (Object.keys(enrollmentUpdates).length > 0) {
+        const { data: enData, error: enErr } = await supabase
+            .from('enrollments')
+            .update(enrollmentUpdates)
+            .eq('id', enrollmentId)
+            .select()
+            .single();
+
+        if (enErr) throw enErr;
+        updatedEnrollment = enData;
+    }
+
+    if (!updatedApplicant) {
+        const { data: appData } = await supabase
+            .from('applicants')
+            .select('*')
+            .eq('id', enrollment.applicant_id)
+            .single();
+        updatedApplicant = appData;
+    }
+
+    return {
+        message: 'อัปเดตข้อมูลใบสมัครเรียบร้อยแล้ว',
+        enrollment: updatedEnrollment,
+        applicant: updatedApplicant,
+    };
+};

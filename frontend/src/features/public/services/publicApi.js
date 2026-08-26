@@ -67,7 +67,24 @@ export const checkApplicationStatus = async (citizenId) => {
     return data;
 };
 
+export const trackApplicant = async (citizenId) => {
+    const { data } = await axiosInstance.get(`/v1/applicants/track/${citizenId}`);
+    return data;
+};
+
+export const updateApplicantEnrollment = async (enrollmentId, payload) => {
+    const { data } = await axiosInstance.put(`/v1/enrollments/${enrollmentId}/applicant-update`, payload);
+    return data;
+};
+
+export const getBlankPrintTemplate = async (studyGroupId = "") => {
+    const path = studyGroupId ? `/v1/print/blank-template/${studyGroupId}` : `/v1/print/blank-template`;
+    const { data } = await axiosInstance.get(path);
+    return data;
+};
+
 export const resubmitApplication = async (enrollmentId, payload) => {
     const { data } = await axiosInstance.put(`/public/applications/${enrollmentId}/resubmit`, payload);
     return data;
 };
+

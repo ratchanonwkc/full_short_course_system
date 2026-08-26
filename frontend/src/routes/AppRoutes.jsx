@@ -11,6 +11,7 @@ import ProtectedRoute from '../components/auth/ProtectedRoute';
 // Public Pages
 import IndexPage from '../features/landing/pages/IndexPage';             // Course catalog & enrollment entrance
 import RegistrationPage from '../features/public/pages/RegistrationPage'; // Multi-step registration & payment
+import ApplicantTrackingPage from '../features/public/pages/ApplicantTrackingPage'; // Public tracking & edit portal
 import LoginPage from '../features/auth/pages/LoginPage';
 
 // Admin Pages
@@ -39,6 +40,7 @@ export default function AppRoutes() {
                 <Route path="/" element={<IndexPage />} />
                 {/* studyGroupId is optional — allows direct or catalog selection */}
                 <Route path="/register/:studyGroupId?" element={<RegistrationPage />} />
+                <Route path="/track" element={<ApplicantTrackingPage />} />
                 <Route path="/login" element={<LoginPage />} />
             </Route>
 

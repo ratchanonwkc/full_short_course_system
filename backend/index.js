@@ -13,6 +13,8 @@ import subjectsRoutes from './src/features/subjects/subjects.routes.js';
 import authRoutes from './src/features/auth/auth.routes.js';
 import studyGroupsRoutes from './src/features/study-groups/studyGroups.routes.js';
 import studyGroupSubjectsRoutes from './src/features/study-group-subjects/studyGroupSubjects.routes.js';
+import applicantRoutes from './src/features/applicants/applicants.routes.js';
+import printRoutes from './src/features/print/print.routes.js';
 import publicRoutes from './src/features/public/public.routes.js';
 import enrollmentsRoutes from './src/features/enrollments/enrollments.routes.js';
 import paymentMethodsRoutes from './src/features/payment-methods/paymentMethods.routes.js';
@@ -30,7 +32,25 @@ app.use(express.json());
 // Static: ไฟล์สลิปโอนเงิน / QR Code ที่อัปโหลด
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Routes Integration
+// Routes Integration - API v1
+app.use('/api/v1/applicants', applicantRoutes);
+app.use('/api/v1/print', printRoutes);
+app.use('/api/v1/enrollments', enrollmentsRoutes);
+app.use('/api/v1/study-groups', studyGroupsRoutes);
+app.use('/api/v1/study-group-subjects', studyGroupSubjectsRoutes);
+app.use('/api/v1/subjects', subjectsRoutes);
+app.use('/api/v1/batches', batchRoutes);
+app.use('/api/v1/teachers', teacherRoutes);
+app.use('/api/v1/academic-majors', academicMajorsRoutes);
+app.use('/api/v1/academic-minors', academicMinorsRoutes);
+app.use('/api/v1/payment-methods', paymentMethodsRoutes);
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/public', publicRoutes);
+app.use('/api/v1/admin', adminRoutes);
+
+// Routes Integration - Standard /api prefixes (backward compatibility)
+app.use('/api/applicants', applicantRoutes);
+app.use('/api/print', printRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/teachers', teacherRoutes);
 app.use('/api/batches', batchRoutes);

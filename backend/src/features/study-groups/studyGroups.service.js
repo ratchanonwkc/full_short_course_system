@@ -160,3 +160,112 @@ export const getNextMoeSequenceService = async (yearPrefix, departmentId) => {
     }
     return { sequence: String(nextN).padStart(3, '0') };
 };
+
+/**
+ * Fetch enrolled students grouped by individual subjects within the study group
+ * to support the ศธ.02 official registration reference.
+ * GET /api/v1/study-groups/:id/roster-by-subject
+ */
+export const getStudyGroupRosterBySubjectService = async (groupId) => {
+    // 1. Fetch study group header info with relations
+    const { data: group, error: groupErr } = await supabase
+        .from('study_groups')
+        .select(`
+            id,
+            group_code,
+            group_name,
+            room_code,
+            batches:batch_id ( id, batch_name, academic_year, term, batch_no ),
+            teachers:teacher_id ( id, first_name_th, last_name_th, prefixes:prefix_id ( short_name ) ),
+            study_group_subjects (
+                id,
+                subject_id,
+                moe_code,
+                sequence_order,
+                subjects:subject_id ( id, subject_code, name_th, total_hours )
+            )
+        `)
+        .eq('id', groupId)
+        .maybeSingle();
+
+    if (groupErr) throw groupErr;
+    if (!group) {
+        const err = new Error('ไม่พบข้อมูลกลุ่มเรียน');
+        err.status = 404;
+        throw err;
+    }
+
+    // 2. Fetch enrolled students for this study group (non-cancelled)
+    const { data: enrollments, error: enrollErr } = await supabase
+        .from('enrollments')
+        .select(`
+            id,
+            status,
+            apply_date,
+            payment_date,
+            receipt_date,
+            applicants:applicant_id (
+                id,
+                citizen_id,
+                title_name,
+                full_name,
+                phone
+            )
+        `)
+        .eq('study_group_id', groupId)
+        .neq('status', 'cancelled')
+        .order('apply_date', { ascending: true });
+
+    if (enrollErr) throw enrollErr;
+
+    // 3. Format enrolled students
+    const students = (enrollments || []).map((row, index) => {
+        const app = row.applicants;
+        const fullName = app ? `${app.title_name || ''}${app.full_name || ''}`.trim() : '';
+        return {
+            seq_no: index + 1,
+            citizen_id: app?.citizen_id || '',
+            full_name: fullName,
+            phone: app?.phone || '',
+            status: row.status,
+        };
+    });
+
+    const teacher = group.teachers;
+    const teacherPrefix = teacher?.prefixes?.short_name || '';
+    const teacherName = teacher
+        ? `${teacherPrefix}${teacher.first_name_th} ${teacher.last_name_th}`.trim()
+        : '';
+
+    // 4. Map subjects in the group
+    let subjects = (group.study_group_subjects || [])
+        .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
+        .map((sgs) => ({
+            subject_code: sgs.subjects?.subject_code || '',
+            moe_code: sgs.moe_code || '',
+            subject_name: sgs.subjects?.name_th || '',
+            teacher_name: teacherName,
+            students: students,
+        }));
+
+    // Fallback if study group has no study_group_subjects configured
+    if (subjects.length === 0) {
+        subjects = [
+            {
+                subject_code: group.group_code || '',
+                moe_code: group.room_code || '',
+                subject_name: group.group_name || '',
+                teacher_name: teacherName,
+                students: students,
+            },
+        ];
+    }
+
+    return {
+        group_id: Number(group.id),
+        group_name: group.group_name,
+        batch_name: group.batches?.batch_name || '',
+        subjects,
+    };
+};
+

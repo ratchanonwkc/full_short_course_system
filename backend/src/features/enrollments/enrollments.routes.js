@@ -9,6 +9,7 @@ import {
     reassignGroup,
     sendConfirmationEmail,
     updateApplicantDetails,
+    applicantUpdate,
 } from './enrollments.controller.js';
 
 const router = Router();
@@ -21,6 +22,7 @@ router.put('/:id/reject', rejectPayment);
 router.put('/:id/cancel', cancelEnrollment);
 router.put('/:id/reassign-group', reassignGroup);
 router.put('/:id/applicant', updateApplicantDetails);
+router.put('/:id/applicant-update', applicantUpdate);
 router.post('/:id/send-email', sendConfirmationEmail);
 
 export default router;
