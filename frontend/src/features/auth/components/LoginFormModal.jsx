@@ -119,6 +119,7 @@ export default function LoginFormModal({ isOpen, onClose, onLoginSuccess }) {
                                             <input
                                                 id="email"
                                                 type="email"
+                                                autoComplete="username"
                                                 value={form.email}
                                                 onChange={handleChange("email")}
                                                 placeholder="name@example.com"
@@ -139,6 +140,7 @@ export default function LoginFormModal({ isOpen, onClose, onLoginSuccess }) {
                                             <input
                                                 id="password"
                                                 type={showPassword ? "text" : "password"}
+                                                autoComplete="current-password"
                                                 value={form.password}
                                                 onChange={handleChange("password")}
                                                 placeholder="••••••••"

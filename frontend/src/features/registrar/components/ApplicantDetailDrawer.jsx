@@ -43,11 +43,12 @@ export default function ApplicantDetailDrawer({
     const [rotation, setRotation] = useState(0);
     const [detailedData, setDetailedData] = useState(null);
 
+    const activeEnrollment = detailedData || enrollment;
     const printComponentRef = useRef(null);
 
     const handlePrint = useReactToPrint({
         contentRef: printComponentRef,
-        documentTitle: `ใบสมัคร_${enrollment?.applicant_name || enrollment?.application_no || "application"}`,
+        documentTitle: `ใบสมัคร_${activeEnrollment?.applicant_name || activeEnrollment?.application_no || "application"}`,
     });
 
     useEffect(() => {
@@ -78,8 +79,6 @@ export default function ApplicantDetailDrawer({
         }
     }, [isOpen, enrollment]);
 
-    const activeEnrollment = detailedData || enrollment;
-
     const hasGroupChanged = useMemo(
         () => Boolean(activeEnrollment && String(selectedGroupId) !== String(activeEnrollment.study_group_id ?? "")),
         [selectedGroupId, activeEnrollment]
@@ -89,10 +88,10 @@ export default function ApplicantDetailDrawer({
     const studentNo = activeEnrollment?.student_no ?? null;
 
     // All hooks called above unconditionally. Now safe to check if enrollment exists.
-    if (!activeEnrollment) return null;
+    if (!isOpen || !activeEnrollment) return null;
 
-    const meta = STATUS_META[enrollment.status] || STATUS_META.pending_payment;
-    const receiptCode = formatReceiptCode(enrollment.receipt_book_no, enrollment.receipt_number);
+    const meta = STATUS_META[activeEnrollment.status] || STATUS_META.pending_payment;
+    const receiptCode = formatReceiptCode(activeEnrollment.receipt_book_no, activeEnrollment.receipt_number);
 
     const registeredAddress = [
         profile.house_no,
@@ -138,7 +137,7 @@ export default function ApplicantDetailDrawer({
                 applicant: applicantPayload,
                 ...(hasGroupChanged && { study_group_id: Number(selectedGroupId) }),
             };
-            const updated = await updateApplicantDetails(enrollment.id, payload);
+            const updated = await updateApplicantDetails(activeEnrollment.id, payload);
             onReassigned?.({
                 ...updated,
                 applicant_name: `${editForm.title_name}${editForm.full_name.trim()}`,
@@ -169,7 +168,7 @@ export default function ApplicantDetailDrawer({
     const handleSendEmail = async () => {
         setSendingEmail(true);
         try {
-            await sendConfirmationEmail(enrollment.id);
+            await sendConfirmationEmail(activeEnrollment.id);
             Swal.fire({
                 toast: true, position: "top-end", icon: "success",
                 title: "ส่งอีเมลยืนยันเรียบร้อยแล้ว", showConfirmButton: false, timer: 2000, timerProgressBar: true,
@@ -194,7 +193,7 @@ export default function ApplicantDetailDrawer({
                     enter="ease-out duration-200" enterFrom="opacity-0" enterTo="opacity-100"
                     leave="ease-in duration-150" leaveFrom="opacity-100" leaveTo="opacity-0"
                 >
-                    <div className="fixed inset-0 bg-slate-900/50 print:hidden" />
+                    <div className="fixed inset-0 bg-slate-950/70 print:hidden" />
                 </Transition.Child>
 
                 <div className="fixed inset-0 overflow-hidden print:static print:overflow-visible">
@@ -211,7 +210,7 @@ export default function ApplicantDetailDrawer({
                                     {/* Header — screen only */}
                                     <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-4 print:hidden">
                                         <div className="min-w-0">
-                                            <Dialog.Title className="truncate text-lg font-bold text-slate-900">{enrollment.applicant_name}</Dialog.Title>
+                                            <Dialog.Title className="truncate text-lg font-bold text-slate-900">{activeEnrollment.applicant_name}</Dialog.Title>
                                             <span className={`mt-1 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.className}`}>{meta.label}</span>
                                         </div>
                                         <div className="flex shrink-0 items-center gap-2">
@@ -238,9 +237,9 @@ export default function ApplicantDetailDrawer({
                                             <>
                                                 <Section icon={User} title="ข้อมูลส่วนตัว">
                                                     <InfoRow label="คำนำหน้า" value={profile.title_name} />
-                                                    <InfoRow label="ชื่อ-นามสกุล" value={enrollment.applicant_name} />
-                                                    <InfoRow label="เลขบัตรประชาชน" value={enrollment.citizen_id} mono />
-                                                    <InfoRow label="สถานะนักศึกษา" value={profile.student_type || enrollment.student_type || "นักศึกษาใหม่"} />
+                                                    <InfoRow label="ชื่อ-นามสกุล" value={activeEnrollment.applicant_name} />
+                                                    <InfoRow label="เลขบัตรประชาชน" value={activeEnrollment.citizen_id} mono />
+                                                    <InfoRow label="สถานะนักศึกษา" value={profile.student_type || activeEnrollment.student_type || "นักศึกษาใหม่"} />
                                                     <InfoRow label="เพศ" value={profile.gender} />
                                                     <InfoRow label="วันเกิด" value={formatThaiDate(profile.birth_date)} />
                                                     <InfoRow label="สถานภาพสมรส" value={profile.marital_status} />
@@ -249,7 +248,7 @@ export default function ApplicantDetailDrawer({
                                                     <InfoRow label="อาชีพปัจจุบัน" value={profile.occupation} />
                                                 </Section>
 
-                                                {enrollment.id_card_url && (
+                                                {activeEnrollment.id_card_url && (
                                                     <Section icon={IdCardIcon} title="รูปบัตรประชาชน">
                                                         <div className="mb-2 flex items-center justify-end gap-1 print:hidden">
                                                             <button type="button" onClick={() => setZoom((z) => Math.min(3, z + 0.25))} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title="ซูมเข้า">
@@ -264,7 +263,7 @@ export default function ApplicantDetailDrawer({
                                                         </div>
                                                         <div className="flex max-h-72 items-center justify-center overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
                                                             <img
-                                                                src={enrollment.id_card_url}
+                                                                src={activeEnrollment.id_card_url}
                                                                 alt="บัตรประชาชน"
                                                                 style={{ transform: `scale(${zoom}) rotate(${rotation}deg)`, transition: "transform 0.15s ease" }}
                                                                 className="max-h-64 object-contain"
@@ -290,26 +289,26 @@ export default function ApplicantDetailDrawer({
                                                 </Section>
 
                                                 <Section icon={GraduationCap} title="ข้อมูลการลงทะเบียน">
-                                                    <InfoRow label="ใบสมัครเลขที่" value={enrollment.application_no || String(enrollment.id || "").padStart(5, "0")} mono />
+                                                    <InfoRow label="ใบสมัครเลขที่" value={activeEnrollment.application_no || String(activeEnrollment.id || "").padStart(5, "0")} mono />
                                                     <InfoRow label="เลขที่นักศึกษา (ในกลุ่ม)" value={studentNo ? String(studentNo).padStart(2, "0") : "-"} mono />
-                                                    <InfoRow label="รุ่นการเรียน" value={enrollment.batch_name || "-"} />
+                                                    <InfoRow label="รุ่นการเรียน" value={activeEnrollment.batch_name || "-"} />
                                                     <div>
                                                         <label className="mb-1.5 block text-xs font-semibold text-slate-500">กลุ่มเรียน</label>
                                                         <p className="text-sm font-semibold text-slate-800">
-                                                            {enrollment.group_code} — {enrollment.group_name}
+                                                            {activeEnrollment.group_code} — {activeEnrollment.group_name}
                                                         </p>
                                                     </div>
                                                 </Section>
 
                                                 <Section icon={Wallet} title="สถานะการชำระเงิน">
-                                                    <InfoRow label="วิธีชำระเงิน" value={enrollment.payment_method === "counter_cash" ? "ชำระที่ห้องการเงิน" : "โอนเงินออนไลน์"} />
-                                                    <InfoRow label="ยอดชำระ" value={`${Number(enrollment.total_amount || 0).toLocaleString()} บาท`} />
-                                                    {enrollment.receipt_number && <InfoRow label="เลขที่ใบเสร็จ" value={receiptCode} mono />}
-                                                    {enrollment.payment_date && <InfoRow label="วันที่ชำระเงิน" value={formatThaiFullDate(enrollment.payment_date)} />}
-                                                    {enrollment.slip_url && enrollment.payment_method !== "counter_cash" && (
+                                                    <InfoRow label="วิธีชำระเงิน" value={activeEnrollment.payment_method === "counter_cash" ? "ชำระที่ห้องการเงิน" : "โอนเงินออนไลน์"} />
+                                                    <InfoRow label="ยอดชำระ" value={`${Number(activeEnrollment.total_amount || 0).toLocaleString()} บาท`} />
+                                                    {activeEnrollment.receipt_number && <InfoRow label="เลขที่ใบเสร็จ" value={receiptCode} mono />}
+                                                    {activeEnrollment.payment_date && <InfoRow label="วันที่ชำระเงิน" value={formatThaiFullDate(activeEnrollment.payment_date)} />}
+                                                    {activeEnrollment.slip_url && activeEnrollment.payment_method !== "counter_cash" && (
                                                         <div>
                                                             <label className="mb-1.5 block text-xs font-semibold text-slate-500">หลักฐานการโอนเงิน</label>
-                                                            <img src={enrollment.slip_url} alt="สลิป" className="max-h-56 rounded-lg border border-slate-200 object-contain" />
+                                                            <img src={activeEnrollment.slip_url} alt="สลิป" className="max-h-56 rounded-lg border border-slate-200 object-contain" />
                                                         </div>
                                                     )}
                                                 </Section>

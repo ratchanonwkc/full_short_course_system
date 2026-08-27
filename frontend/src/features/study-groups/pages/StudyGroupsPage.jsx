@@ -53,6 +53,7 @@ export default function StudyGroupsPage() {
 
     // Blank Application Printing state
     const [blankPrintData, setBlankPrintData] = useState(null);
+    const [isGroupBlankMode, setIsGroupBlankMode] = useState(false);
     const blankPrintRef = useRef(null);
 
     const handlePrintBlankDoc = useReactToPrint({
@@ -60,8 +61,9 @@ export default function StudyGroupsPage() {
         documentTitle: `ใบสมัครเปล่า_${blankPrintData?.group_name || "blank_application"}`,
     });
 
-    const triggerPrintBlank = (data) => {
+    const triggerPrintBlank = (data, isGroup = false) => {
         setBlankPrintData(data);
+        setIsGroupBlankMode(isGroup);
         setTimeout(() => {
             handlePrintBlankDoc();
         }, 150);
@@ -70,7 +72,7 @@ export default function StudyGroupsPage() {
     const handlePrintPureBlank = async () => {
         try {
             const data = await getBlankPrintTemplate("");
-            triggerPrintBlank(data);
+            triggerPrintBlank(data, false);
         } catch (err) {
             Swal.fire("ไม่สามารถพิมพ์ได้", "เกิดข้อผิดพลาดในการโหลดแบบฟอร์มเปล่า", "error");
         }
@@ -79,7 +81,7 @@ export default function StudyGroupsPage() {
     const handlePrintGroupBlank = async (group) => {
         try {
             const data = await getBlankPrintTemplate(group.id);
-            triggerPrintBlank(data);
+            triggerPrintBlank(data, true);
         } catch (err) {
             Swal.fire("ไม่สามารถพิมพ์ได้", "เกิดข้อผิดพลาดในการโหลดแบบฟอร์มประจำกลุ่ม", "error");
         }
@@ -450,13 +452,14 @@ export default function StudyGroupsPage() {
 
             {/* ── Hidden Print Component for Blank Application ──────── */}
             <div className="hidden">
-                {blankPrintData && (
-                    <ApplicationFormPrint
-                        ref={blankPrintRef}
-                        enrollment={blankPrintData}
-                        studentNo=""
-                    />
-                )}
+                <ApplicationFormPrint
+                    ref={blankPrintRef}
+                    isBlank={!isGroupBlankMode}
+                    isGroupBlank={isGroupBlankMode}
+                    enrollment={blankPrintData}
+                    groupData={blankPrintData}
+                    studentNo=""
+                />
             </div>
         </div>
     );

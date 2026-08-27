@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useMemo } from "react";
 import { formatThaiDate } from "../../utils/dateUtils";
 import logo from "../../assets/logo.png";
 
@@ -22,7 +22,8 @@ function calculateAge(birthDateIso) {
  * Extract 13 individual digits from Citizen ID
  */
 function getCitizenDigits(cid = "") {
-    const clean = (cid || "").replace(/\D/g, "");
+    if (!cid) return Array(13).fill("");
+    const clean = String(cid).replace(/\D/g, "");
     const digits = [];
     for (let i = 0; i < 13; i++) {
         digits.push(clean[i] || "");
@@ -31,7 +32,7 @@ function getCitizenDigits(cid = "") {
 }
 
 /**
- * Split Date into Day, Month, Year
+ * Split Date into Day, Month, Year (B.E.)
  */
 function getThaiDateParts(isoString) {
     if (!isoString) return { d: "", m: "", y: "" };
@@ -49,67 +50,180 @@ function getThaiDateParts(isoString) {
 }
 
 /**
- * Determine study round/time slot
+ * Determine study round/time slot from text
  */
-function getStudyRound(enrollment) {
-    const text = `${enrollment.group_code || ""} ${enrollment.group_name || ""} ${enrollment.schedule_description || ""}`;
+function getStudyRound(obj) {
+    if (!obj) return "";
+    const text = `${obj.group_code || ""} ${obj.group_name || ""} ${obj.schedule_description || ""} ${obj.time_slot_name || ""} ${obj.time_slot_code || ""}`;
     if (text.includes("ค่ำ") || text.includes("17:") || text.includes("18:")) return "ค่ำ";
     if (text.includes("บ่าย") || text.includes("13:")) return "บ่าย";
     if (text.includes("เสาร์") || text.includes("อาทิตย์") || text.includes("ส-อา")) return "ส-อา";
     if (text.includes("เช้า") || text.includes("09:") || text.includes("08:")) return "เช้า";
-    return "ปกติ";
+    return "";
 }
 
+/**
+ * ApplicationFormPrint
+ * -----------------------------------------------------------------------------
+ * Printable Official Short-Course Application Form (ใบสมัครเรียนหลักสูตรวิชาชีพระยะสั้น)
+ *
+ * Supports 3 Strictly Separated Modes:
+ *  1. Mode A: Pure Blank Form (`isBlank={true}`) -> All applicant, batch, dates, & course table empty.
+ *  2. Mode B: Group Blank Form (`isGroupBlank={true}`) -> Batch metadata, Start Date & Course Table pre-filled; applicant fields 100% blank.
+ *  3. Mode C: Filled Student Form (`enrollment` object provided) -> Fully populated with student profile and batch info.
+ */
 const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
-    { enrollment, studentNo },
+    {
+        enrollment = null,
+        groupData = null,
+        batch = null,
+        studentNo = "",
+        isBlank = false,
+        isGroupBlank = false,
+    },
     ref
 ) {
-    if (!enrollment) return null;
+    // ── 1. Determine Exact Print Mode ─────────────────────────────────────────
+    const isPureBlank = isBlank || (!isGroupBlank && !enrollment && !groupData) || (enrollment?.is_pure_blank);
+    const isGroupOnly = !isPureBlank && (isGroupBlank || Boolean(enrollment?.is_blank && enrollment?.study_group_id));
+    const isFilled = !isPureBlank && !isGroupOnly && Boolean(enrollment);
 
-    const profile = enrollment.applicant_profile || {};
-    const applicationNo = enrollment.application_no || String(enrollment.id || "").padStart(5, "0");
-    const isOldStudent = profile.student_type === "นักศึกษาเก่า" || enrollment.student_type === "นักศึกษาเก่า";
-    const digits = getCitizenDigits(profile.citizen_id || enrollment.citizen_id);
-    const age = calculateAge(profile.birth_date);
+    // Primary data sources
+    const contextData = enrollment || groupData || {};
+    const profile = isFilled ? (enrollment?.applicant_profile || {}) : {};
 
-    const fullName = profile.full_name || enrollment.applicant_name || "";
-    const nameParts = fullName.split(" ");
+    // ── 2. Batch & Header Resolution ──────────────────────────────────────────
+    const rawBatchName = isPureBlank ? "" : (contextData.batch_name || batch?.batch_name || "");
+    const termMatch = /(\d+)\s*\/\s*(\d{4})/.exec(rawBatchName);
+
+    const term = isPureBlank ? "" : (contextData.term || batch?.term || (termMatch ? termMatch[1] : ""));
+    const academicYear = isPureBlank ? "" : (contextData.academic_year || batch?.academic_year || (termMatch ? termMatch[2] : ""));
+    const batchNo = isPureBlank ? "" : (contextData.batch_no || batch?.batch_no || (termMatch ? termMatch[1] : ""));
+
+    // Format batch sequence: {batch_no}/{academic_year} (e.g. 2/2569)
+    const batchDisplay = isPureBlank
+        ? ""
+        : (batchNo && academicYear)
+            ? `${batchNo}/${academicYear}`
+            : rawBatchName;
+
+    const applicationNo = isFilled
+        ? (enrollment.application_no || String(enrollment.id || "").padStart(5, "0"))
+        : "";
+
+    // Start Date Sequential Fallback
+    const startDateIso = isPureBlank
+        ? null
+        : (
+            contextData.study_open_date ||
+            contextData.start_date ||
+            groupData?.study_open_date ||
+            groupData?.start_date ||
+            batch?.study_open_date
+        );
+    const startDateDisplay = startDateIso ? formatThaiDate(startDateIso) : "";
+
+    const studentNoDisplay = isFilled
+        ? (studentNo ? String(studentNo).padStart(2, "0") : (enrollment.student_no ? String(enrollment.student_no).padStart(2, "0") : ""))
+        : "";
+
+    // ── 3. Multi-Subject Course Table Resolution ──────────────────────────────
+    const rawSubjectsList = useMemo(() => {
+        if (isPureBlank) return [];
+
+        const list = (
+            contextData.subjects ||
+            groupData?.subjects ||
+            contextData.study_groups?.study_group_subjects ||
+            contextData.study_group?.study_group_subjects ||
+            []
+        );
+
+        if (Array.isArray(list) && list.length > 0) {
+            return list.map((item) => {
+                const subObj = item.subjects || item;
+                return {
+                    subject_code: subObj.subject_code || item.moe_code || item.subject_code || "",
+                    subject_name: subObj.subject_name || subObj.name_th || item.subject_name || item.name_th || "",
+                    study_round: getStudyRound(item) || getStudyRound(contextData),
+                    total_hours: Number(subObj.total_hours || item.total_hours || 0),
+                    fee: item.fee !== undefined ? Number(item.fee) : undefined,
+                };
+            });
+        }
+
+        // Fallback for single subject group
+        const singleCode = contextData.subject_code || contextData.group_code || "";
+        const singleName = contextData.subject_name || contextData.group_name || "";
+        if (singleCode || singleName) {
+            return [{
+                subject_code: singleCode,
+                subject_name: singleName,
+                study_round: getStudyRound(contextData),
+                total_hours: Number(contextData.total_hours || 0),
+                fee: contextData.total_amount !== undefined ? Number(contextData.total_amount) : undefined,
+            }];
+        }
+
+        return [];
+    }, [isPureBlank, contextData, groupData]);
+
+    // Cap subjects to max 5 rows for standard print table
+    const activeSubjects = rawSubjectsList.slice(0, 5);
+
+    // Sum hours and fee dynamically
+    const totalCalculatedHours = useMemo(() => {
+        if (isPureBlank) return "";
+        const sum = activeSubjects.reduce((acc, s) => acc + (Number(s.total_hours) || 0), 0);
+        return sum > 0 ? sum : (Number(contextData.total_hours) || "");
+    }, [isPureBlank, activeSubjects, contextData]);
+
+    const totalCalculatedAmount = useMemo(() => {
+        if (isPureBlank) return "";
+        const hasIndividualFees = activeSubjects.some((s) => s.fee !== undefined);
+        if (hasIndividualFees) {
+            return activeSubjects.reduce((acc, s) => acc + (Number(s.fee) || 0), 0);
+        }
+        return Number(contextData.total_amount || contextData.fee || 0);
+    }, [isPureBlank, activeSubjects, contextData]);
+
+    // ── 4. Applicant Profile Data (Strict: No Ghost Defaults) ──────────────────
+    const isNewStudent = isFilled && (profile.student_type === "นักศึกษาใหม่" || enrollment.student_type === "นักศึกษาใหม่");
+    const isOldStudent = isFilled && (profile.student_type === "นักศึกษาเก่า" || enrollment.student_type === "นักศึกษาเก่า");
+
+    const digits = isFilled
+        ? getCitizenDigits(profile.citizen_id || enrollment.citizen_id)
+        : Array(13).fill("");
+
+    const age = isFilled ? calculateAge(profile.birth_date) : "";
+
+    const fullName = isFilled
+        ? (profile.full_name || enrollment.applicant_name || "").trim()
+        : "";
+    const nameParts = fullName.split(/\s+/);
     const firstName = nameParts[0] || "";
     const lastName = nameParts.slice(1).join(" ") || "";
 
-    // Batch metadata parsing
-    const batchName = enrollment.batch_name || "";
-    const termMatch = /(\d+)\s*\/\s*(\d{4})/.exec(batchName);
-    const term = enrollment.term || (termMatch ? termMatch[1] : "");
-    const academicYear = enrollment.academic_year || (termMatch ? termMatch[2] : "");
-    const batchNo = enrollment.batch_no || (termMatch ? termMatch[1] : "");
+    const isMale = isFilled && (profile.gender === "ชาย" || profile.title_name === "นาย" || profile.title_name === "เด็กชาย");
+    const isFemale = isFilled && (profile.gender === "หญิง" || profile.title_name === "นาง" || profile.title_name === "นางสาว" || profile.title_name === "เด็กหญิง");
 
-    // Format: 2/2569
-    const batchDisplay = (batchNo && academicYear) ? `${batchNo}/${academicYear}` : batchName;
+    const isSingle = isFilled && profile.marital_status === "โสด";
+    const isMarried = isFilled && profile.marital_status === "สมรส";
 
     // Date Parts
-    const applyDate = getThaiDateParts(enrollment.apply_date);
-    const birthDate = getThaiDateParts(profile.birth_date);
+    const applyDate = isFilled ? getThaiDateParts(enrollment.apply_date) : { d: "", m: "", y: "" };
+    const birthDate = isFilled ? getThaiDateParts(profile.birth_date) : { d: "", m: "", y: "" };
 
-    // Course Data (Resolved from subjects table joined via study_groups -> study_group_subjects -> subjects)
-    const courseCode =
-        enrollment.subject_code ||
-        enrollment.study_groups?.study_group_subjects?.[0]?.subjects?.subject_code ||
-        enrollment.subjects_list?.[0]?.subject_code ||
-        enrollment.study_group?.subject_code ||
-        enrollment.group_code ||
-        "-";
-    const courseName = `${enrollment.subject_name || enrollment.group_name || "หลักสูตรวิชาชีพระยะสั้น"} ${enrollment.teacher_name ? `(ผู้สอน: ${enrollment.teacher_name})` : ""}`.trim();
-    const studyRound = getStudyRound(enrollment);
-    const totalHours = enrollment.total_hours || 75;
-    const totalAmount = Number(enrollment.total_amount || enrollment.fee || 0);
+    const passportNo = isFilled ? (profile.passport_no || "") : "";
+    const isForeigner = isFilled && Boolean(passportNo || (profile.nationality && profile.nationality !== "ไทย"));
 
-    const receiptBook = enrollment.receipt_book_no || "";
-    const receiptNum = enrollment.receipt_number || "";
+    // Receipt details
+    const receiptBook = isFilled ? (enrollment.receipt_book_no || "") : "";
+    const receiptNum = isFilled ? (enrollment.receipt_number || "") : "";
 
     // Helper for dotted blanks
     const Blank = ({ children, width, flex, align = "center", className = "" }) => {
-        const style = { textAlign: align, minHeight: '1.2em' };
+        const style = { textAlign: align, minHeight: "1.2em" };
         if (width) style.width = width;
         if (flex) style.flex = flex;
 
@@ -123,7 +237,7 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
         );
     };
 
-    // Helper for Checkboxes (Customizable margin for grids)
+    // Helper for Checkboxes (Circle Checkmark)
     const CircleCheck = ({ checked, label, className = "ml-3" }) => (
         <span className={`inline-flex items-center gap-1.5 ${className}`}>
             <span className="flex items-center justify-center w-[14px] h-[14px] rounded-full border border-black text-[12px] font-bold leading-none shrink-0 pb-[1px]">
@@ -191,12 +305,12 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
 
                 <div className="flex items-baseline justify-between text-[14px] mt-1 pr-[3.5cm]">
                     <span>ใบสมัครเลขที่ <Blank width="60px">{applicationNo}</Blank></span>
-                    <span>เริ่มเรียนวันที่ <Blank width="110px">{formatThaiDate(enrollment.study_open_date || enrollment.apply_date)}</Blank></span>
-                    <span>เลขที่ <Blank width="50px">{studentNo}</Blank></span>
+                    <span>เริ่มเรียนวันที่ <Blank width="110px">{startDateDisplay}</Blank></span>
+                    <span>เลขที่ <Blank width="50px">{studentNoDisplay}</Blank></span>
                 </div>
             </div>
 
-            {/* ════════ COURSE TABLE ════════ */}
+            {/* ════════ COURSE TABLE (EXACTLY 5 ROWS) ════════ */}
             <div className="mb-2 mt-3">
                 <table className="w-full border border-black text-[14px] text-center table-fixed">
                     <thead>
@@ -209,31 +323,50 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
                         </tr>
                     </thead>
                     <tbody>
-                        {/* 1st Row (Filled) */}
-                        <tr className="border-b border-dashed border-gray-400">
-                            <td className="border-r border-black py-1 px-1 truncate">{courseCode}</td>
-                            <td className="border-r border-black py-1 px-2 text-left truncate">{courseName}</td>
-                            <td className="border-r border-black py-1 px-1 truncate">{studyRound}</td>
-                            <td className="border-r border-black py-1 px-1 truncate">{totalHours}</td>
-                            <td className="py-1 px-1 truncate">{totalAmount > 0 ? totalAmount.toLocaleString() : "0"}</td>
-                        </tr>
-                        {/* Empty Rows (2-5) */}
-                        {[...Array(4)].map((_, i) => (
-                            <tr key={i} className={i !== 3 ? "border-b border-dashed border-gray-400 h-7" : "h-7"}>
-                                <td className="border-r border-black"></td>
-                                <td className="border-r border-black"></td>
-                                <td className="border-r border-black"></td>
-                                <td className="border-r border-black"></td>
-                                <td></td>
-                            </tr>
-                        ))}
+                        {/* Active Subjects Rows (1 to 5) */}
+                        {activeSubjects.map((sub, idx) => {
+                            const feeText = sub.fee !== undefined
+                                ? (sub.fee > 0 ? sub.fee.toLocaleString() : "0")
+                                : (idx === 0 && totalCalculatedAmount !== "" ? (Number(totalCalculatedAmount) > 0 ? Number(totalCalculatedAmount).toLocaleString() : "0") : "");
+
+                            return (
+                                <tr key={idx} className="border-b border-dashed border-gray-400">
+                                    <td className="border-r border-black py-1 px-1 truncate font-mono text-[13px]">{sub.subject_code || "-"}</td>
+                                    <td className="border-r border-black py-1 px-2 text-left truncate">{sub.subject_name || "-"}</td>
+                                    <td className="border-r border-black py-1 px-1 truncate">{sub.study_round || "-"}</td>
+                                    <td className="border-r border-black py-1 px-1 truncate">{sub.total_hours || "-"}</td>
+                                    <td className="py-1 px-1 truncate">{feeText}</td>
+                                </tr>
+                            );
+                        })}
+
+                        {/* Empty Rows to guarantee exactly 5 rows in total */}
+                        {[...Array(Math.max(0, 5 - activeSubjects.length))].map((_, i) => {
+                            const isLast = i === Math.max(0, 5 - activeSubjects.length) - 1;
+                            return (
+                                <tr key={`empty-${i}`} className={!isLast ? "border-b border-dashed border-gray-400 h-7" : "h-7"}>
+                                    <td className="border-r border-black">&nbsp;</td>
+                                    <td className="border-r border-black">&nbsp;</td>
+                                    <td className="border-r border-black">&nbsp;</td>
+                                    <td className="border-r border-black">&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                </tr>
+                            );
+                        })}
+
                         {/* Summary Row */}
                         <tr className="border-t border-black font-normal">
                             <td className="border-r border-black py-1 text-center">รวม</td>
-                            <td className="border-r border-black py-1 text-center">1 รายวิชา</td>
+                            <td className="border-r border-black py-1 text-center">
+                                {isPureBlank ? "" : (activeSubjects.length > 0 ? `${activeSubjects.length} รายวิชา` : "")}
+                            </td>
                             <td className="border-r border-black py-1"></td>
-                            <td className="border-r border-black py-1">{totalHours} ชั่วโมง</td>
-                            <td className="py-1">{totalAmount > 0 ? totalAmount.toLocaleString() : "0"} บาท</td>
+                            <td className="border-r border-black py-1">
+                                {isPureBlank ? "" : (totalCalculatedHours !== "" ? `${totalCalculatedHours} ชั่วโมง` : "")}
+                            </td>
+                            <td className="py-1">
+                                {isPureBlank ? "" : (totalCalculatedAmount !== "" ? `${Number(totalCalculatedAmount).toLocaleString()} บาท` : "")}
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -242,16 +375,18 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
             {/* ════════ FOREIGNER NOTE ════════ */}
             <div className="text-[13px] mb-1.5 flex items-baseline">
                 <span>หมายเหตุ :</span>
-                <span className="flex items-center justify-center w-[14px] h-[14px] rounded-full border border-black mx-2 translate-y-[2px]" />
+                <span className="flex items-center justify-center w-[14px] h-[14px] rounded-full border border-black mx-2 translate-y-[2px] text-[12px] font-bold leading-none shrink-0 pb-[1px]">
+                    {isForeigner ? "✓" : ""}
+                </span>
                 <span>เป็นคนซึ่งไม่มีสัญชาติไทย หนังสือเดินทางเลขที่</span>
-                <Blank width="150px" className="mx-1">{profile.passport_no}</Blank>
+                <Blank width="150px" className="mx-1">{passportNo}</Blank>
                 <span>หลักสูตรปกติ ชำระค่าเล่าเรียน</span>
             </div>
             <div className="text-[13px] ml-16 -mt-1.5 mb-2">
                 ชั่วโมงละ 30 บาท + ค่าสมัคร 10 บาท ส่วนหลักสูตรพิเศษชำระค่าเล่าเรียน 2 เท่าของคนซึ่งมีสัญชาติไทย
             </div>
 
-            {/* ════════ APPLICANT INFO ════════ */}
+            {/* ════════ APPLICANT INFO (100% Blank on Pure Blank / Group Blank) ════════ */}
             <div className="space-y-1.5 text-[14px]">
                 {/* 1. */}
                 <div className="flex items-baseline w-full">
@@ -261,7 +396,7 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
 
                     <div className="ml-auto flex items-baseline mr-3">
                         <span>เป็นนักศึกษา</span>
-                        <CircleCheck checked={!isOldStudent} label="ใหม่" />
+                        <CircleCheck checked={isNewStudent} label="ใหม่" />
                         <CircleCheck checked={isOldStudent} label="เก่า" />
                     </div>
                 </div>
@@ -269,14 +404,18 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
                 {/* 2. */}
                 <div className="flex items-baseline w-full">
                     <span>2. ข้าพเจ้า (นาย/นาง/นางสาว)</span>
-                    <Blank flex={1} className="mx-1">{profile.title_name || ""}{firstName}</Blank>
+                    <Blank flex={1} className="mx-1">
+                        {isFilled ? `${profile.title_name || ""}${firstName}` : ""}
+                    </Blank>
                     <span>นามสกุล</span>
-                    <Blank flex={1} className="mx-1">{lastName}</Blank>
+                    <Blank flex={1} className="mx-1">
+                        {isFilled ? lastName : ""}
+                    </Blank>
 
                     <div className="ml-2 flex mr-0.5 items-baseline">
                         <span>เพศ</span>
-                        <CircleCheck checked={profile.gender === "ชาย"} label="ชาย" />
-                        <CircleCheck checked={profile.gender === "หญิง"} label="หญิง" />
+                        <CircleCheck checked={isMale} label="ชาย" />
+                        <CircleCheck checked={isFemale} label="หญิง" />
                     </div>
                 </div>
 
@@ -288,80 +427,112 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
 
                     <div className="ml-auto flex items-baseline">
                         <span>สถานภาพสมรส</span>
-                        <CircleCheck checked={profile.marital_status === "โสด" || !profile.marital_status} label="โสด" />
-                        <CircleCheck checked={profile.marital_status === "สมรส"} label="สมรส" />
+                        <CircleCheck checked={isSingle} label="โสด" />
+                        <CircleCheck checked={isMarried} label="สมรส" />
                     </div>
                 </div>
 
-                {/* 3. */}
+                {/* 3. Registered Address */}
                 <div className="flex items-baseline w-full">
-                    <span>3. ที่อยู่ตามทะเบียนบ้าน เลขที่</span><Blank width="60px" className="mx-1">{profile.house_no}</Blank>
-                    <span>หมู่ที่</span><Blank width="40px" className="mx-1">{profile.moo}</Blank>
-                    <span>ซอย</span><Blank width="100px" className="mx-1">{profile.soi}</Blank>
-                    <span>ถนน</span><Blank flex={1} className="ml-1">{profile.road}</Blank>
+                    <span>3. ที่อยู่ตามทะเบียนบ้าน เลขที่</span><Blank width="60px" className="mx-1">{isFilled ? profile.house_no : ""}</Blank>
+                    <span>หมู่ที่</span><Blank width="40px" className="mx-1">{isFilled ? profile.moo : ""}</Blank>
+                    <span>ซอย</span><Blank width="100px" className="mx-1">{isFilled ? profile.soi : ""}</Blank>
+                    <span>ถนน</span><Blank flex={1} className="ml-1">{isFilled ? profile.road : ""}</Blank>
                 </div>
                 <div className="flex items-baseline w-full gap-2">
-                    <span className="flex-1 flex items-baseline">ตำบล<Blank flex={1} className="ml-1">{profile.subdistrict}</Blank></span>
-                    <span className="flex-1 flex items-baseline">อำเภอ<Blank flex={1} className="ml-1">{profile.district}</Blank></span>
-                    <span className="flex-1 flex items-baseline">จังหวัด<Blank flex={1} className="ml-1">{profile.province}</Blank></span>
-                    <span className="flex-none flex items-baseline">รหัสไปรษณีย์<Blank width="60px" className="ml-1">{profile.postal_code}</Blank></span>
-                    <span className="flex-none flex items-baseline">อาชีพ<Blank width="80px" className="ml-1">{profile.occupation}</Blank></span>
+                    <span className="flex-1 flex items-baseline">ตำบล<Blank flex={1} className="ml-1">{isFilled ? profile.subdistrict : ""}</Blank></span>
+                    <span className="flex-1 flex items-baseline">อำเภอ<Blank flex={1} className="ml-1">{isFilled ? profile.district : ""}</Blank></span>
+                    <span className="flex-1 flex items-baseline">จังหวัด<Blank flex={1} className="ml-1">{isFilled ? profile.province : ""}</Blank></span>
+                    <span className="flex-none flex items-baseline">รหัสไปรษณีย์<Blank width="60px" className="ml-1">{isFilled ? profile.postal_code : ""}</Blank></span>
+                    <span className="flex-none flex items-baseline">อาชีพ<Blank width="80px" className="ml-1">{isFilled ? profile.occupation : ""}</Blank></span>
                 </div>
 
-                {/* ID Grid */}
+                {/* Citizen ID Grid */}
                 <div className="flex items-center my-1.5 w-full">
                     <span className="mr-2">เลขประจำตัวประชาชน</span>
                     <div className="flex items-center shrink-0">
-                        <span className="w-[18px] h-[22px] border border-black flex items-center justify-center text-[12px]">{digits[0]}</span>
+                        <span className="w-[18px] h-[22px] border border-black flex items-center justify-center text-[12px] font-mono">{digits[0]}</span>
                         <span className="w-1.5 text-center">-</span>
                         <div className="flex">
                             {digits.slice(1, 5).map((d, i) => (
-                                <span key={i} className="w-[18px] h-[22px] border border-black -ml-px first:ml-0 flex items-center justify-center text-[12px]">{d}</span>
+                                <span key={i} className="w-[18px] h-[22px] border border-black -ml-px first:ml-0 flex items-center justify-center text-[12px] font-mono">{d}</span>
                             ))}
                         </div>
                         <span className="w-1.5 text-center">-</span>
                         <div className="flex">
                             {digits.slice(5, 10).map((d, i) => (
-                                <span key={i} className="w-[18px] h-[22px] border border-black -ml-px first:ml-0 flex items-center justify-center text-[12px]">{d}</span>
+                                <span key={i} className="w-[18px] h-[22px] border border-black -ml-px first:ml-0 flex items-center justify-center text-[12px] font-mono">{d}</span>
                             ))}
                         </div>
                         <span className="w-1.5 text-center">-</span>
                         <div className="flex">
                             {digits.slice(10, 12).map((d, i) => (
-                                <span key={i} className="w-[18px] h-[22px] border border-black -ml-px first:ml-0 flex items-center justify-center text-[12px]">{d}</span>
+                                <span key={i} className="w-[18px] h-[22px] border border-black -ml-px first:ml-0 flex items-center justify-center text-[12px] font-mono">{d}</span>
                             ))}
                         </div>
                         <span className="w-1.5 text-center">-</span>
-                        <span className="w-[18px] h-[22px] border border-black flex items-center justify-center text-[12px]">{digits[12]}</span>
+                        <span className="w-[18px] h-[22px] border border-black flex items-center justify-center text-[12px] font-mono">{digits[12]}</span>
                     </div>
 
-                    <span className="ml-auto flex items-baseline">สัญชาติ<Blank width="60px" className="ml-1">{profile.nationality || "ไทย"}</Blank></span>
-                    <span className="ml-4 flex items-baseline">ศาสนา<Blank width="60px" className="ml-1">{profile.religion || "พุทธ"}</Blank></span>
+                    <span className="ml-auto flex items-baseline">สัญชาติ<Blank width="60px" className="ml-1">{isFilled ? (profile.nationality || "") : ""}</Blank></span>
+                    <span className="ml-4 flex items-baseline">ศาสนา<Blank width="60px" className="ml-1">{isFilled ? (profile.religion || "") : ""}</Blank></span>
                 </div>
 
-                {/* 4. */}
+                {/* 4. Education */}
                 <div className="flex items-baseline w-full gap-2">
-                    <span className="flex-none flex items-baseline">4. สำเร็จการศึกษาสูงสุด ระดับชั้น<Blank width="120px" className="ml-1">{profile.highest_education}</Blank></span>
-                    <span className="flex-1 flex items-baseline">จากสถานศึกษา<Blank flex={1} className="ml-1">{profile.previous_school}</Blank></span>
-                    <span className="flex-none flex items-baseline">จังหวัด<Blank width="100px" className="ml-1">{profile.school_province}</Blank></span>
+                    <span className="flex-none flex items-baseline">4. สำเร็จการศึกษาสูงสุด ระดับชั้น<Blank width="120px" className="ml-1">{isFilled ? profile.highest_education : ""}</Blank></span>
+                    <span className="flex-1 flex items-baseline">จากสถานศึกษา<Blank flex={1} className="ml-1">{isFilled ? profile.previous_school : ""}</Blank></span>
+                    <span className="flex-none flex items-baseline">จังหวัด<Blank width="100px" className="ml-1">{isFilled ? profile.school_province : ""}</Blank></span>
                 </div>
 
-                {/* 5. */}
+                {/* 5. Current Address */}
                 <div className="flex items-baseline w-full">
-                    <span>5. ที่อยู่ปัจจุบันที่ติดต่อได้สะดวก บ้านเลขที่</span><Blank width="60px" className="mx-1">{profile.current_house_no}</Blank>
-                    <span>หมู่ที่</span><Blank width="40px" className="mx-1">{profile.current_moo}</Blank>
-                    <span>ซอย</span><Blank width="100px" className="mx-1">{profile.current_soi}</Blank>
-                    <span>ถนน</span><Blank flex={1} className="ml-1">{profile.current_road}</Blank>
+                    <span>5. ที่อยู่ปัจจุบันที่ติดต่อได้สะดวก บ้านเลขที่</span>
+                    <Blank width="60px" className="mx-1">
+                        {isFilled ? (profile.current_house_no || (profile.is_same_address ? profile.house_no : "")) : ""}
+                    </Blank>
+                    <span>หมู่ที่</span>
+                    <Blank width="40px" className="mx-1">
+                        {isFilled ? (profile.current_moo || (profile.is_same_address ? profile.moo : "")) : ""}
+                    </Blank>
+                    <span>ซอย</span>
+                    <Blank width="100px" className="mx-1">
+                        {isFilled ? (profile.current_soi || (profile.is_same_address ? profile.soi : "")) : ""}
+                    </Blank>
+                    <span>ถนน</span>
+                    <Blank flex={1} className="ml-1">
+                        {isFilled ? (profile.current_road || (profile.is_same_address ? profile.road : "")) : ""}
+                    </Blank>
                 </div>
                 <div className="flex items-baseline w-full gap-2">
-                    <span className="flex-1 flex items-baseline">ตำบล<Blank flex={1} className="ml-1">{profile.current_subdistrict}</Blank></span>
-                    <span className="flex-1 flex items-baseline">อำเภอ<Blank flex={1} className="ml-1">{profile.current_district}</Blank></span>
-                    <span className="flex-1 flex items-baseline">จังหวัด<Blank flex={1} className="ml-1">{profile.current_province}</Blank></span>
-                    <span className="flex-none flex items-baseline">รหัสไปรษณีย์<Blank width="60px" className="ml-1">{profile.current_postal_code}</Blank></span>
-                    <span className="flex-none flex items-baseline">โทรศัพท์<Blank width="100px" className="ml-1 font-mono">{profile.phone}</Blank></span>
+                    <span className="flex-1 flex items-baseline">
+                        ตำบล<Blank flex={1} className="ml-1">
+                            {isFilled ? (profile.current_subdistrict || (profile.is_same_address ? profile.subdistrict : "")) : ""}
+                        </Blank>
+                    </span>
+                    <span className="flex-1 flex items-baseline">
+                        อำเภอ<Blank flex={1} className="ml-1">
+                            {isFilled ? (profile.current_district || (profile.is_same_address ? profile.district : "")) : ""}
+                        </Blank>
+                    </span>
+                    <span className="flex-1 flex items-baseline">
+                        จังหวัด<Blank flex={1} className="ml-1">
+                            {isFilled ? (profile.current_province || (profile.is_same_address ? profile.province : "")) : ""}
+                        </Blank>
+                    </span>
+                    <span className="flex-none flex items-baseline">
+                        รหัสไปรษณีย์<Blank width="60px" className="ml-1">
+                            {isFilled ? (profile.current_postal_code || (profile.is_same_address ? profile.postal_code : "")) : ""}
+                        </Blank>
+                    </span>
+                    <span className="flex-none flex items-baseline">
+                        โทรศัพท์<Blank width="100px" className="ml-1 font-mono">
+                            {isFilled ? (profile.phone || enrollment.phone || "") : ""}
+                        </Blank>
+                    </span>
                 </div>
 
-                {/* 6. */}
+                {/* 6. Certification */}
                 <div className="pt-2 flex items-start gap-1">
                     <span>6.</span>
                     <span className="leading-relaxed">
@@ -384,7 +555,11 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
                     <div>
                         <p className="font-bold mb-2 pl-1">เจ้าหน้าที่รับสมัคร</p>
                         <div className="grid grid-cols-2 gap-y-2 gap-x-1 pl-1">
-                            <CircleCheck checked={!!enrollment.id_card_url} label="สำเนาบัตรประชาชน" className="" />
+                            <CircleCheck
+                                checked={isFilled && Boolean(enrollment?.id_card_url || profile?.id_card_url)}
+                                label="สำเนาบัตรประชาชน"
+                                className=""
+                            />
                             <CircleCheck checked={false} label="สำเนาทะเบียนบ้าน" className="" />
                             <CircleCheck checked={false} label="วุฒิการศึกษา" className="" />
                             <CircleCheck checked={false} label="รูปถ่าย 3 x 4 ซม." className="" />
@@ -404,12 +579,6 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
                             <span>ใบเสร็จรับเงิน เล่มที่</span><Blank width="60px" className="mx-1 font-mono">{receiptBook}</Blank>
                             <span className="ml-2">เลขที่</span><Blank width="60px" className="mx-1 font-mono">{receiptNum}</Blank>
                         </div>
-                        <div className="mt-2 flex items-baseline pl-1">
-                            <span>ได้รับเงินค่าสมัครและค่าเรียนจำนวน:</span>
-                            <span className="ml-2 font-bold underline">
-                                {totalAmount > 0 ? `${totalAmount.toLocaleString()} บาท` : "......... บาท"}
-                            </span>
-                        </div>
                     </div>
                     <div className="text-center mt-5">
                         <div className="flex items-baseline justify-center">(ลงชื่อ) <Blank width="140px" className="mx-1"></Blank> เจ้าหน้าที่การเงิน</div>
@@ -428,7 +597,7 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
                 </div>
                 <span className="ml-2 mb-1">ซึ่งเป็นผู้สมัครเรียน ข้าพเจ้าขอรับรองว่าจะควบคุมดูแลผู้สมัคร ให้อยู่ในระเบียบวินัยของวิทยาลัยทุกประการ</span>
 
-                <div className="flex justify-end pr-8 pt-1">
+                <div className="flex justify-end pr-8 pt-1 mt-2">
                     <div className="text-center">
                         <div className="flex items-baseline">(ลงชื่อ) <Blank width="200px" className="mx-1"></Blank> ผู้ปกครอง</div>
                         <div className="mt-1 flex justify-center">( <Blank width="180px" className="mx-1"></Blank> )</div>

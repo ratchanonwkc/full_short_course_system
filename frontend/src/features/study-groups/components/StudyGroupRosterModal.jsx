@@ -7,6 +7,7 @@ import {
 import { useReactToPrint } from "react-to-print";
 import Swal from "sweetalert2";
 import { getStudyGroupRosterBySubject } from "../services/studyGroupApi";
+import { getEnrollmentById } from "../../registrar/services/registrarApi";
 import RosterSubjectPrint from "../../../components/print/RosterSubjectPrint";
 import ApplicationFormPrint from "../../../components/print/ApplicationFormPrint";
 
@@ -38,7 +39,7 @@ export default function StudyGroupRosterModal({ isOpen, onClose, studyGroupId, g
 
     const handlePrintApplication = useReactToPrint({
         contentRef: applicationPrintRef,
-        documentTitle: `ใบสมัคร_${studentToPrint?.applicant_name || "application"}`,
+        documentTitle: `ใบสมัคร_${studentToPrint?.applicant_name || studentToPrint?.full_name || "application"}`,
     });
 
     useEffect(() => {
@@ -78,30 +79,49 @@ export default function StudyGroupRosterModal({ isOpen, onClose, studyGroupId, g
     });
 
     const handleViewStudentApplication = async (student) => {
-        // If student enrollment id is available or citizen id lookup
         setLoadingPrint(true);
         try {
-            // Find enrollment or build print object
-            const printPayload = {
-                id: student.seq_no,
-                application_no: String(student.seq_no).padStart(5, "0"),
-                status: student.status,
-                applicant_name: student.full_name,
+            let fullEnrollment = null;
+            if (student.enrollment_id) {
+                try {
+                    fullEnrollment = await getEnrollmentById(student.enrollment_id);
+                } catch {
+                    // non-blocking fallback
+                }
+            }
+
+            const profile = fullEnrollment?.applicant_profile || student.applicant_profile || {
+                full_name: student.full_name,
                 citizen_id: student.citizen_id,
                 phone: student.phone,
-                applicant_profile: {
-                    full_name: student.full_name,
-                    citizen_id: student.citizen_id,
-                    phone: student.phone,
-                },
-                subject_code: activeSubject?.subject_code,
-                moe_code: activeSubject?.moe_code,
-                subject_name: activeSubject?.subject_name,
-                teacher_name: activeSubject?.teacher_name,
-                batch_name: rosterData?.batch_name,
-                academic_year: rosterData?.academic_year,
-                term: rosterData?.term,
             };
+
+            const printPayload = {
+                ...(fullEnrollment || {}),
+                id: student.enrollment_id || student.seq_no,
+                student_no: student.seq_no,
+                application_no: student.application_no || fullEnrollment?.application_no || String(student.seq_no).padStart(5, "0"),
+                status: student.status,
+                applicant_name: student.full_name || fullEnrollment?.applicant_name,
+                citizen_id: student.citizen_id || fullEnrollment?.citizen_id,
+                phone: student.phone || fullEnrollment?.phone,
+                applicant_profile: profile,
+                apply_date: student.apply_date || fullEnrollment?.apply_date,
+                receipt_book_no: student.receipt_book_no || fullEnrollment?.receipt_book_no,
+                receipt_number: student.receipt_number || fullEnrollment?.receipt_number,
+                total_amount: student.total_amount ?? fullEnrollment?.total_amount ?? rosterData?.total_amount,
+                batch_name: rosterData?.batch_name || fullEnrollment?.batch_name,
+                academic_year: rosterData?.academic_year || fullEnrollment?.academic_year,
+                term: rosterData?.term || fullEnrollment?.term,
+                batch_no: rosterData?.batch_no || fullEnrollment?.batch_no,
+                study_open_date: rosterData?.study_open_date || fullEnrollment?.study_open_date,
+                start_date: rosterData?.start_date || fullEnrollment?.start_date,
+                group_code: rosterData?.group_code || fullEnrollment?.group_code,
+                group_name: rosterData?.group_name || fullEnrollment?.group_name,
+                schedule_description: rosterData?.schedule_description || fullEnrollment?.schedule_description,
+                subjects: rosterData?.subjects || fullEnrollment?.subjects || (activeSubject ? [activeSubject] : []),
+            };
+
             setStudentToPrint(printPayload);
             setTimeout(() => {
                 handlePrintApplication();
@@ -337,7 +357,7 @@ export default function StudyGroupRosterModal({ isOpen, onClose, studyGroupId, g
                     <ApplicationFormPrint
                         ref={applicationPrintRef}
                         enrollment={studentToPrint}
-                        studentNo={studentToPrint.id}
+                        studentNo={studentToPrint.student_no || studentToPrint.id}
                     />
                 )}
             </div>

@@ -175,14 +175,21 @@ export const getStudyGroupRosterBySubjectService = async (groupId) => {
             group_code,
             group_name,
             room_code,
-            batches:batch_id ( id, batch_name, academic_year, term, batch_no ),
+            tuition_fee,
+            application_fee,
+            is_waived_fee,
+            total_hours,
+            schedule_description,
+            start_date,
+            end_date,
+            batches:batch_id ( id, batch_name, academic_year, term, batch_no, study_open_date, study_close_date ),
             teachers:teacher_id ( id, first_name_th, last_name_th, prefixes:prefix_id ( short_name ) ),
             study_group_subjects (
                 id,
                 subject_id,
                 moe_code,
                 sequence_order,
-                subjects:subject_id ( id, subject_code, name_th, total_hours )
+                subjects:subject_id ( id, subject_code, name_th, name_en, total_hours )
             )
         `)
         .eq('id', groupId)
@@ -195,21 +202,26 @@ export const getStudyGroupRosterBySubjectService = async (groupId) => {
         throw err;
     }
 
-    // 2. Fetch enrolled students for this study group (non-cancelled)
+    // 2. Fetch enrolled students for this study group (non-cancelled) with full applicant profile
     const { data: enrollments, error: enrollErr } = await supabase
         .from('enrollments')
         .select(`
             id,
+            application_no,
             status,
             apply_date,
             payment_date,
             receipt_date,
+            receipt_book_no,
+            receipt_number,
+            total_amount,
             applicants:applicant_id (
-                id,
-                citizen_id,
-                title_name,
-                full_name,
-                phone
+                id, citizen_id, student_type, title_name, full_name, gender, birth_date, marital_status,
+                house_no, moo, soi, road, occupation, nationality, religion,
+                highest_education, previous_school, school_province,
+                is_same_address, current_house_no, current_moo, current_soi, current_road,
+                current_subdistrict, current_district, current_province, current_postal_code,
+                phone, email, postal_code, subdistrict, district, province, id_card_url
             )
         `)
         .eq('study_group_id', groupId)
@@ -224,10 +236,19 @@ export const getStudyGroupRosterBySubjectService = async (groupId) => {
         const fullName = app ? `${app.title_name || ''}${app.full_name || ''}`.trim() : '';
         return {
             seq_no: index + 1,
+            enrollment_id: row.id,
+            application_no: row.application_no || String(row.id).padStart(5, '0'),
             citizen_id: app?.citizen_id || '',
             full_name: fullName,
             phone: app?.phone || '',
             status: row.status,
+            apply_date: row.apply_date,
+            payment_date: row.payment_date,
+            receipt_date: row.receipt_date,
+            receipt_book_no: row.receipt_book_no || '',
+            receipt_number: row.receipt_number || '',
+            total_amount: row.total_amount,
+            applicant_profile: app || null,
         };
     });
 
@@ -241,9 +262,11 @@ export const getStudyGroupRosterBySubjectService = async (groupId) => {
     let subjects = (group.study_group_subjects || [])
         .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
         .map((sgs) => ({
+            id: sgs.subjects?.id || sgs.id,
             subject_code: sgs.subjects?.subject_code || '',
             moe_code: sgs.moe_code || '',
             subject_name: sgs.subjects?.name_th || '',
+            total_hours: sgs.subjects?.total_hours || 0,
             teacher_name: teacherName,
             students: students,
         }));
@@ -255,16 +278,30 @@ export const getStudyGroupRosterBySubjectService = async (groupId) => {
                 subject_code: group.group_code || '',
                 moe_code: group.room_code || '',
                 subject_name: group.group_name || '',
+                total_hours: group.total_hours || 0,
                 teacher_name: teacherName,
                 students: students,
             },
         ];
     }
 
+    const totalFee = group.is_waived_fee ? 0 : Number(group.tuition_fee || 0) + Number(group.application_fee || 0);
+
     return {
         group_id: Number(group.id),
+        group_code: group.group_code,
         group_name: group.group_name,
+        batch_id: group.batches?.id,
         batch_name: group.batches?.batch_name || '',
+        academic_year: group.batches?.academic_year || '',
+        term: group.batches?.term || '',
+        batch_no: group.batches?.batch_no || '',
+        study_open_date: group.batches?.study_open_date || null,
+        start_date: group.start_date || null,
+        schedule_description: group.schedule_description || '',
+        total_hours: group.total_hours || 0,
+        total_amount: totalFee,
+        teacher_name: teacherName,
         subjects,
     };
 };

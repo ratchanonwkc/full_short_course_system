@@ -90,12 +90,16 @@ export default function ApplicantTrackingCard({ applicant, enrollment, onUpdated
             },
             group_name: enrollment.study_group?.group_name || enrollment.subject_name,
             group_code: enrollment.study_group?.group_code || enrollment.subject_code,
-            batch_name: enrollment.study_group?.batch_name || "",
-            academic_year: enrollment.study_group?.academic_year || "",
-            term: enrollment.study_group?.term || "",
+            batch_name: enrollment.study_group?.batch_name || enrollment.batch_name || "",
+            academic_year: enrollment.study_group?.academic_year || enrollment.academic_year || "",
+            term: enrollment.study_group?.term || enrollment.term || "",
+            batch_no: enrollment.study_group?.batch_no || enrollment.batch_no || "",
+            study_open_date: enrollment.study_open_date || enrollment.study_group?.study_open_date || null,
+            start_date: enrollment.start_date || enrollment.study_group?.start_date || null,
             total_hours: enrollment.study_group?.total_hours || 75,
             schedule_description: enrollment.study_group?.schedule_description || "",
             teacher_name: enrollment.study_group?.teacher_name || "",
+            subjects: enrollment.study_group?.study_group_subjects || enrollment.subjects || [],
         };
     }, [enrollment, applicant, formData]);
 

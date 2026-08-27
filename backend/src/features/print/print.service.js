@@ -80,6 +80,7 @@ export const getBlankTemplateService = async (studyGroupId) => {
 
             return {
                 is_blank: true,
+                is_group_blank: true,
                 study_group_id: group.id,
                 group_code: group.group_code,
                 group_name: group.group_name,
@@ -91,6 +92,7 @@ export const getBlankTemplateService = async (studyGroupId) => {
                 schedule_description: group.schedule_description || '',
                 start_date: group.start_date,
                 end_date: group.end_date,
+                study_open_date: batch?.study_open_date || null,
                 batch_id: batch?.id || null,
                 batch_name: batch?.batch_name || '',
                 academic_year: batch?.academic_year || '',
@@ -105,32 +107,27 @@ export const getBlankTemplateService = async (studyGroupId) => {
         }
     }
 
-    // 2. Pure blank template with latest active batch context
-    const { data: latestBatch } = await supabase
-        .from('batches')
-        .select('id, batch_name, academic_year, term, batch_no, study_open_date, study_close_date')
-        .order('id', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
+    // 2. Pure blank template (Mode A: Completely blank)
     return {
         is_blank: true,
+        is_pure_blank: true,
         study_group_id: null,
         group_code: '',
         group_name: '',
         room_code: '',
         tuition_fee: 0,
-        application_fee: 10,
-        total_amount: 10,
+        application_fee: 0,
+        total_amount: 0,
         total_hours: 0,
         schedule_description: '',
         start_date: null,
         end_date: null,
-        batch_id: latestBatch?.id || null,
-        batch_name: latestBatch?.batch_name || '',
-        academic_year: latestBatch?.academic_year || '',
-        term: latestBatch?.term || null,
-        batch_no: latestBatch?.batch_no || null,
+        study_open_date: null,
+        batch_id: null,
+        batch_name: '',
+        academic_year: '',
+        term: null,
+        batch_no: null,
         teacher_name: '',
         subject_code: '',
         moe_code: '',

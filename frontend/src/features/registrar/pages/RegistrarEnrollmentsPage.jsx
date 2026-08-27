@@ -433,13 +433,12 @@ export default function RegistrarEnrollmentsPage() {
 
             {/* ── Hidden Print Component for Blank Application ──────── */}
             <div className="hidden">
-                {blankPrintData && (
-                    <ApplicationFormPrint
-                        ref={blankPrintRef}
-                        enrollment={blankPrintData}
-                        studentNo=""
-                    />
-                )}
+                <ApplicationFormPrint
+                    ref={blankPrintRef}
+                    isBlank={true}
+                    enrollment={blankPrintData}
+                    studentNo=""
+                />
             </div>
         </div>
     );
