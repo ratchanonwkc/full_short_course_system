@@ -7,6 +7,7 @@ import StudyGroupTable from "../components/StudyGroupTable";
 import GroupFormPanel from "../components/GroupFormPanel";
 import StudyGroupRosterModal from "../components/StudyGroupRosterModal";
 import ApplicationFormPrint from "../../../components/print/ApplicationFormPrint";
+import AnnouncementPrintModal from "../../../components/modals/AnnouncementPrintModal";
 import SplitPanelLayout from "../../curriculums/components/SplitPanelLayout";
 import SearchableCombobox from "../../../components/common/SearchableCombobox";
 import Combobox from "../../../components/common/Combobox";
@@ -50,6 +51,61 @@ export default function StudyGroupsPage() {
     // Study Group Roster Modal state
     const [rosterGroupId, setRosterGroupId] = useState(null);
     const [rosterGroupTitle, setRosterGroupTitle] = useState("");
+
+    // Official Announcement Print Modal state
+    const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+    const [announcementConfig, setAnnouncementConfig] = useState({
+        batch: null,
+        groups: [],
+        group: null,
+        type: "group",
+        department: "",
+        groupTypeLabel: "แบบพิเศษ",
+        courseCount: 1,
+    });
+
+    const handlePrintAnnouncement = (group = null) => {
+        const targetGroups = group ? [group] : (filteredGroups.length > 0 ? filteredGroups : groups);
+        const firstGroup = group || (targetGroups.length > 0 ? targetGroups[0] : null);
+
+        const isMassage =
+            (firstGroup?.group_name || "").includes("นวด") ||
+            (firstGroup?.subject_name || "").includes("นวด") ||
+            (firstGroup?.major_name || "").includes("นวด") ||
+            (firstGroup?.group_name || "").includes("หัตถเวช") ||
+            (firstGroup?.major_name || "").includes("หัตถเวช");
+
+        const selectedMajor = majors.find((m) => String(m.id) === String(filterMajorId));
+        const deptName = isMassage
+            ? "หัตถเวชกรรมไทย"
+            : (firstGroup?.major_name || selectedMajor?.name_th || "อาหาร - ขนม");
+
+        let label = "แบบพิเศษ";
+        if (firstGroup?.group_type === "project" || firstGroup?.group_type === "โครงการ") {
+            label = "โครงการ";
+        } else if (firstGroup?.group_type === "vocational" || firstGroup?.group_type === "ห้องเรียนอาชีพ") {
+            label = "ห้องเรียนอาชีพ";
+        } else if (firstGroup?.group_type === "extra" || firstGroup?.group_type === "เพิ่มเติม") {
+            label = "เพิ่มเติม";
+        } else if (firstGroup?.group_type === "special" || firstGroup?.group_type === "พิเศษ" || firstGroup?.group_type === "แบบพิเศษ" || isMassage) {
+            label = "แบบพิเศษ";
+        } else if (firstGroup?.group_type) {
+            label = String(firstGroup.group_type);
+        }
+
+        const count = firstGroup?.subjects_in_group?.length || firstGroup?.subjects?.length || 1;
+
+        setAnnouncementConfig({
+            batch: batch,
+            groups: targetGroups,
+            group: firstGroup,
+            type: "group",
+            department: deptName,
+            groupTypeLabel: label,
+            courseCount: count,
+        });
+        setIsAnnouncementModalOpen(true);
+    };
 
     // Blank Application Printing state
     const [blankPrintData, setBlankPrintData] = useState(null);
@@ -287,15 +343,18 @@ export default function StudyGroupsPage() {
                         ))}
                     </select>
                 </div>
-                <button
-                    type="button"
-                    onClick={handleCreate}
-                    disabled={!selectedBatchId}
-                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
-                >
-                    <Plus size={14} />
-                    เพิ่มกลุ่มเรียนใหม่
-                </button>
+                <div className="flex items-center gap-2">
+
+                    <button
+                        type="button"
+                        onClick={handleCreate}
+                        disabled={!selectedBatchId}
+                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+                    >
+                        <Plus size={14} />
+                        เพิ่มกลุ่มเรียนใหม่
+                    </button>
+                </div>
             </div>
 
             <div className="min-h-[480px] flex-1 overflow-hidden rounded-lg border border-slate-200 lg:min-h-0">
@@ -306,6 +365,7 @@ export default function StudyGroupsPage() {
                     onDelete={handleDelete}
                     onViewRoster={handleViewRoster}
                     onPrintGroupBlank={handlePrintGroupBlank}
+                    onPrintAnnouncement={handlePrintAnnouncement}
                 />
             </div>
         </>
@@ -371,8 +431,16 @@ export default function StudyGroupsPage() {
                         </div>
                     </div>
 
-                    {/* Top Action Buttons (Pure Blank Form & Batch Selector) */}
+                    {/* Top Action Buttons (Pure Blank Form, Premium Announcement & Batch Selector) */}
                     <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                        <button
+                            type="button"
+                            onClick={() => handlePrintAnnouncement(null)}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 transition shadow-2xs"
+                        >
+                            <FileText size={14} className="text-amber-700" />
+                            <span>พิมพ์ประกาศเปิดกลุ่มเรียน</span>
+                        </button>
                         <button
                             type="button"
                             onClick={handlePrintPureBlank}
@@ -448,6 +516,20 @@ export default function StudyGroupsPage() {
                 onClose={() => setRosterGroupId(null)}
                 studyGroupId={rosterGroupId}
                 groupTitle={rosterGroupTitle}
+            />
+
+            {/* ── Official Announcement Print Configuration Modal ──────── */}
+            <AnnouncementPrintModal
+                isOpen={isAnnouncementModalOpen}
+                onClose={() => setIsAnnouncementModalOpen(false)}
+                batch={announcementConfig.batch || batch}
+                groups={announcementConfig.groups}
+                group={announcementConfig.group}
+                type={announcementConfig.type}
+                initialType={announcementConfig.type}
+                initialDepartment={announcementConfig.department}
+                groupTypeLabel={announcementConfig.groupTypeLabel}
+                courseCount={announcementConfig.courseCount}
             />
 
             {/* ── Hidden Print Component for Blank Application ──────── */}

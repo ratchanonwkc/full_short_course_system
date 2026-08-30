@@ -66,6 +66,7 @@ export default function StudyGroupTable({
     onDelete,
     onViewRoster,
     onPrintGroupBlank,
+    onPrintAnnouncement,
 }) {
     const gridRef = useRef(null);
 
@@ -116,6 +117,14 @@ export default function StudyGroupTable({
             </button>
             <button
                 type="button"
+                title={`พิมพ์บันทึกข้อความขอเปิดวิชา (${GROUP_TYPE_LABELS[params.data.group_type] || 'แบบพิเศษ'})`}
+                onClick={() => onPrintAnnouncement?.(params.data)}
+                className="rounded-md p-1.5 text-amber-600 transition hover:bg-amber-100 hover:text-amber-800"
+            >
+                <FileText size={15} />
+            </button>
+            <button
+                type="button"
                 title="แก้ไข"
                 onClick={() => onEdit?.(params.data)}
                 className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600"
@@ -153,13 +162,13 @@ export default function StudyGroupTable({
             {
                 headerName: "จัดการ",
                 pinned: "right",
-                width: 150,
+                width: 175,
                 sortable: false,
                 filter: false,
                 cellRenderer: ActionsRenderer,
             },
         ],
-        [onEdit, onViewRoster, onPrintGroupBlank]
+        [onEdit, onViewRoster, onPrintGroupBlank, onPrintAnnouncement]
     );
 
     const defaultColDef = useMemo(
