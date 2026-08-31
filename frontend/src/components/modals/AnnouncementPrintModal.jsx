@@ -87,11 +87,13 @@ export default function AnnouncementPrintModal({
         setManualCourseCount(courseCount);
       }
 
-      // Proactively fetch study groups for this batch if needed
+      // Reset and proactively fetch study groups for this specific batch if needed
+      setFetchedGroups([]);
       if (batch?.id && isRegular) {
         getStudyGroups({ batch_id: batch.id })
           .then((data) => {
-            if (Array.isArray(data)) setFetchedGroups(data);
+            const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+            setFetchedGroups(list);
           })
           .catch(() => {});
       }
@@ -100,36 +102,58 @@ export default function AnnouncementPrintModal({
 
   const { batchNo, academicYear, batchDisplay } = useMemo(() => extractBatchDisplay(batch), [batch]);
 
-  // Consolidate groups from props or live fetch
+  // Consolidate groups strictly for this batch
   const allGroups = useMemo(() => {
-    if (fetchedGroups.length > 0) return fetchedGroups;
+    if (fetchedGroups.length > 0) {
+      return fetchedGroups.filter((g) => !batch?.id || String(g.batch_id) === String(batch?.id));
+    }
     if (batch?.study_groups?.length > 0) return batch.study_groups;
-    if (groups?.length > 0) {
-      const filtered = groups.filter((g) => String(g.batch_id) === String(batch?.id));
-      if (filtered.length > 0) return filtered;
-      return groups;
+    if (groups?.length > 0 && batch?.id) {
+      return groups.filter((g) => String(g.batch_id) === String(batch?.id));
     }
     return [];
   }, [fetchedGroups, batch, groups]);
 
-  // Calculate regular courses count for batch mode
+  // Calculate regular courses count dynamically for batch mode
   const calculatedRegularCoursesCount = useMemo(() => {
     if (!isRegular) return manualCourseCount;
     if (typeof courseCount === 'number' && courseCount > 0) return courseCount;
-    const regularGroups = allGroups.filter(
-      (g) =>
-        g.group_type === 'ปกติ' ||
-        g.group_type === 'regular' ||
-        g.category === 'ปกติ' ||
-        !g.group_type
-    );
-    if (regularGroups.length > 0) {
-      return regularGroups.reduce((acc, g) => acc + (g.subjects_in_group?.length || g.subjects?.length || 1), 0);
-    }
-    return allGroups.length > 0 ? allGroups.length : 1;
-  }, [isRegular, manualCourseCount, courseCount, allGroups]);
 
-  const finalCourseCount = isRegular ? calculatedRegularCoursesCount : manualCourseCount;
+    const regularActiveGroups = (allGroups || []).filter((group) => {
+      const isSameBatch = !batch?.id || String(group.batch_id) === String(batch?.id);
+      const isRegularType =
+        group.group_type === 'normal' ||
+        group.group_type === 'regular' ||
+        group.group_type === 'ปกติ' ||
+        group.category === 'ปกติ' ||
+        !group.group_type;
+      const isActive =
+        group.status === 'open' ||
+        group.status === 'active' ||
+        group.status === 'opened' ||
+        group.is_active === true ||
+        (!group.status && group.is_active !== false) ||
+        (group.status !== 'cancelled' && group.status !== 'closed' && group.status !== 'inactive');
+      return isSameBatch && isRegularType && isActive;
+    });
+
+    if (regularActiveGroups.length > 0) {
+      return regularActiveGroups.reduce((acc, group) => {
+        const subjectCount = group.subjects_in_group?.length || group.subjects?.length || 1;
+        return acc + subjectCount;
+      }, 0);
+    }
+    return 1;
+  }, [isRegular, manualCourseCount, courseCount, allGroups, batch?.id]);
+
+  // Sync manualCourseCount with calculatedRegularCoursesCount for regular mode
+  useEffect(() => {
+    if (isRegular && calculatedRegularCoursesCount > 0) {
+      setManualCourseCount(calculatedRegularCoursesCount);
+    }
+  }, [isRegular, calculatedRegularCoursesCount]);
+
+  const finalCourseCount = isRegular ? (manualCourseCount || calculatedRegularCoursesCount) : manualCourseCount;
 
   const formattedThaiDate = useMemo(() => {
     const thaiMonths = [
@@ -142,10 +166,11 @@ export default function AnnouncementPrintModal({
   }, [docDateIso]);
 
   const memoData = {
+    ...batch,
     type: activeType,
     doc_no: docNo,
     doc_date_display: formattedThaiDate,
-    doc_date: docDateIso,
+    doc_date: docDateIso || new Date().toISOString(),
     department_agency: 'งานทะเบียน วิทยาลัยสารพัดช่างอุดรธานี',
     department_name: departmentName,
     term: batch?.term || '1',
@@ -156,9 +181,11 @@ export default function AnnouncementPrintModal({
     head_registration_name: headRegistrarName,
     group_type_label: resolveGroupTypeLabel(currentGroupTypeLabel),
     director_name: batch?.director_name || 'นายไพฑูรย์ ธนพงศ์ภากรณ์',
-    apply_start_date: batch?.apply_start_date || batch?.start_date,
-    apply_end_date: batch?.apply_end_date || batch?.end_date,
-    study_open_date: batch?.study_open_date || batch?.start_date,
+    admit_open_date: batch?.admit_open_date,
+    admit_close_date: batch?.admit_close_date,
+    apply_start_date: batch?.admit_open_date || batch?.apply_start_date || batch?.registration_start_date || batch?.reg_start_date || batch?.batch_start_date || batch?.start_date,
+    apply_end_date: batch?.admit_close_date || batch?.apply_end_date || batch?.registration_end_date || batch?.reg_end_date || batch?.batch_end_date || batch?.end_date,
+    study_open_date: batch?.study_open_date || batch?.study_start_date || batch?.course_start_date || batch?.batch_start_date || batch?.start_date,
     start_date: batch?.start_date,
   };
 
@@ -273,9 +300,8 @@ export default function AnnouncementPrintModal({
                         <input
                           type="number"
                           value={finalCourseCount}
-                          onChange={(e) => !isRegular && setManualCourseCount(Math.max(1, parseInt(e.target.value) || 1))}
-                          disabled={isRegular}
-                          className={`${inputCls} w-16 ${isRegular ? 'bg-slate-100' : 'bg-white'} text-center font-bold text-blue-700`}
+                          onChange={(e) => setManualCourseCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className={`${inputCls} w-16 bg-white text-center font-bold text-blue-700`}
                         />
                       </Field>
                     </div>
