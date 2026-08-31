@@ -5,6 +5,7 @@ import { useReactToPrint } from 'react-to-print';
 import { X, Printer, RotateCcw, FileText, Megaphone, Table2, Layers, Building } from 'lucide-react';
 import OfficialMemoPrint, { resolveGroupTypeLabel } from '../print/announcements/OfficialMemoPrint';
 import CollegeAnnouncementPrint from '../print/announcements/CollegeAnnouncementPrint';
+import CourseScheduleTablePrint from '../print/announcements/CourseScheduleTablePrint';
 import { getStudyGroups } from '../../features/study-groups/services/studyGroupApi';
 
 const TABS = [
@@ -43,9 +44,18 @@ export default function AnnouncementPrintModal({
   initialType = '',
   groupTypeLabel = '',
   initialDepartment = '',
+  mode = '',
 }) {
   const activeType = initialType || type || 'regular';
   const isRegular = activeType === 'regular';
+  const isBatchLevel = mode === 'batch' || (mode !== 'group' && !group && isRegular);
+
+  const visibleTabs = useMemo(() => {
+    if (isBatchLevel) {
+      return TABS;
+    }
+    return TABS.filter((t) => t.key !== 'course_table');
+  }, [isBatchLevel]);
 
   const [activeTab, setActiveTab] = useState('memo');
   const [docNo, setDocNo] = useState('');
@@ -65,6 +75,10 @@ export default function AnnouncementPrintModal({
       setDocNo('');
       setDocDateIso(new Date().toISOString().slice(0, 10));
       setIsDraft(true);
+
+      if (!isBatchLevel && activeTab === 'course_table') {
+        setActiveTab('memo');
+      }
 
       // Determine initial Department Name
       const dept =
@@ -98,53 +112,55 @@ export default function AnnouncementPrintModal({
           .catch(() => {});
       }
     }
-  }, [isOpen, batch?.id, isRegular, group, groups, initialDepartment, groupTypeLabel, courseCount]);
+  }, [isOpen, isBatchLevel, activeTab, batch?.id, isRegular, group, groups, initialDepartment, groupTypeLabel, courseCount]);
 
   const { batchNo, academicYear, batchDisplay } = useMemo(() => extractBatchDisplay(batch), [batch]);
 
   // Consolidate groups strictly for this batch
   const allGroups = useMemo(() => {
-    if (fetchedGroups.length > 0) {
-      return fetchedGroups.filter((g) => !batch?.id || String(g.batch_id) === String(batch?.id));
+    if (fetchedGroups && fetchedGroups.length > 0) {
+      return fetchedGroups;
     }
-    if (batch?.study_groups?.length > 0) return batch.study_groups;
-    if (groups?.length > 0 && batch?.id) {
-      return groups.filter((g) => String(g.batch_id) === String(batch?.id));
-    }
+    if (batch?.study_groups && batch.study_groups.length > 0) return batch.study_groups;
+    if (groups && groups.length > 0) return groups;
     return [];
   }, [fetchedGroups, batch, groups]);
+
+  // Permissive Active Regular Group Filter
+  const activeBatchGroups = useMemo(() => {
+    return (allGroups || []).filter((group) => {
+      // Safe Batch ID matching
+      const matchBatch = !batch?.id || !group.batch_id || String(group.batch_id) === String(batch?.id);
+
+      // Safe Group Type matching (regular / normal / ปกติ / empty)
+      const isGroupRegular =
+        !group.group_type ||
+        group.group_type === 'normal' ||
+        group.group_type === 'regular' ||
+        group.group_type === 'ปกติ' ||
+        group.category === 'ปกติ';
+
+      // Safe Status matching (not cancelled)
+      const isNotCancelled = group.status !== 'cancelled' && !group.is_cancelled;
+
+      return matchBatch && isGroupRegular && isNotCancelled;
+    });
+  }, [allGroups, batch?.id]);
 
   // Calculate regular courses count dynamically for batch mode
   const calculatedRegularCoursesCount = useMemo(() => {
     if (!isRegular) return manualCourseCount;
     if (typeof courseCount === 'number' && courseCount > 0) return courseCount;
 
-    const regularActiveGroups = (allGroups || []).filter((group) => {
-      const isSameBatch = !batch?.id || String(group.batch_id) === String(batch?.id);
-      const isRegularType =
-        group.group_type === 'normal' ||
-        group.group_type === 'regular' ||
-        group.group_type === 'ปกติ' ||
-        group.category === 'ปกติ' ||
-        !group.group_type;
-      const isActive =
-        group.status === 'open' ||
-        group.status === 'active' ||
-        group.status === 'opened' ||
-        group.is_active === true ||
-        (!group.status && group.is_active !== false) ||
-        (group.status !== 'cancelled' && group.status !== 'closed' && group.status !== 'inactive');
-      return isSameBatch && isRegularType && isActive;
-    });
-
-    if (regularActiveGroups.length > 0) {
-      return regularActiveGroups.reduce((acc, group) => {
+    const listToCount = activeBatchGroups.length > 0 ? activeBatchGroups : allGroups;
+    if (listToCount.length > 0) {
+      return listToCount.reduce((acc, group) => {
         const subjectCount = group.subjects_in_group?.length || group.subjects?.length || 1;
         return acc + subjectCount;
       }, 0);
     }
     return 1;
-  }, [isRegular, manualCourseCount, courseCount, allGroups, batch?.id]);
+  }, [isRegular, manualCourseCount, courseCount, activeBatchGroups, allGroups]);
 
   // Sync manualCourseCount with calculatedRegularCoursesCount for regular mode
   useEffect(() => {
@@ -165,6 +181,8 @@ export default function AnnouncementPrintModal({
     return `${dt.getDate()} ${thaiMonths[dt.getMonth()]} ${dt.getFullYear() + 543}`;
   }, [docDateIso]);
 
+  const resolvedGroupsForPrint = activeBatchGroups.length > 0 ? activeBatchGroups : allGroups;
+
   const memoData = {
     ...batch,
     type: activeType,
@@ -177,6 +195,7 @@ export default function AnnouncementPrintModal({
     academic_year: academicYear,
     batch_no: batchNo,
     batch_display: batchDisplay,
+    groups: resolvedGroupsForPrint,
     course_count: finalCourseCount,
     head_registration_name: headRegistrarName,
     group_type_label: resolveGroupTypeLabel(currentGroupTypeLabel),
@@ -353,7 +372,7 @@ export default function AnnouncementPrintModal({
                   {/* Bottom Line: Integrated Tabs Navigation */}
                   <div className="mt-1.5 flex items-center justify-between border-t border-slate-200/60 pt-1">
                     <div className="flex gap-1">
-                      {TABS.map(({ key, label, icon: Icon }) => (
+                      {visibleTabs.map(({ key, label, icon: Icon }) => (
                         <button
                           key={key}
                           type="button"
@@ -379,8 +398,11 @@ export default function AnnouncementPrintModal({
                 {/* ── Preview Stage: Full Height A4 Canvas (No squishing) ── */}
                 <div className="flex w-full flex-1 justify-center overflow-x-auto overflow-y-auto bg-slate-300 p-4 sm:p-6">
                   <div
-                    className="shrink-0 bg-white shadow-2xl"
-                    style={{ width: '210mm', minHeight: '297mm' }}
+                    className="shrink-0 bg-white shadow-2xl transition-all"
+                    style={{
+                      width: '210mm',
+                      minHeight: '297mm',
+                    }}
                   >
                     {activeTab === 'memo' && (
                       <OfficialMemoPrint ref={printRef} data={memoData} isDraft={isDraft} useThaiDigits={useThaiDigits} />
@@ -389,9 +411,14 @@ export default function AnnouncementPrintModal({
                       <CollegeAnnouncementPrint ref={printRef} data={memoData} isDraft={isDraft} useThaiDigits={useThaiDigits} />
                     )}
                     {activeTab === 'course_table' && (
-                      <div className="flex h-full min-h-[297mm] items-center justify-center p-10 text-sm text-slate-400">
-                        ตารางรายวิชาแนบท้าย — อยู่ระหว่างการพัฒนา
-                      </div>
+                      <CourseScheduleTablePrint
+                        ref={printRef}
+                        batch={batch}
+                        groups={memoData.groups}
+                        data={memoData}
+                        isDraft={isDraft}
+                        useThaiDigits={useThaiDigits}
+                      />
                     )}
                   </div>
                 </div>
@@ -412,8 +439,7 @@ export default function AnnouncementPrintModal({
                     <button
                       type="button"
                       onClick={() => handlePrint()}
-                      disabled={activeTab !== 'memo' && activeTab !== 'announcement'}
-                      className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700 active:scale-[0.98]"
                     >
                       <Printer size={14} />
                       สั่งพิมพ์ (Print)

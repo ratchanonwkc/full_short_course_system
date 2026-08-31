@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { Save, Zap, Plus, Settings, X, Pencil } from "lucide-react";
+import { Save, Zap, Plus, Settings, X, Pencil, AlertCircle } from "lucide-react";
 import Swal from "sweetalert2";
 import VirtualizedCombobox from "../../../components/common/VirtualizedCombobox";
 import MaskedDateInput from "../../../components/common/MaskedDateInput";
@@ -11,6 +11,7 @@ import {
     updateStudyGroup,
     getNextRoomSequence,
     getNextMoeSequence,
+    getNextMoeCode,
     createLocation,
     getSubjectsInGroup,
     addSubjectToGroup,
@@ -26,6 +27,7 @@ import {
     buildMoeCode,
     buildGroupName,
     buildScheduleDescription,
+    calculateNextConsecutiveMoeCode,
     currentBeYear2Digit,
 } from "../../../utils/groupCode";
 
@@ -47,6 +49,9 @@ const EMPTY_FORM = {
     status: "open",
     teacher_id: "",
     joint_location_id: 1,
+    time_slot_id: "",
+    has_footnote: false,
+    footnote_text: "",
     max_seats: 20,
     total_hours: "",
     study_dates_description: "", // = "schedule_description" ตามสเปก
@@ -56,7 +61,7 @@ const EMPTY_FORM = {
     student_type: "ประชาชนทั่วไป",
     tuition_fee: "0",
     application_fee: "10",
-    is_waived_fee: false, // = "ฟรีค่าเรียน" (is_free_tuition ตามสเปก)
+    is_waived_fee: false, // = "ฟรีค่าเรียน"
     is_ac_maintenance_fee: false,
     registration_start_date: "",
     registration_end_date: "",
@@ -69,9 +74,8 @@ const nextLocalId = () => `local-${Date.now()}-${localIdCounter++}`;
 /**
  * GroupFormPanel
  * -------------------------------------------------------------------------
- * Props (เพิ่มจากเดิม):
- * - batch: Batch | null   -> ใช้ดึงวันที่ default (registration_/study_open_date / study_close_date)
- * เมื่ออยู่ในโหมดสร้างใหม่
+ * Props:
+ * - batch: Batch | null   -> ใช้ดึงวันที่ default และ academic_year
  */
 export default function GroupFormPanel({
     batchId,
@@ -132,7 +136,14 @@ export default function GroupFormPanel({
         [locations]
     );
     const timeSlotOptions = useMemo(
-        () => timeSlots.map((t) => ({ value: t.time_code, label: `${t.time_code} (${t.time_name} ${t.time_range || ""})` })),
+        () =>
+            timeSlots.map((t) => ({
+                value: t.id,
+                label: `${t.time_name}${t.time_range ? ` (${t.time_range})` : ""}`,
+                time_code: t.time_code,
+                time_name: t.time_name,
+                time_range: t.time_range,
+            })),
         [timeSlots]
     );
 
@@ -144,15 +155,26 @@ export default function GroupFormPanel({
         scheduleDescTouchedRef.current = false;
 
         if (initialData) {
+            const matchedSlot = timeSlots.find((t) =>
+                initialData.time_slot_id
+                    ? String(t.id) === String(initialData.time_slot_id)
+                    : t.time_code === extractTimeCodeFromGroupCode(initialData.group_code)
+            );
+
             setForm({
                 ...EMPTY_FORM,
                 ...initialData,
+                time_slot_id: initialData.time_slot_id || matchedSlot?.id || "",
+                has_footnote: Boolean(initialData.has_footnote || initialData.footnote_text || (initialData.fee_exception_type && initialData.fee_exception_type !== 'none')),
+                footnote_text: initialData.footnote_text || (initialData.fee_exception_type && initialData.fee_exception_type !== 'none' ? initialData.fee_exception_type : ""),
                 group_no: initialData.group_no ?? 1,
                 max_seats: initialData.max_seats ?? 20,
                 status: initialData.status || "open",
                 tuition_fee: String(initialData.tuition_fee ?? "0"),
                 application_fee: String(initialData.application_fee ?? "10"),
-                time_code: extractTimeCodeFromGroupCode(initialData.group_code),
+                is_waived_fee: Boolean(initialData.is_waived_fee),
+                is_ac_maintenance_fee: Boolean(initialData.is_ac_maintenance_fee),
+                time_code: matchedSlot?.time_code || extractTimeCodeFromGroupCode(initialData.group_code),
             });
             scheduleDescTouchedRef.current = Boolean(initialData.study_dates_description);
             (async () => {
@@ -189,7 +211,7 @@ export default function GroupFormPanel({
             setPrimarySubjectId("");
         }
         setRemovedSubjectIds([]);
-    }, [initialData, batchId, batch]);
+    }, [initialData, batchId, batch, timeSlots]);
 
     const handleChange = (field) => (e) => {
         const { value, type, checked } = e.target;
@@ -207,20 +229,20 @@ export default function GroupFormPanel({
         setForm((prev) => ({ ...prev, major_id: value }));
     };
 
-    // ── 3. รูปแบบวันเรียน: gen อัตโนมัติเมื่อเลือกรอบเรียน (ถ้าผู้ใช้ยังไม่เคยแก้เอง) ──
-    const handleTimeCodeChange = (e) => {
-        const timeCode = e.target.value;
-        setForm((prev) => {
-            const slot = timeSlots.find((t) => t.time_code === timeCode);
-            const shouldAutoFill = !scheduleDescTouchedRef.current;
-            return {
-                ...prev,
-                time_code: timeCode,
-                study_dates_description: shouldAutoFill
-                    ? buildScheduleDescription({ timeRange: slot?.time_range })
-                    : prev.study_dates_description,
-            };
-        });
+    // ── 3. รอบเรียน (time_slot_id): sync time_code และสร้างรูปแบบวันเรียนอัตโนมัติ ──
+    const handleTimeSlotChange = (e) => {
+        const slotId = e.target.value;
+        const slot = timeSlots.find((t) => String(t.id) === String(slotId));
+        const timeCode = slot?.time_code || "";
+        const shouldAutoFill = !scheduleDescTouchedRef.current;
+        setForm((prev) => ({
+            ...prev,
+            time_slot_id: slotId,
+            time_code: timeCode,
+            study_dates_description: shouldAutoFill
+                ? buildScheduleDescription({ timeRange: slot?.time_range })
+                : prev.study_dates_description,
+        }));
     };
 
     const handleScheduleDescChange = (e) => {
@@ -268,17 +290,50 @@ export default function GroupFormPanel({
     };
 
     // ── ตารางวิชาย่อย ──────────────────────────────────────────────────────
-    const handleAddSubjectToGroup = (opt) => {
+    const handleAddSubjectToGroup = async (opt) => {
+        const localId = nextLocalId();
+        let generatedMoeCode = "";
+
+        if (form.major_id) {
+            const yearForMoe = batch?.academic_year || currentBeYear2Digit();
+            const existingCodes = subjectsInGroup.filter((s) => s.moe_code?.trim()?.length >= 9);
+
+            if (existingCodes.length > 0) {
+                // Safeguard 1: Calculate consecutive offset directly from in-memory list without redundant RPC!
+                generatedMoeCode = calculateNextConsecutiveMoeCode(
+                    subjectsInGroup,
+                    "",
+                    selectedMajor?.full_major_code ? `${currentBeYear2Digit()}${selectedMajor.full_major_code}` : ""
+                );
+            } else {
+                // First subject in list: call RPC once to get base code
+                try {
+                    const baseCode = await getNextMoeCode(yearForMoe, form.major_id);
+                    generatedMoeCode = baseCode || "";
+                } catch (err) {
+                    console.warn("Could not fetch MOE code via RPC:", err);
+                    if (selectedMajor?.full_major_code) {
+                        generatedMoeCode = calculateNextConsecutiveMoeCode(
+                            [],
+                            "",
+                            `${currentBeYear2Digit()}${selectedMajor.full_major_code}`
+                        );
+                    }
+                }
+            }
+        }
+
         setSubjectsInGroup((prev) => [
             ...prev,
             {
-                _localId: nextLocalId(),
+                _localId: localId,
                 _persistedId: null,
                 subject_id: opt.value,
                 subject_code: opt.subject_code,
                 name_th: opt.name_th,
                 total_hours: opt.total_hours,
-                moe_code: "",
+                moe_code: generatedMoeCode,
+                sequence_order: prev.length + 1,
             },
         ]);
         setPrimarySubjectId((prev) => prev || String(opt.value));
@@ -337,6 +392,7 @@ export default function GroupFormPanel({
             const departmentId = selectedMajor.department_id;
             const fullMajorCode = selectedMajor.full_major_code;
             const beYear2 = currentBeYear2Digit();
+            const yearForMoe = batch?.academic_year || beYear2;
 
             const groupCode = buildGroupCode({
                 subjectCode: primarySubject.subject_code,
@@ -353,18 +409,38 @@ export default function GroupFormPanel({
                 Swal.fire({ icon: "warning", title: "ไม่สามารถคำนวณรหัสห้องเรียนได้", text: roomSeqRes.message, confirmButtonColor: "#0270c7" });
             }
 
+            // Safeguard 1 & 3: Preserve existing codes and calculate consecutive offsets in memory
+            let baseRpcCode = "";
+            const hasAnyExistingCode = subjectsInGroup.some((s) => s.moe_code?.trim()?.length >= 9);
+            if (!hasAnyExistingCode) {
+                try {
+                    baseRpcCode = (await getNextMoeCode(yearForMoe, form.major_id)) || "";
+                } catch (err) {
+                    console.warn("getNextMoeCode RPC failed, fallback to sequence:", err);
+                    const moeSeqRes = await getNextMoeSequence(beYear2, fullMajorCode);
+                    if (moeSeqRes.sequence) {
+                        baseRpcCode = buildMoeCode({ beYear2Digit: beYear2, fullMajorCode, moeSequence: moeSeqRes.sequence });
+                    }
+                }
+            }
+
             const updatedSubjects = [...subjectsInGroup];
             for (let i = 0; i < updatedSubjects.length; i++) {
+                // Safeguard 3: NEVER overwrite existing moe_code!
                 if (updatedSubjects[i].moe_code?.trim()) continue;
-                const moeSeqRes = await getNextMoeSequence(beYear2, fullMajorCode);
-                if (moeSeqRes.sequence) {
+
+                // Safeguard 1: Calculate next consecutive code using in-memory offset
+                const nextCode = calculateNextConsecutiveMoeCode(
+                    updatedSubjects.slice(0, i),
+                    baseRpcCode,
+                    `${beYear2}${fullMajorCode}`
+                );
+
+                if (nextCode) {
                     updatedSubjects[i] = {
                         ...updatedSubjects[i],
-                        moe_code: buildMoeCode({ beYear2Digit: beYear2, fullMajorCode, moeSequence: moeSeqRes.sequence }),
+                        moe_code: nextCode,
                     };
-                } else if (moeSeqRes.message) {
-                    Swal.fire({ icon: "warning", title: "ไม่สามารถคำนวณเลข ศธ. ได้", text: moeSeqRes.message, confirmButtonColor: "#0270c7" });
-                    break;
                 }
             }
             setSubjectsInGroup(updatedSubjects);
@@ -401,10 +477,10 @@ export default function GroupFormPanel({
         }
     };
 
-    // ── 4. ค่าธรรมเนียม: ฟรีค่าเรียน -> 0 + disable, ค่าแอร์ +5/ชม. ────────────
+    // ── 4. ค่าธรรมเนียม ──────────────────────────────────────────────────
     const acFeePerHour = form.is_ac_maintenance_fee ? AC_FEE_PER_HOUR : 0;
     const estimatedTuition = form.is_waived_fee
-        ? 0
+        ? (Number(form.application_fee) || 0)
         : (Number(form.application_fee) || 0) + (Number(form.tuition_fee) || 0) + acFeePerHour * (Number(form.total_hours) || 0);
 
     const handleToggleFreeTuition = (e) => {
@@ -412,7 +488,6 @@ export default function GroupFormPanel({
         setForm((prev) => ({
             ...prev,
             is_waived_fee: checked,
-            application_fee: checked ? "0" : prev.application_fee,
             tuition_fee: checked ? "0" : prev.tuition_fee,
         }));
     };
@@ -445,6 +520,10 @@ export default function GroupFormPanel({
                 status: form.status,
                 teacher_id: form.teacher_id || null,
                 joint_location_id: form.joint_location_id || 1,
+                time_slot_id: form.time_slot_id ? Number(form.time_slot_id) : null,
+                has_footnote: Boolean(form.has_footnote),
+                footnote_text: form.has_footnote ? (form.footnote_text?.trim() || null) : null,
+                fee_exception_type: form.has_footnote ? (form.footnote_text?.trim() || "custom") : "none",
                 max_seats: Number(form.max_seats) || 20,
                 total_hours: Number(form.total_hours) || 0,
                 study_dates_description: form.study_dates_description || null,
@@ -465,12 +544,48 @@ export default function GroupFormPanel({
                 : await createStudyGroup(payload);
 
             await Promise.all(removedSubjectIds.map((id) => removeSubjectFromGroup(id)));
+
+            // Safeguard 1 & 3: Preserve existing codes and calculate consecutive offsets for any missing
+            const yearForMoe = batch?.academic_year || currentBeYear2Digit();
+            let baseRpcCode = "";
+            const hasAnyCode = subjectsInGroup.some((s) => s.moe_code?.trim()?.length >= 9);
+            if (!hasAnyCode && form.major_id) {
+                try {
+                    baseRpcCode = (await getNextMoeCode(yearForMoe, form.major_id)) || "";
+                } catch (err) {
+                    console.warn("Could not generate base moe code on submit:", err);
+                }
+            }
+
+            const preparedSubjects = subjectsInGroup.map((s, index) => {
+                // Safeguard 3: If already has a valid moe_code, PRESERVE IT!
+                if (s.moe_code?.trim()) {
+                    return {
+                        ...s,
+                        sequence_order: s.sequence_order || index + 1,
+                    };
+                }
+
+                // Safeguard 1: Calculate next consecutive code using in-memory offset
+                const nextCode = calculateNextConsecutiveMoeCode(
+                    subjectsInGroup.slice(0, index),
+                    baseRpcCode,
+                    selectedMajor?.full_major_code ? `${currentBeYear2Digit()}${selectedMajor.full_major_code}` : ""
+                );
+
+                return {
+                    ...s,
+                    moe_code: nextCode || null,
+                    sequence_order: s.sequence_order || index + 1,
+                };
+            });
+
             await Promise.all(
-                subjectsInGroup.map((s) => {
+                preparedSubjects.map((s) => {
                     const subjectPayload = {
                         study_group_id: savedGroup.id,
                         subject_id: s.subject_id,
-                        moe_code: s.moe_code?.trim() || null,
+                        moe_code: s.moe_code || null,
                         sequence_order: s.sequence_order || 1,
                     };
                     return s._persistedId
@@ -598,11 +713,15 @@ export default function GroupFormPanel({
                     </Field>
                 )}
 
-                {/* รอบเรียน + กลุ่มที่ */}
+                {/* รอบเรียน (time_slot_id) + กลุ่มที่ (group_no) */}
                 <div className="grid grid-cols-2 gap-3">
                     <Field label="รอบเรียน (time_slot)">
-                        <select value={form.time_code} onChange={handleTimeCodeChange} className={inputClass}>
-                            <option value="">เลือกรอบเรียน</option>
+                        <select
+                            value={form.time_slot_id || ""}
+                            onChange={handleTimeSlotChange}
+                            className={inputClass}
+                        >
+                            <option value="">-- เลือกรอบเรียน --</option>
                             {timeSlotOptions.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
                                     {opt.label}
@@ -815,9 +934,56 @@ export default function GroupFormPanel({
                     </Field>
                 </div>
 
+                {/* หมายเหตุดอกจันทร์ในตารางประกาศ (*) */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={Boolean(form.has_footnote)}
+                            onChange={(e) => {
+                                const checked = e.target.checked;
+                                const selectedLoc = locations.find((l) => String(l.id) === String(form.joint_location_id));
+                                const defaultText = selectedLoc?.name && selectedLoc?.name !== "วิทยาลัยสารพัดช่างอุดรธานี"
+                                    ? `การจัดการเรียนการสอนร่วมกับ${selectedLoc.name}`
+                                    : "";
+                                setForm((prev) => ({
+                                    ...prev,
+                                    has_footnote: checked,
+                                    footnote_text: checked ? (prev.footnote_text || defaultText) : "",
+                                }));
+                            }}
+                            className="h-4 w-4 accent-blue-600 rounded"
+                        />
+                        <span>แสดงหมายเหตุดอกจันทร์ในตารางประกาศ (*)</span>
+                    </label>
+
+                    {form.has_footnote && (
+                        <div className="mt-3">
+                            <label className="block text-xs font-medium text-slate-600 mb-1">
+                                ข้อความหมายเหตุ (จะแสดงท้ายตาราง):
+                            </label>
+                            <input
+                                type="text"
+                                value={form.footnote_text || ""}
+                                onChange={(e) => setForm((prev) => ({ ...prev, footnote_text: e.target.value }))}
+                                placeholder="เช่น การจัดการเรียนการสอนร่วมกับเรือนจำกลางอุดรธานี"
+                                className="w-full rounded-lg border border-slate-300 py-1.5 px-3 text-sm focus:border-blue-500 outline-none bg-white"
+                            />
+                        </div>
+                    )}
+                </div>
+
                 {/* ค่าธรรมเนียม */}
                 <div className="rounded-xl border border-slate-200 p-4">
-                    <p className="mb-3 text-sm font-bold text-slate-800">ค่าธรรมเนียม</p>
+                    <div className="mb-3 flex items-center justify-between">
+                        <p className="text-sm font-bold text-slate-800">ค่าธรรมเนียม</p>
+                        {form.is_waived_fee && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+                                ฟรีค่าเรียน
+                            </span>
+                        )}
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                         <Field label="ค่าสมัคร (บาท)">
                             <input
@@ -825,8 +991,7 @@ export default function GroupFormPanel({
                                 min="0"
                                 value={form.application_fee}
                                 onChange={handleChange("application_fee")}
-                                disabled={form.is_waived_fee}
-                                className={`${inputClass} disabled:bg-slate-50 disabled:text-slate-400`}
+                                className={inputClass}
                             />
                         </Field>
                         <Field label="ค่าเรียน (บาท)">
@@ -841,7 +1006,7 @@ export default function GroupFormPanel({
                         </Field>
                     </div>
                     <div className="mt-3 space-y-2">
-                        <label className="flex items-center gap-2 text-sm text-slate-700">
+                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
                             <input
                                 type="checkbox"
                                 checked={form.is_waived_fee}
@@ -850,7 +1015,7 @@ export default function GroupFormPanel({
                             />
                             ฟรีค่าเรียน (ค่าเรียนจะถูกปรับเป็น 0 บาท และล็อกช่องกรอก)
                         </label>
-                        <label className="flex items-center gap-2 text-sm text-slate-700">
+                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
                             <input
                                 type="checkbox"
                                 checked={form.is_ac_maintenance_fee}
@@ -862,7 +1027,9 @@ export default function GroupFormPanel({
                     </div>
                     <p className="mt-3 text-xs text-slate-500">
                         ประมาณการค่าเรียนรวม:{" "}
-                        <span className="font-semibold text-blue-600">{estimatedTuition.toLocaleString()} บาท</span>
+                        <span className="font-semibold text-blue-600">
+                            {estimatedTuition.toLocaleString()} บาท
+                        </span>
                     </p>
                 </div>
             </div>

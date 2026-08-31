@@ -66,6 +66,7 @@ CREATE TABLE public.batches (
   head_evaluation_id bigint,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   batch_sequence smallint,
+  announcement_notes jsonb DEFAULT '{"note1": "การจัดการเรียนการสอนร่วมกับเรือนจำกลางอุดรธานี", "note2": "การจัดการเรียนการสอนร่วมกับโรงเรียนประสาทคณานุกิจ วัดพุทธนิมิต", "note3": "การจัดการเรียนการสอนร่วมกับเรือนจำชั่วคราวโคกก่อง"}'::jsonb,
   CONSTRAINT batches_pkey PRIMARY KEY (id),
   CONSTRAINT batches_director_id_fkey FOREIGN KEY (director_id) REFERENCES public.teachers(id),
   CONSTRAINT batches_deputy_academic_id_fkey FOREIGN KEY (deputy_academic_id) REFERENCES public.teachers(id),
@@ -191,11 +192,14 @@ CREATE TABLE public.study_groups (
   status USER-DEFINED NOT NULL DEFAULT 'open'::study_group_status,
   schedule_description text,
   is_free_tuition boolean NOT NULL DEFAULT false,
+  time_slot_id bigint,
+  fee_exception_type character varying DEFAULT 'none'::character varying,
   CONSTRAINT study_groups_pkey PRIMARY KEY (id),
   CONSTRAINT study_groups_batch_id_fkey FOREIGN KEY (batch_id) REFERENCES public.batches(id),
   CONSTRAINT study_groups_major_id_fkey FOREIGN KEY (major_id) REFERENCES public.academic_majors(id),
   CONSTRAINT study_groups_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.teachers(id),
-  CONSTRAINT study_groups_joint_location_id_fkey FOREIGN KEY (joint_location_id) REFERENCES public.locations(id)
+  CONSTRAINT study_groups_joint_location_id_fkey FOREIGN KEY (joint_location_id) REFERENCES public.locations(id),
+  CONSTRAINT study_groups_time_slot_id_fkey FOREIGN KEY (time_slot_id) REFERENCES public.time_slots(id)
 );
 CREATE TABLE public.study_group_subjects (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,

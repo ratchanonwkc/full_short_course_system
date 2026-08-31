@@ -57,6 +57,13 @@ export const getNextMoeSequence = async (yearPrefix, departmentId) => {
     return data; // { sequence: "001" } | { sequence: null, message }
 };
 
+export const getNextMoeCode = async (academicYear, majorId) => {
+    const { data } = await axiosInstance.get("/study-groups/next-moe-code", {
+        params: { academic_year: academicYear, major_id: majorId },
+    });
+    return data?.moe_code; // e.g. "691104001"
+};
+
 export const createStudyGroup = async (payload) => {
     const { data } = await axiosInstance.post("/study-groups", payload);
     return data;

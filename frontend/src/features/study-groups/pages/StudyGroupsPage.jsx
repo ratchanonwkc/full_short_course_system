@@ -525,6 +525,7 @@ export default function StudyGroupsPage() {
                 batch={announcementConfig.batch || batch}
                 groups={announcementConfig.groups}
                 group={announcementConfig.group}
+                mode="group"
                 type={announcementConfig.type}
                 initialType={announcementConfig.type}
                 initialDepartment={announcementConfig.department}

@@ -4,6 +4,7 @@ import {
     getStudyGroupById,
     getNextRoomSequence,
     getNextMoeSequence,
+    getNextMoeCode,
     createStudyGroup,
     updateStudyGroup,
     deleteStudyGroup,
@@ -12,9 +13,10 @@ import {
 
 const router = Router();
 
-// หมายเหตุ: ต้องประกาศ path เฉพาะ (next-room-sequence / next-moe-sequence) ก่อน /:id
+// หมายเหตุ: ต้องประกาศ path เฉพาะ (next-room-sequence / next-moe-sequence / next-moe-code) ก่อน /:id
 router.get('/next-room-sequence', getNextRoomSequence);
 router.get('/next-moe-sequence', getNextMoeSequence);
+router.get('/next-moe-code', getNextMoeCode);
 router.get('/:id/roster-by-subject', getStudyGroupRosterBySubject);
 router.get('/', getStudyGroups);           // รองรับ ?batch_id= & ?major_id= & ?time_slot=
 router.get('/:id', getStudyGroupById);

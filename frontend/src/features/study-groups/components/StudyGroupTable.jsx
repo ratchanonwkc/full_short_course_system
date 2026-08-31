@@ -48,6 +48,30 @@ function GroupCodeRenderer({ value }) {
     return <span className="font-mono font-semibold text-blue-700">{value}</span>;
 }
 
+function GroupNameRenderer({ data }) {
+    if (!data) return null;
+    const hasFootnote = Boolean(data.has_footnote || data.footnote_text || (data.fee_exception_type && data.fee_exception_type !== 'none'));
+    let noteLabel = data.footnote_text || '';
+    if (!noteLabel && data.fee_exception_type && data.fee_exception_type !== 'none') {
+        const legacyMap = {
+            note_1: '(*) เรือนจำกลาง',
+            note_2: '(**) รร.ประสาทฯ',
+            note_3: '(***) โคกก่อง',
+        };
+        noteLabel = legacyMap[data.fee_exception_type] || data.fee_exception_type;
+    }
+    return (
+        <div className="flex items-center gap-2 py-0.5 min-w-0">
+            <span className="font-semibold text-slate-800 truncate" title={data.group_name}>{data.group_name}</span>
+            {hasFootnote && (
+                <span className="shrink-0 inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800" title={`หมายเหตุ: ${noteLabel || "มีหมายเหตุดอกจันทร์ (*)"}`}>
+                    * {noteLabel ? (noteLabel.length > 20 ? noteLabel.slice(0, 20) + '...' : noteLabel) : 'มีหมายเหตุ'}
+                </span>
+            )}
+        </div>
+    );
+}
+
 /**
  * StudyGroupTable
  * -------------------------------------------------------------------------
@@ -144,7 +168,13 @@ export default function StudyGroupTable({
 
     const columnDefs = useMemo(
         () => [
-            { field: "group_name", headerName: "ชื่อกลุ่มเรียน", minWidth: 220, flex: 2 },
+            {
+                field: "group_name",
+                headerName: "ชื่อกลุ่มเรียน",
+                minWidth: 220,
+                flex: 2,
+                cellRenderer: GroupNameRenderer,
+            },
             { field: "teacher_name", headerName: "ผู้สอน", minWidth: 150, flex: 1 },
             {
                 headerName: "ที่นั่ง",

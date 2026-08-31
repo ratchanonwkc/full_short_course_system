@@ -78,3 +78,46 @@ export function buildGroupName({ subjectName, groupType, scheduleDescription, ti
 
     return parts.join(" ").trim();
 }
+
+/**
+ * คำนวณเลข ศธ. 9 หลักแบบรันลำดับต่อเนื่องในหน่วยความจำ (In-Memory Consecutive Offset)
+ * เพื่อป้องกันการเรียก RPC ซ้ำซ้อนก่อนที่ข้อมูลแถวก่อนหน้าจะถูกบันทึกจริงลงฐานข้อมูล
+ * เช่น แถวที่ 1 ได้ '691104001' -> แถวที่ 2 ได้ '691104002'
+ */
+export function calculateNextConsecutiveMoeCode(existingSubjects = [], baseRpcCode = "", fallbackPrefix = "") {
+    const validCodes = (existingSubjects || [])
+        .map((s) => s.moe_code?.trim())
+        .filter((code) => code && code.length >= 9);
+
+    if (validCodes.length === 0 && !baseRpcCode && !fallbackPrefix) {
+        return "";
+    }
+
+    const sampleCode = validCodes[0] || baseRpcCode || `${fallbackPrefix}000`;
+    const prefix = sampleCode.slice(0, -3); // e.g. "691104"
+
+    const sequences = validCodes
+        .filter((code) => code.startsWith(prefix))
+        .map((code) => parseInt(code.slice(-3), 10))
+        .filter((num) => !isNaN(num));
+
+    if (sequences.length === 0) {
+        if (baseRpcCode && baseRpcCode.startsWith(prefix)) {
+            return baseRpcCode;
+        }
+        return `${prefix}001`;
+    }
+
+    const maxSeq = Math.max(...sequences);
+    let nextSeq = maxSeq + 1;
+
+    if (baseRpcCode && baseRpcCode.startsWith(prefix)) {
+        const baseSeq = parseInt(baseRpcCode.slice(-3), 10);
+        if (!isNaN(baseSeq) && baseSeq > nextSeq) {
+            nextSeq = baseSeq;
+        }
+    }
+
+    if (nextSeq > 999) return "";
+    return `${prefix}${String(nextSeq).padStart(3, "0")}`;
+}

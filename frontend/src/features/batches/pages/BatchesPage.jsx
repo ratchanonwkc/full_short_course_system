@@ -376,6 +376,7 @@ export default function BatchesPage() {
                 onClose={() => setIsAnnouncementModalOpen(false)}
                 batch={announcementBatch}
                 groups={studyGroups}
+                mode="batch"
                 initialType="regular"
                 initialDepartment="งานทะเบียน วิทยาลัยสารพัดช่างอุดรธานี"
                 defaultSignatory="นายอัศเดช ทิสัยสวัสดิ์"

@@ -15,9 +15,10 @@ import { supabase } from '../../config/supabase.js';
 
 const SELECT_WITH_JOINS = `
   *,
-  academic_majors:major_id ( id, name_th, department_id, level_id, subject_type_id ),
+  academic_majors:major_id ( id, name_th, short_name_th, full_major_code, department_id, level_id, subject_type_id ),
   teachers:teacher_id ( id, first_name_th, last_name_th, prefixes:prefix_id (short_name) ),
   locations:joint_location_id ( id, name ),
+  time_slots:time_slot_id ( id, time_code, time_name, time_range ),
   study_group_subjects (
     id,
     subject_id,
@@ -32,6 +33,7 @@ const flatten = (row) => {
     const major = row.academic_majors;
     const teacher = row.teachers;
     const location = row.locations;
+    const timeSlot = row.time_slots;
     const subjectsInGroup = (row.study_group_subjects || []).map((sgs) => ({
         id: sgs.id,
         subject_id: sgs.subject_id,
@@ -43,16 +45,37 @@ const flatten = (row) => {
     }));
     const totalHoursFromSubjects = subjectsInGroup.reduce((sum, s) => sum + (Number(s.total_hours) || 0), 0);
 
+    const hasFootnote = Boolean(row.has_footnote || (row.fee_exception_type && row.fee_exception_type !== 'none') || row.footnote_text);
+    let footnoteText = row.footnote_text || '';
+    if (!footnoteText && row.fee_exception_type && row.fee_exception_type !== 'none') {
+        const legacyNotes = {
+            note_1: 'การจัดการเรียนการสอนร่วมกับเรือนจำกลางอุดรธานี',
+            note_2: 'การจัดการเรียนการสอนร่วมกับโรงเรียนประสาทคณานุกิจ วัดพุทธนิมิต',
+            note_3: 'การจัดการเรียนการสอนร่วมกับเรือนจำชั่วคราวโคกก่อง',
+        };
+        footnoteText = legacyNotes[row.fee_exception_type] || row.fee_exception_type;
+    }
+
     return {
         ...row,
         major_name: major?.name_th || '',
+        major_short_name_th: major?.short_name_th || '',
+        major_full_code: major?.full_major_code || '',
         major_department_id: major?.department_id || '',
         major_level_id: major?.level_id || '',
         major_subject_type_id: major?.subject_type_id || '',
         teacher_name: teacher
-            ? `${teacher.prefixes?.short_name || ''}${teacher.first_name_th} ${teacher.last_name_th}`
+            ? `${teacher.prefixes?.short_name || ''}${teacher.first_name_th} ${teacher.last_name_th}`.trim()
             : '',
         location_name: location?.name || '',
+        time_slot_id: row.time_slot_id || null,
+        time_slot_name: timeSlot?.time_name || '',
+        time_slot_code: timeSlot?.time_code || '',
+        time_slot_range: timeSlot?.time_range || '',
+        time_slots: timeSlot || null,
+        fee_exception_type: row.fee_exception_type || (hasFootnote ? (footnoteText || 'custom') : 'none'),
+        has_footnote: hasFootnote,
+        footnote_text: footnoteText,
         subjects_in_group: subjectsInGroup,
         subjects_total_hours: totalHoursFromSubjects,
     };
@@ -159,6 +182,22 @@ export const getNextMoeSequenceService = async (yearPrefix, departmentId) => {
         return { sequence: null, message: 'ลำดับเลข ศธ. ในแผนกนี้/ปีนี้เต็ม (001-999) กรุณาตรวจสอบข้อมูล' };
     }
     return { sequence: String(nextN).padStart(3, '0') };
+};
+
+/**
+ * เรียก PostgreSQL RPC function 'generate_next_moe_code'
+ * เพื่อสร้างเลข ศธ. 9 หลักที่ไม่ซ้ำกันสำหรับรายวิชาย่อยในกลุ่มเรียน
+ */
+export const generateNextMoeCodeService = async (academicYear, majorId) => {
+    if (!academicYear || !majorId) {
+        throw new Error('academicYear and majorId are required');
+    }
+    const { data, error } = await supabase.rpc('generate_next_moe_code', {
+        p_academic_year: String(academicYear),
+        p_major_id: Number(majorId),
+    });
+    if (error) throw error;
+    return data;
 };
 
 /**

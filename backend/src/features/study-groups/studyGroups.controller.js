@@ -6,6 +6,7 @@ import {
     deleteStudyGroupService,
     getNextRoomSequenceService,
     getNextMoeSequenceService,
+    generateNextMoeCodeService,
     getStudyGroupRosterBySubjectService,
 } from './studyGroups.service.js';
 
@@ -53,6 +54,19 @@ export const getNextMoeSequence = async (req, res, next) => {
     }
 };
 
+export const getNextMoeCode = async (req, res, next) => {
+    try {
+        const { academic_year, major_id } = req.query;
+        if (!academic_year || !major_id) {
+            return res.status(400).json({ message: 'กรุณาระบุ academic_year และ major_id' });
+        }
+        const moeCode = await generateNextMoeCodeService(academic_year, major_id);
+        res.json({ moe_code: moeCode });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const createStudyGroup = async (req, res, next) => {
     try {
         const {
@@ -61,13 +75,20 @@ export const createStudyGroup = async (req, res, next) => {
             academic_majors,
             teachers,
             locations,
+            time_slots,
             study_group_subjects,
             major_name,
+            major_short_name_th,
+            major_full_code,
             major_department_id,
             major_level_id,
             major_subject_type_id,
             teacher_name,
             location_name,
+            time_slot_name,
+            time_slot_code,
+            time_slot_range,
+            time_code,
             subjects_in_group,
             subjects_total_hours,
             ...insertData
@@ -91,13 +112,20 @@ export const updateStudyGroup = async (req, res, next) => {
             academic_majors,
             teachers,
             locations,
+            time_slots,
             study_group_subjects,
             major_name,
+            major_short_name_th,
+            major_full_code,
             major_department_id,
             major_level_id,
             major_subject_type_id,
             teacher_name,
             location_name,
+            time_slot_name,
+            time_slot_code,
+            time_slot_range,
+            time_code,
             subjects_in_group,
             subjects_total_hours,
             ...updateData

@@ -33,10 +33,10 @@ const menuSections = [
     roles: ['admin', 'planning'],
     items: [
       { name: 'หลักสูตรและสาขาวิชา', to: '/academic-structure', icon: BookOpen, roles: ['admin', 'planning'] },
+      { name: 'จัดการรายวิชา', to: '/subjects', icon: BookMarked, roles: ['admin', 'planning'] },
+      { name: 'ข้อมูลอาจารย์ผู้สอน', to: '/teachers', icon: GraduationCap, roles: ['admin', 'planning'] },
       { name: 'จัดการรุ่นการเรียน', to: '/batches', icon: CalendarRange, roles: ['admin', 'planning'] },
       { name: 'จัดการกลุ่มเรียน', to: '/planning/study-groups', icon: Users, roles: ['admin', 'planning'] },
-      { name: 'ข้อมูลอาจารย์ผู้สอน', to: '/teachers', icon: GraduationCap, roles: ['admin', 'planning'] },
-      { name: 'จัดการรายวิชา', to: '/subjects', icon: BookMarked, roles: ['admin', 'planning'] },
     ],
   },
   {
