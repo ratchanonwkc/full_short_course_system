@@ -26,7 +26,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+    origin: 'https://uptech-short-course-system-frontend.onrender.com', // หรือใส่ URL frontend เช่น 'https://short-course-frontend.onrender.com'
+    credentials: true,
+}));
 app.use(express.json());
 
 // Static: ไฟล์สลิปโอนเงิน / QR Code ที่อัปโหลด

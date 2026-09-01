@@ -1,8 +1,22 @@
 // src/components/modals/AnnouncementPrintModal.jsx
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
+import { Dialog, Transition, Menu } from '@headlessui/react';
 import { useReactToPrint } from 'react-to-print';
-import { X, Printer, RotateCcw, FileText, Megaphone, Table2, Layers, Building } from 'lucide-react';
+import {
+  X,
+  Printer,
+  RotateCcw,
+  FileText,
+  Megaphone,
+  Table2,
+  Layers,
+  Sparkles,
+  CheckSquare,
+  Square,
+  FileCheck2,
+  Send,
+  ChevronDown,
+} from 'lucide-react';
 import OfficialMemoPrint, { resolveGroupTypeLabel } from '../print/announcements/OfficialMemoPrint';
 import CollegeAnnouncementPrint from '../print/announcements/CollegeAnnouncementPrint';
 import CourseScheduleTablePrint from '../print/announcements/CourseScheduleTablePrint';
@@ -12,6 +26,54 @@ const TABS = [
   { key: 'memo', label: 'บันทึกข้อความ', icon: FileText },
   { key: 'announcement', label: 'ประกาศวิทยาลัย', icon: Megaphone },
   { key: 'course_table', label: 'ตารางรายวิชาแนบท้าย', icon: Table2 },
+];
+
+const DOC_CONFIGS = [
+  {
+    id: 'memo_draft',
+    label: 'บันทึกข้อความ (ร่าง)',
+    shortLabel: 'บันทึก (ร่าง)',
+    badge: 'ร่าง',
+    badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+    tab: 'memo',
+    isDraft: true,
+  },
+  {
+    id: 'memo_final',
+    label: 'บันทึกข้อความ (จริง)',
+    shortLabel: 'บันทึก (จริง)',
+    badge: 'จริง',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    tab: 'memo',
+    isDraft: false,
+  },
+  {
+    id: 'announce_draft',
+    label: 'ประกาศวิทยาลัย (ร่าง)',
+    shortLabel: 'ประกาศ (ร่าง)',
+    badge: 'ร่าง',
+    badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+    tab: 'announcement',
+    isDraft: true,
+  },
+  {
+    id: 'announce_final',
+    label: 'ประกาศวิทยาลัย (จริง)',
+    shortLabel: 'ประกาศ (จริง)',
+    badge: 'จริง',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    tab: 'announcement',
+    isDraft: false,
+  },
+  {
+    id: 'schedule_table',
+    label: 'ตารางรายวิชาแนบท้าย',
+    shortLabel: 'ตารางแนบท้าย',
+    badge: 'ตาราง',
+    badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
+    tab: 'course_table',
+    batchOnly: true,
+  },
 ];
 
 // ── Batch numbering helpers (NEVER use raw id / sequence keys) ──────────────
@@ -30,8 +92,9 @@ const inputCls =
  * AnnouncementPrintModal
  * ─────────────────────────────────────────────────────────────────────────────
  * Mode-aware print modal for official announcements:
- * - type = 'regular' -> Batch level official memorandum (รอบปกติ)
- * - type !== 'regular' -> Study group level memorandum (แบบพิเศษ/โครงการ/ห้องเรียนอาชีพ/เพิ่มเติม)
+ * - One-click Document Bundle Presets
+ * - Multi-document checklist selection
+ * - Continuous page-break print stream
  */
 export default function AnnouncementPrintModal({
   isOpen,
@@ -57,6 +120,11 @@ export default function AnnouncementPrintModal({
     return TABS.filter((t) => t.key !== 'course_table');
   }, [isBatchLevel]);
 
+  const availableDocs = useMemo(() => {
+    if (isBatchLevel) return DOC_CONFIGS;
+    return DOC_CONFIGS.filter((d) => !d.batchOnly);
+  }, [isBatchLevel]);
+
   const [activeTab, setActiveTab] = useState('memo');
   const [docNo, setDocNo] = useState('');
   const [docDateIso, setDocDateIso] = useState(() => new Date().toISOString().slice(0, 10));
@@ -68,13 +136,35 @@ export default function AnnouncementPrintModal({
   const [useThaiDigits, setUseThaiDigits] = useState(true);
   const [fetchedGroups, setFetchedGroups] = useState([]);
 
-  const printRef = useRef(null);
+  // Multi-document bundle selection state
+  const [selectedDocs, setSelectedDocs] = useState(() =>
+    isBatchLevel ? ['memo_draft', 'announce_draft', 'schedule_table'] : ['memo_draft', 'announce_draft']
+  );
+
+  const previewPrintRef = useRef(null);
+  const multiPrintRef = useRef(null);
+
+  // Preset Bundles Generator
+  const presets = useMemo(() => {
+    const draftBundle = ['memo_draft', 'announce_draft', ...(isBatchLevel ? ['schedule_table'] : [])];
+    const finalBundle = ['memo_final', 'announce_final', ...(isBatchLevel ? ['schedule_table'] : [])];
+    const allBundle = ['memo_draft', 'memo_final', 'announce_draft', 'announce_final', ...(isBatchLevel ? ['schedule_table'] : [])];
+
+    return {
+      draft: draftBundle,
+      final: finalBundle,
+      all: allBundle,
+    };
+  }, [isBatchLevel]);
 
   useEffect(() => {
     if (isOpen) {
       setDocNo('');
       setDocDateIso(new Date().toISOString().slice(0, 10));
       setIsDraft(true);
+
+      // Default to "ชุดเสนอลงนาม (ร่าง)" on opening
+      setSelectedDocs(isBatchLevel ? ['memo_draft', 'announce_draft', 'schedule_table'] : ['memo_draft', 'announce_draft']);
 
       if (!isBatchLevel && activeTab === 'course_table') {
         setActiveTab('memo');
@@ -208,12 +298,10 @@ export default function AnnouncementPrintModal({
     start_date: batch?.start_date,
   };
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle:
-      activeTab === 'announcement'
-        ? `ประกาศวิทยาลัย_${currentGroupTypeLabel}_รุ่นที่_${batchDisplay}`
-        : `บันทึกข้อความ_${currentGroupTypeLabel}_รุ่นที่_${batchDisplay}`,
+  // Continuous multi-document print trigger
+  const triggerMultiPrint = useReactToPrint({
+    contentRef: multiPrintRef,
+    documentTitle: `ชุดเอกสาร_${currentGroupTypeLabel}_รุ่นที่_${batchDisplay}`,
     pageStyle: `
       @page {
         size: A4 portrait;
@@ -225,9 +313,37 @@ export default function AnnouncementPrintModal({
           print-color-adjust: exact;
           margin: 0;
         }
+        .print-page-wrapper {
+          width: 210mm;
+          min-height: 297mm;
+          margin: 0 auto;
+        }
       }
     `,
   });
+
+  const handleApplyPreset = (presetKey) => {
+    const list = presets[presetKey] || [];
+    setSelectedDocs(list);
+  };
+
+  const handleQuickPresetPrint = (presetKey) => {
+    const list = presets[presetKey] || [];
+    setSelectedDocs(list);
+    // Trigger print after state update cycle
+    setTimeout(() => {
+      triggerMultiPrint();
+    }, 100);
+  };
+
+  const toggleDoc = (docId) => {
+    setSelectedDocs((prev) => {
+      if (prev.includes(docId)) {
+        return prev.filter((id) => id !== docId);
+      }
+      return [...prev, docId];
+    });
+  };
 
   const handleReset = () => {
     setDocNo('');
@@ -237,6 +353,22 @@ export default function AnnouncementPrintModal({
       setDepartmentName(initialDepartment || group?.major_name || 'อาหาร - ขนม');
     }
   };
+
+  // Check which preset is currently active
+  const isDraftPresetActive = useMemo(() => {
+    if (selectedDocs.length !== presets.draft.length) return false;
+    return presets.draft.every((id) => selectedDocs.includes(id));
+  }, [selectedDocs, presets.draft]);
+
+  const isFinalPresetActive = useMemo(() => {
+    if (selectedDocs.length !== presets.final.length) return false;
+    return presets.final.every((id) => selectedDocs.includes(id));
+  }, [selectedDocs, presets.final]);
+
+  const isAllPresetActive = useMemo(() => {
+    if (selectedDocs.length !== presets.all.length) return false;
+    return presets.all.every((id) => selectedDocs.includes(id));
+  }, [selectedDocs, presets.all]);
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -256,25 +388,24 @@ export default function AnnouncementPrintModal({
               enter="ease-out duration-200" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100"
               leave="ease-in duration-150" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="relative flex h-[95vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl border border-slate-200">
-                {/* ── Ultra-Compact Consolidated Header & Controls ── */}
-                <div className="border-b border-slate-200 bg-slate-50/90 px-4 py-2 shrink-0">
-                  {/* Top Line: Title + Controls + Actions in tight grid */}
+              <Dialog.Panel className="relative flex h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl border border-slate-200">
+                {/* ── Top Header & Configuration Bar ── */}
+                <div className="border-b border-slate-200 bg-slate-50/95 px-4 py-2.5 shrink-0 space-y-2">
+                  {/* Top Line: Title + Metadata inputs + Close */}
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     {/* Left: Title & Batch Tag */}
-                    <div className="flex w-full items-center gap-2">
+                    <div className="flex items-center gap-2">
                       <Dialog.Title className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                        <Printer size={15} className="text-blue-600" />
-                        <span>พิมพ์บันทึกข้อความ ({currentGroupTypeLabel})</span>
+                        <Printer size={16} className="text-blue-600" />
+                        <span>ระบบพิมพ์เอกสารราชการ ({currentGroupTypeLabel})</span>
                       </Dialog.Title>
                       <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
                         รุ่น {batchDisplay}
                       </span>
                     </div>
 
-                    {/* Center: Metadata inputs in compact horizontal flex */}
+                    {/* Center: Metadata inputs */}
                     <div className="flex flex-wrap items-center gap-2 text-xs">
-                      {/* Show Department name input for Study Group Mode */}
                       {!isRegular && (
                         <Field label="แผนกวิชา">
                           <input
@@ -325,20 +456,8 @@ export default function AnnouncementPrintModal({
                       </Field>
                     </div>
 
-                    {/* Right: Mode toggles + Close */}
+                    {/* Right: Thai digits & Close */}
                     <div className="flex items-center gap-1.5">
-                      {/* Draft Switch */}
-                      <button
-                        type="button"
-                        onClick={() => setIsDraft((v) => !v)}
-                        className={`rounded px-2 py-1 text-[11px] font-bold transition ${
-                          isDraft ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-slate-100 text-slate-600 border border-slate-200'
-                        }`}
-                      >
-                        {isDraft ? 'ฉบับร่าง' : 'ฉบับจริง'}
-                      </button>
-
-                      {/* Thai Digits Toggle */}
                       <label className="flex cursor-pointer items-center gap-1 rounded bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600 border border-slate-200">
                         <input
                           type="checkbox"
@@ -349,12 +468,11 @@ export default function AnnouncementPrintModal({
                         เลขไทย
                       </label>
 
-                      {/* Reset button */}
                       <button
                         type="button"
                         onClick={handleReset}
                         title="ล้างค่า"
-                        className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                        className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition"
                       >
                         <RotateCcw size={13} />
                       </button>
@@ -362,25 +480,102 @@ export default function AnnouncementPrintModal({
                       <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                        className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition"
                       >
                         <X size={16} />
                       </button>
                     </div>
                   </div>
 
-                  {/* Bottom Line: Integrated Tabs Navigation */}
-                  <div className="mt-1.5 flex items-center justify-between border-t border-slate-200/60 pt-1">
-                    <div className="flex gap-1">
+                  {/* ── Workflow Architecture: Quick Presets & Document Checklist ── */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white p-2 border border-slate-200 shadow-2xs">
+                    {/* Left: Quick Preset Buttons */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1 mr-1">
+                        <Sparkles size={12} className="text-amber-500" /> ชุดด่วน:
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPreset('draft')}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition ${
+                          isDraftPresetActive
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
+                        }`}
+                      >
+                        <FileCheck2 size={13} />
+                        ชุดเสนอลงนาม (ร่าง)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPreset('final')}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition ${
+                          isFinalPresetActive
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100'
+                        }`}
+                      >
+                        <Send size={13} />
+                        ชุดประกาศจริง (จริง)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPreset('all')}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition ${
+                          isAllPresetActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-indigo-50 text-indigo-900 border border-indigo-200 hover:bg-indigo-100'
+                        }`}
+                      >
+                        <Layers size={13} />
+                        พิมพ์ทั้งหมด ({isBatchLevel ? '5' : '4'} ฉบับ)
+                      </button>
+                    </div>
+
+                    {/* Right: Granular Document Checkboxes */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 mr-0.5">เลือกเอกสาร:</span>
+                      {availableDocs.map((doc) => {
+                        const isChecked = selectedDocs.includes(doc.id);
+                        return (
+                          <button
+                            key={doc.id}
+                            type="button"
+                            onClick={() => toggleDoc(doc.id)}
+                            className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium border transition ${
+                              isChecked
+                                ? 'bg-blue-50 border-blue-300 text-blue-800 font-semibold'
+                                : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+                            }`}
+                          >
+                            {isChecked ? (
+                              <CheckSquare size={13} className="text-blue-600" />
+                            ) : (
+                              <Square size={13} className="text-slate-400" />
+                            )}
+                            <span>{doc.shortLabel}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* ── Bottom Line: Single-Tab Previews Navigation & Canvas Controls ── */}
+                  <div className="flex items-center justify-between border-t border-slate-200/60 pt-1.5">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-semibold text-slate-400 mr-1.5">แท็บพรีวิวหน้าจอ:</span>
                       {visibleTabs.map(({ key, label, icon: Icon }) => (
                         <button
                           key={key}
                           type="button"
                           onClick={() => setActiveTab(key)}
-                          className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-t-md transition ${
+                          className={`flex items-center gap-1 px-3 py-1 text-[11px] font-bold rounded-md transition ${
                             activeTab === key
-                              ? 'bg-white text-blue-600 border border-b-0 border-slate-200 shadow-2xs'
-                              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
                           }`}
                         >
                           <Icon size={12} />
@@ -389,13 +584,42 @@ export default function AnnouncementPrintModal({
                       ))}
                     </div>
 
-                    <div className="text-[10px] text-slate-400 flex items-center gap-1 font-medium">
-                      <Layers size={11} /> พรีวิวเอกสารมาตรฐานราชการ A4 (210 × 297 มม.)
+                    {/* Preview Draft/Final Toggle for current on-screen tab */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                        <span>พรีวิวฉบับ:</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsDraft(true)}
+                          className={`rounded px-2 py-0.5 transition ${
+                            isDraft
+                              ? 'bg-amber-100 text-amber-800 font-bold border border-amber-300'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          ร่าง
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsDraft(false)}
+                          className={`rounded px-2 py-0.5 transition ${
+                            !isDraft
+                              ? 'bg-emerald-100 text-emerald-800 font-bold border border-emerald-300'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          จริง
+                        </button>
+                      </div>
+
+                      <div className="text-[10px] text-slate-400 hidden sm:flex items-center gap-1 font-medium border-l border-slate-300 pl-2">
+                        <Layers size={11} /> พรีวิวมาตรฐาน A4 (210 × 297 มม.)
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* ── Preview Stage: Full Height A4 Canvas (No squishing) ── */}
+                {/* ── Preview Stage: Full Height A4 Canvas (On-screen Inspection) ── */}
                 <div className="flex w-full flex-1 justify-center overflow-x-auto overflow-y-auto bg-slate-300 p-4 sm:p-6">
                   <div
                     className="shrink-0 bg-white shadow-2xl transition-all"
@@ -405,14 +629,24 @@ export default function AnnouncementPrintModal({
                     }}
                   >
                     {activeTab === 'memo' && (
-                      <OfficialMemoPrint ref={printRef} data={memoData} isDraft={isDraft} useThaiDigits={useThaiDigits} />
+                      <OfficialMemoPrint
+                        ref={previewPrintRef}
+                        data={memoData}
+                        isDraft={isDraft}
+                        useThaiDigits={useThaiDigits}
+                      />
                     )}
                     {activeTab === 'announcement' && (
-                      <CollegeAnnouncementPrint ref={printRef} data={memoData} isDraft={isDraft} useThaiDigits={useThaiDigits} />
+                      <CollegeAnnouncementPrint
+                        ref={previewPrintRef}
+                        data={memoData}
+                        isDraft={isDraft}
+                        useThaiDigits={useThaiDigits}
+                      />
                     )}
                     {activeTab === 'course_table' && (
                       <CourseScheduleTablePrint
-                        ref={printRef}
+                        ref={previewPrintRef}
                         batch={batch}
                         groups={memoData.groups}
                         data={memoData}
@@ -423,11 +657,98 @@ export default function AnnouncementPrintModal({
                   </div>
                 </div>
 
-                {/* ── Compact Footer ── */}
-                <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-2 shrink-0">
-                  <span className="text-[11px] text-slate-400">
-                    แบบฟอร์มเอกสารทางการ วิทยาลัยสารพัดช่างอุดรธานี
-                  </span>
+                {/* ── Dedicated Continuous Print Engine Container (Strict Page Breaks) ── */}
+                <div ref={multiPrintRef} className="hidden print:block">
+                  {selectedDocs.includes('memo_draft') && (
+                    <div
+                      className="print-page-wrapper"
+                      style={{
+                        pageBreakAfter: 'always',
+                        breakAfter: 'page',
+                      }}
+                    >
+                      <OfficialMemoPrint data={memoData} isDraft={true} useThaiDigits={useThaiDigits} />
+                    </div>
+                  )}
+
+                  {selectedDocs.includes('memo_final') && (
+                    <div
+                      className="print-page-wrapper"
+                      style={{
+                        pageBreakAfter: 'always',
+                        breakAfter: 'page',
+                      }}
+                    >
+                      <OfficialMemoPrint data={memoData} isDraft={false} useThaiDigits={useThaiDigits} />
+                    </div>
+                  )}
+
+                  {selectedDocs.includes('announce_draft') && (
+                    <div
+                      className="print-page-wrapper"
+                      style={{
+                        pageBreakAfter: 'always',
+                        breakAfter: 'page',
+                      }}
+                    >
+                      <CollegeAnnouncementPrint data={memoData} isDraft={true} useThaiDigits={useThaiDigits} />
+                    </div>
+                  )}
+
+                  {selectedDocs.includes('announce_final') && (
+                    <div
+                      className="print-page-wrapper"
+                      style={{
+                        pageBreakAfter: 'always',
+                        breakAfter: 'page',
+                      }}
+                    >
+                      <CollegeAnnouncementPrint data={memoData} isDraft={false} useThaiDigits={useThaiDigits} />
+                    </div>
+                  )}
+
+                  {selectedDocs.includes('schedule_table') && isBatchLevel && (
+                    <div className="print-page-wrapper">
+                      <CourseScheduleTablePrint
+                        batch={batch}
+                        groups={resolvedGroupsForPrint}
+                        data={memoData}
+                        isDraft={isDraft}
+                        useThaiDigits={useThaiDigits}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Modal Footer with Quick Preset Actions & Print Triggers ── */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-2.5 shrink-0">
+                  {/* Left: Summary of selected documents */}
+                  <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <span className="font-semibold text-slate-700">เอกสารที่จะพิมพ์:</span>
+                    {selectedDocs.length === 0 ? (
+                      <span className="text-rose-500 font-medium">ยังไม่ได้เลือกเอกสารใดๆ</span>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-1">
+                        {selectedDocs.map((id) => {
+                          const doc = DOC_CONFIGS.find((d) => d.id === id);
+                          if (!doc) return null;
+                          return (
+                            <span
+                              key={id}
+                              className={`rounded px-1.5 py-0.5 text-[10px] font-bold border ${doc.badgeColor}`}
+                            >
+                              {doc.shortLabel}
+                            </span>
+                          );
+                        })}
+                        <span className="text-[11px] font-bold text-slate-500">
+                          ({selectedDocs.length} ฉบับ)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Quick Bundle Print Menu & Main Print Button */}
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -436,13 +757,105 @@ export default function AnnouncementPrintModal({
                     >
                       ปิด (Cancel)
                     </button>
+
+                    {/* Quick Bundle Dropdown Menu */}
+                    <Menu as="div" className="relative inline-block text-left">
+                      <Menu.Button className="inline-flex items-center gap-1.5 rounded border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 active:scale-[0.98]">
+                        <Sparkles size={13} className="text-amber-600" />
+                        <span>ชุดแฟ้มพิมพ์ด่วน</span>
+                        <ChevronDown size={13} className="text-slate-400" />
+                      </Menu.Button>
+
+                      <Transition
+                        as={Fragment}
+                        enter="transition ease-out duration-100"
+                        enterFrom="transform opacity-0 scale-95"
+                        enterTo="transform opacity-100 scale-100"
+                        leave="transition ease-in duration-75"
+                        leaveFrom="transform opacity-100 scale-100"
+                        leaveTo="transform opacity-0 scale-95"
+                      >
+                        <Menu.Items className="absolute right-0 bottom-full mb-1.5 w-64 origin-bottom-right rounded-lg bg-white p-1 shadow-lg ring-1 ring-black/5 focus:outline-hidden z-20 border border-slate-200">
+                          <div className="px-2 py-1 text-[10px] font-bold uppercase text-slate-400">
+                            สั่งพิมพ์ชุดเอกสารทันที
+                          </div>
+
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button
+                                type="button"
+                                onClick={() => handleQuickPresetPrint('draft')}
+                                className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-xs font-semibold transition ${
+                                  active ? 'bg-amber-50 text-amber-900' : 'text-slate-700'
+                                }`}
+                              >
+                                <span className="flex items-center gap-1.5">
+                                  <FileCheck2 size={14} className="text-amber-600" />
+                                  ชุดเสนอลงนาม (ร่าง)
+                                </span>
+                                <span className="text-[10px] text-amber-700 font-bold bg-amber-100 rounded px-1.5 py-0.5">
+                                  {isBatchLevel ? '3 ฉบับ' : '2 ฉบับ'}
+                                </span>
+                              </button>
+                            )}
+                          </Menu.Item>
+
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button
+                                type="button"
+                                onClick={() => handleQuickPresetPrint('final')}
+                                className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-xs font-semibold transition ${
+                                  active ? 'bg-emerald-50 text-emerald-900' : 'text-slate-700'
+                                }`}
+                              >
+                                <span className="flex items-center gap-1.5">
+                                  <Send size={14} className="text-emerald-600" />
+                                  ชุดประกาศจริง (จริง)
+                                </span>
+                                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 rounded px-1.5 py-0.5">
+                                  {isBatchLevel ? '3 ฉบับ' : '2 ฉบับ'}
+                                </span>
+                              </button>
+                            )}
+                          </Menu.Item>
+
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button
+                                type="button"
+                                onClick={() => handleQuickPresetPrint('all')}
+                                className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-xs font-semibold transition ${
+                                  active ? 'bg-indigo-50 text-indigo-900' : 'text-slate-700'
+                                }`}
+                              >
+                                <span className="flex items-center gap-1.5">
+                                  <Layers size={14} className="text-indigo-600" />
+                                  พิมพ์ทั้งหมดครบชุด
+                                </span>
+                                <span className="text-[10px] text-indigo-700 font-bold bg-indigo-100 rounded px-1.5 py-0.5">
+                                  {isBatchLevel ? '5 ฉบับ' : '4 ฉบับ'}
+                                </span>
+                              </button>
+                            )}
+                          </Menu.Item>
+                        </Menu.Items>
+                      </Transition>
+                    </Menu>
+
+                    {/* Main Print Button */}
                     <button
                       type="button"
-                      onClick={() => handlePrint()}
-                      className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700 active:scale-[0.98]"
+                      disabled={selectedDocs.length === 0}
+                      onClick={() => triggerMultiPrint()}
+                      className={`inline-flex items-center gap-1.5 rounded px-4 py-1.5 text-xs font-bold text-white shadow-xs transition active:scale-[0.98] ${
+                        selectedDocs.length === 0
+                          ? 'bg-slate-300 cursor-not-allowed text-slate-500'
+                          : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
                     >
                       <Printer size={14} />
-                      สั่งพิมพ์ (Print)
+                      <span>สั่งพิมพ์ ({selectedDocs.length} ฉบับ)</span>
                     </button>
                   </div>
                 </div>
@@ -462,4 +875,4 @@ function Field({ label, children }) {
       {children}
     </div>
   );
-}
+}
