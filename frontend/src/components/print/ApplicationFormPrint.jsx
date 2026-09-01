@@ -128,64 +128,141 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
         : "";
 
     // ── 3. Multi-Subject Course Table Resolution ──────────────────────────────
+    const isAcMaintenanceFee = Boolean(
+        contextData.is_ac_maintenance_fee ||
+        groupData?.is_ac_maintenance_fee ||
+        contextData.study_group?.is_ac_maintenance_fee ||
+        contextData.study_groups?.is_ac_maintenance_fee
+    );
+
+    const isGroupWaived = Boolean(
+        contextData.is_waived_fee ||
+        contextData.is_free ||
+        groupData?.is_waived_fee ||
+        groupData?.is_free ||
+        contextData.study_group?.is_waived_fee ||
+        contextData.study_groups?.is_waived_fee
+    );
+
     const rawSubjectsList = useMemo(() => {
         if (isPureBlank) return [];
 
         const list = (
+            contextData.study_group?.study_group_subjects ||
+            contextData.study_groups?.study_group_subjects ||
+            contextData.study_group_subjects ||
+            groupData?.study_group_subjects ||
+            groupData?.study_group?.study_group_subjects ||
+            groupData?.study_groups?.study_group_subjects ||
             contextData.subjects ||
             groupData?.subjects ||
-            contextData.study_groups?.study_group_subjects ||
-            contextData.study_group?.study_group_subjects ||
             []
         );
 
         if (Array.isArray(list) && list.length > 0) {
             return list.map((item) => {
                 const subObj = item.subjects || item;
+                const hours = Number(subObj.total_hours || item.total_hours || item.hours || 0);
+                const isAc = item.is_ac_maintenance_fee !== undefined
+                    ? Boolean(item.is_ac_maintenance_fee)
+                    : isAcMaintenanceFee;
+                const isWaived = item.is_waived_fee !== undefined
+                    ? Boolean(item.is_waived_fee)
+                    : isGroupWaived;
+
+                const tuition = isWaived ? null : hours * 1;
+                const regFee = isWaived ? null : 10;
+                const acFee = isWaived ? null : (isAc ? hours * 5 : 0);
+                const total = isWaived ? null : ((tuition || 0) + (regFee || 0) + (acFee || 0));
+
                 return {
                     subject_code: subObj.subject_code || item.moe_code || item.subject_code || "",
                     subject_name: subObj.subject_name || subObj.name_th || item.subject_name || item.name_th || "",
                     study_round: getStudyRound(item) || getStudyRound(contextData),
-                    total_hours: Number(subObj.total_hours || item.total_hours || 0),
-                    fee: item.fee !== undefined ? Number(item.fee) : undefined,
+                    total_hours: hours,
+                    is_ac: isAc,
+                    is_waived: isWaived,
+                    tuition_fee: tuition,
+                    reg_fee: regFee,
+                    ac_fee: acFee,
+                    total_amount: total,
                 };
             });
         }
 
-        // Fallback for single subject group
+        // Fallback for single subject / group
         const singleCode = contextData.subject_code || contextData.group_code || "";
         const singleName = contextData.subject_name || contextData.group_name || "";
         if (singleCode || singleName) {
+            const hours = Number(contextData.total_hours || 0);
+            const isAc = isAcMaintenanceFee;
+            const isWaived = isGroupWaived;
+            const tuition = isWaived ? null : hours * 1;
+            const regFee = isWaived ? null : 10;
+            const acFee = isWaived ? null : (isAc ? hours * 5 : 0);
+            const total = isWaived ? null : ((tuition || 0) + (regFee || 0) + (acFee || 0));
+
             return [{
                 subject_code: singleCode,
                 subject_name: singleName,
                 study_round: getStudyRound(contextData),
-                total_hours: Number(contextData.total_hours || 0),
-                fee: contextData.total_amount !== undefined ? Number(contextData.total_amount) : undefined,
+                total_hours: hours,
+                is_ac: isAc,
+                is_waived: isWaived,
+                tuition_fee: tuition,
+                reg_fee: regFee,
+                ac_fee: acFee,
+                total_amount: total,
             }];
         }
 
         return [];
-    }, [isPureBlank, contextData, groupData]);
+    }, [isPureBlank, contextData, groupData, isAcMaintenanceFee, isGroupWaived]);
 
     // Cap subjects to max 5 rows for standard print table
     const activeSubjects = rawSubjectsList.slice(0, 5);
 
-    // Sum hours and fee dynamically
-    const totalCalculatedHours = useMemo(() => {
-        if (isPureBlank) return "";
-        const sum = activeSubjects.reduce((acc, s) => acc + (Number(s.total_hours) || 0), 0);
-        return sum > 0 ? sum : (Number(contextData.total_hours) || "");
-    }, [isPureBlank, activeSubjects, contextData]);
-
-    const totalCalculatedAmount = useMemo(() => {
-        if (isPureBlank) return "";
-        const hasIndividualFees = activeSubjects.some((s) => s.fee !== undefined);
-        if (hasIndividualFees) {
-            return activeSubjects.reduce((acc, s) => acc + (Number(s.fee) || 0), 0);
+    // Sum hours and fee itemizations dynamically
+    const summaryCalculations = useMemo(() => {
+        if (isPureBlank || activeSubjects.length === 0) {
+            return {
+                totalHours: "",
+                totalTuition: "",
+                totalReg: "",
+                totalAc: "",
+                grandTotal: "",
+            };
         }
-        return Number(contextData.total_amount || contextData.fee || 0);
-    }, [isPureBlank, activeSubjects, contextData]);
+
+        const anyWaived = activeSubjects.every((s) => s.is_waived);
+        const totalHours = activeSubjects.reduce((acc, s) => acc + (Number(s.total_hours) || 0), 0);
+
+        if (anyWaived) {
+            return {
+                totalHours: totalHours > 0 ? totalHours : "",
+                totalTuition: "-",
+                totalReg: "-",
+                totalAc: "-",
+                grandTotal: "-",
+            };
+        }
+
+        const totalTuition = activeSubjects.reduce((acc, s) => acc + (s.tuition_fee !== null ? Number(s.tuition_fee) : 0), 0);
+        const totalReg = activeSubjects.reduce((acc, s) => acc + (s.reg_fee !== null ? Number(s.reg_fee) : 0), 0);
+        const hasAc = activeSubjects.some((s) => s.is_ac);
+        const totalAc = hasAc
+            ? activeSubjects.reduce((acc, s) => acc + (s.ac_fee !== null ? Number(s.ac_fee) : 0), 0)
+            : null;
+        const grandTotal = totalTuition + totalReg + (totalAc || 0);
+
+        return {
+            totalHours: totalHours > 0 ? totalHours : "",
+            totalTuition: totalTuition > 0 ? totalTuition.toLocaleString() : (totalTuition === 0 ? "0" : "-"),
+            totalReg: totalReg > 0 ? totalReg.toLocaleString() : (totalReg === 0 ? "0" : "-"),
+            totalAc: totalAc !== null ? (totalAc > 0 ? totalAc.toLocaleString() : "0") : "-",
+            grandTotal: grandTotal > 0 ? grandTotal.toLocaleString() : (grandTotal === 0 ? "0" : "-"),
+        };
+    }, [isPureBlank, activeSubjects]);
 
     // ── 4. Applicant Profile Data (Strict: No Ghost Defaults) ──────────────────
     const isNewStudent = isFilled && (profile.student_type === "นักศึกษาใหม่" || enrollment.student_type === "นักศึกษาใหม่");
@@ -312,30 +389,37 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
 
             {/* ════════ COURSE TABLE (EXACTLY 5 ROWS) ════════ */}
             <div className="mb-2 mt-3">
-                <table className="w-full border border-black text-[14px] text-center table-fixed">
+                <table className="w-full border border-black text-[13px] text-center table-fixed">
                     <thead>
-                        <tr className="border-b border-black">
+                        <tr className="border-b border-black text-[13px]">
+                            <th className="border-r border-black font-normal py-1 w-[5%]">ที่</th>
                             <th className="border-r border-black font-normal py-1 w-[14%]">รหัสวิชา</th>
-                            <th className="border-r border-black font-normal py-1 w-[52%]">สมัครเรียนวิชา</th>
-                            <th className="border-r border-black font-normal py-1 w-[10%]">รอบ</th>
-                            <th className="border-r border-black font-normal py-1 w-[12%]">จำนวนชั่วโมง</th>
-                            <th className="font-normal py-1 w-[12%]">ค่าเรียน</th>
+                            <th className="border-r border-black font-normal py-1 w-[33%] text-center">ชื่อวิชา</th>
+                            <th className="border-r border-black font-normal py-1 w-[11%]">จำนวนชั่วโมง</th>
+                            <th className="border-r border-black font-normal py-1 w-[12%]">ค่าบำรุงการศึกษา</th>
+                            <th className="border-r border-black font-normal py-1 w-[8%]">ค่าสมัคร</th>
+                            <th className="border-r border-black font-normal py-1 w-[12%]">ค่าห้องปรับอากาศ</th>
+                            <th className="font-normal py-1 w-[11%]">รวม (บาท)</th>
                         </tr>
                     </thead>
                     <tbody>
                         {/* Active Subjects Rows (1 to 5) */}
                         {activeSubjects.map((sub, idx) => {
-                            const feeText = sub.fee !== undefined
-                                ? (sub.fee > 0 ? sub.fee.toLocaleString() : "0")
-                                : (idx === 0 && totalCalculatedAmount !== "" ? (Number(totalCalculatedAmount) > 0 ? Number(totalCalculatedAmount).toLocaleString() : "0") : "");
+                            const tuitionText = isPureBlank ? "" : (sub.is_waived ? "-" : (sub.tuition_fee !== null ? (sub.tuition_fee > 0 ? sub.tuition_fee.toLocaleString() : "0") : "-"));
+                            const regText = isPureBlank ? "" : (sub.is_waived ? "-" : (sub.reg_fee !== null ? (sub.reg_fee > 0 ? sub.reg_fee.toLocaleString() : "0") : "-"));
+                            const acText = isPureBlank ? "" : (sub.is_waived ? "-" : (sub.is_ac ? (sub.ac_fee > 0 ? sub.ac_fee.toLocaleString() : "0") : "-"));
+                            const totalText = isPureBlank ? "" : (sub.is_waived ? "-" : (sub.total_amount !== null ? (sub.total_amount > 0 ? sub.total_amount.toLocaleString() : "0") : "-"));
 
                             return (
                                 <tr key={idx} className="border-b border-dashed border-gray-400">
-                                    <td className="border-r border-black py-1 px-1 truncate font-mono text-[13px]">{sub.subject_code || "-"}</td>
+                                    <td className="border-r border-black py-1 px-1">{idx + 1}</td>
+                                    <td className="border-r border-black py-1 px-1 truncate font-mono text-[12px]">{sub.subject_code || "-"}</td>
                                     <td className="border-r border-black py-1 px-2 text-left truncate">{sub.subject_name || "-"}</td>
-                                    <td className="border-r border-black py-1 px-1 truncate">{sub.study_round || "-"}</td>
                                     <td className="border-r border-black py-1 px-1 truncate">{sub.total_hours || "-"}</td>
-                                    <td className="py-1 px-1 truncate">{feeText}</td>
+                                    <td className="border-r border-black py-1 px-1 truncate">{tuitionText}</td>
+                                    <td className="border-r border-black py-1 px-1 truncate">{regText}</td>
+                                    <td className="border-r border-black py-1 px-1 truncate">{acText}</td>
+                                    <td className="py-1 px-1 truncate">{totalText}</td>
                                 </tr>
                             );
                         })}
@@ -349,6 +433,9 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
                                     <td className="border-r border-black">&nbsp;</td>
                                     <td className="border-r border-black">&nbsp;</td>
                                     <td className="border-r border-black">&nbsp;</td>
+                                    <td className="border-r border-black">&nbsp;</td>
+                                    <td className="border-r border-black">&nbsp;</td>
+                                    <td className="border-r border-black">&nbsp;</td>
                                     <td>&nbsp;</td>
                                 </tr>
                             );
@@ -356,16 +443,25 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
 
                         {/* Summary Row */}
                         <tr className="border-t border-black font-normal">
-                            <td className="border-r border-black py-1 text-center">รวม</td>
+                            <td className="border-r border-black py-1 text-center font-bold">รวม</td>
+                            <td className="border-r border-black py-1 text-center"></td>
                             <td className="border-r border-black py-1 text-center">
                                 {isPureBlank ? "" : (activeSubjects.length > 0 ? `${activeSubjects.length} รายวิชา` : "")}
                             </td>
-                            <td className="border-r border-black py-1"></td>
                             <td className="border-r border-black py-1">
-                                {isPureBlank ? "" : (totalCalculatedHours !== "" ? `${totalCalculatedHours} ชั่วโมง` : "")}
+                                {isPureBlank ? "" : (summaryCalculations.totalHours !== "" ? `${summaryCalculations.totalHours}` : "")}
                             </td>
-                            <td className="py-1">
-                                {isPureBlank ? "" : (totalCalculatedAmount !== "" ? `${Number(totalCalculatedAmount).toLocaleString()} บาท` : "")}
+                            <td className="border-r border-black py-1">
+                                {isPureBlank ? "" : summaryCalculations.totalTuition}
+                            </td>
+                            <td className="border-r border-black py-1">
+                                {isPureBlank ? "" : summaryCalculations.totalReg}
+                            </td>
+                            <td className="border-r border-black py-1">
+                                {isPureBlank ? "" : summaryCalculations.totalAc}
+                            </td>
+                            <td className="py-1 font-semibold">
+                                {isPureBlank ? "" : summaryCalculations.grandTotal}
                             </td>
                         </tr>
                     </tbody>

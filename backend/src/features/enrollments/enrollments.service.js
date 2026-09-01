@@ -39,7 +39,7 @@ const ENROLLMENT_SELECT = `
     phone, email, postal_code, subdistrict, district, province, id_card_url
   ),
   study_groups:study_group_id (
-    id, group_code, group_name, max_seats, current_seats, tuition_fee, application_fee, is_waived_fee, batch_id,
+    id, group_code, group_name, max_seats, current_seats, tuition_fee, application_fee, is_waived_fee, is_ac_maintenance_fee, batch_id,
     total_hours, schedule_description, start_date,
     batches:batch_id ( id, batch_name, academic_year, term, batch_no, study_open_date ),
     teachers:teacher_id ( id, first_name_th, last_name_th ),
@@ -55,6 +55,15 @@ const flatten = (row) => {
     const subjectName = firstSubject?.name_th || '';
     const teacher = studyGroup?.teachers;
     const teacherName = teacher ? `${teacher.first_name_th} ${teacher.last_name_th}` : '';
+    const groupSubjects = (studyGroup?.study_group_subjects || []).map((sgs) => ({
+        id: sgs.subjects?.id || sgs.id,
+        subject_code: sgs.subjects?.subject_code || sgs.moe_code || '',
+        moe_code: sgs.moe_code || '',
+        subject_name: sgs.subjects?.name_th || '',
+        name_th: sgs.subjects?.name_th || '',
+        total_hours: Number(sgs.subjects?.total_hours || 0),
+        is_ac_maintenance_fee: Boolean(studyGroup?.is_ac_maintenance_fee),
+    }));
 
     return {
         id: row.id,
@@ -84,6 +93,10 @@ const flatten = (row) => {
         group_code: studyGroup?.group_code,
         group_name: studyGroup?.group_name,
         total_hours: studyGroup?.total_hours || firstSubject?.total_hours || 75,
+        is_ac_maintenance_fee: Boolean(studyGroup?.is_ac_maintenance_fee),
+        is_waived_fee: Boolean(studyGroup?.is_waived_fee),
+        tuition_fee: studyGroup?.tuition_fee,
+        application_fee: studyGroup?.application_fee,
         schedule_description: studyGroup?.schedule_description || '',
         start_date: studyGroup?.start_date,
         subject_code: subjectCode,
@@ -97,6 +110,15 @@ const flatten = (row) => {
         term: batch?.term || '',
         batch_no: batch?.batch_no || '',
         study_open_date: batch?.study_open_date,
+        study_group: studyGroup,
+        study_group_subjects: studyGroup?.study_group_subjects || [],
+        subjects: groupSubjects.length > 0 ? groupSubjects : (studyGroup ? [{
+            subject_code: studyGroup.group_code || subjectCode,
+            subject_name: studyGroup.group_name || subjectName,
+            name_th: studyGroup.group_name || subjectName,
+            total_hours: Number(studyGroup.total_hours || 0),
+            is_ac_maintenance_fee: Boolean(studyGroup.is_ac_maintenance_fee),
+        }] : []),
         confirmed_by_user_id: row.confirmed_by_user_id,
         rejected_by_user_id: row.rejected_by_user_id,
         applicant_profile: row.applicants || null,

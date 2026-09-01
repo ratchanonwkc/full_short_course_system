@@ -11,11 +11,25 @@ import { supabase } from '../config/supabase.js';
 
 const storage = multer.memoryStorage();
 
+const ALLOWED_MIME_TYPES = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/jpg',
+    'application/pdf',
+]);
+
 const fileFilter = (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|webp|pdf/;
-    const ext = file.originalname.split('.').pop().toLowerCase();
-    if (allowed.test(ext)) cb(null, true);
-    else cb(new Error('รองรับเฉพาะไฟล์ JPG, PNG, WEBP หรือ PDF เท่านั้น'));
+    const allowedExt = /jpeg|jpg|png|webp|pdf/i;
+    const ext = (file.originalname || '').split('.').pop().toLowerCase();
+    const isExtAllowed = allowedExt.test(ext);
+    const isMimeAllowed = !file.mimetype || ALLOWED_MIME_TYPES.has(file.mimetype.toLowerCase());
+
+    if (isExtAllowed && isMimeAllowed) {
+        cb(null, true);
+    } else {
+        cb(new Error('รองรับเฉพาะไฟล์ JPG, PNG, WEBP หรือ PDF เท่านั้น'));
+    }
 };
 
 export const uploadSlipMemory = multer({

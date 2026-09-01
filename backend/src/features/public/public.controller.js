@@ -68,6 +68,9 @@ export const createOnlineApplication = async (req, res, next) => {
         if (!study_group_id) {
             return res.status(400).json({ message: 'กรุณาเลือกวิชาที่ต้องการสมัคร' });
         }
+        if (!applicant?.id_card_url) {
+            return res.status(400).json({ message: 'กรุณาแนบสำเนาบัตรประชาชน (รูปภาพหรือ PDF)' });
+        }
         const result = await createOnlineApplicationService({ applicant, study_group_id, slip_url, payment_method });
         res.status(201).json(result);
     } catch (error) {

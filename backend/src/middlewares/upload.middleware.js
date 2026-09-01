@@ -19,11 +19,25 @@ const storage = multer.diskStorage({
     },
 });
 
+const ALLOWED_MIME_TYPES = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/jpg',
+    'application/pdf',
+]);
+
 const fileFilter = (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|webp|pdf/;
-    const ok = allowed.test(path.extname(file.originalname).toLowerCase());
-    if (ok) cb(null, true);
-    else cb(new Error('รองรับเฉพาะไฟล์ JPG, PNG, WEBP หรือ PDF เท่านั้น'));
+    const allowedExt = /jpeg|jpg|png|webp|pdf/i;
+    const ext = (path.extname(file.originalname || '') || '').replace('.', '').toLowerCase();
+    const isExtAllowed = allowedExt.test(ext);
+    const isMimeAllowed = !file.mimetype || ALLOWED_MIME_TYPES.has(file.mimetype.toLowerCase());
+
+    if (isExtAllowed && isMimeAllowed) {
+        cb(null, true);
+    } else {
+        cb(new Error('รองรับเฉพาะไฟล์ JPG, PNG, WEBP หรือ PDF เท่านั้น'));
+    }
 };
 
 export const uploadSlip = multer({

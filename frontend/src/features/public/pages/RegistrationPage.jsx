@@ -59,6 +59,9 @@ export default function RegistrationPage() {
             if (!formData.postal_code || !formData.subdistrict || !formData.district || !formData.province) {
                 return "กรุณากรอกที่อยู่ตามทะเบียนบ้านให้ครบถ้วน";
             }
+            if (!idCardFile) {
+                return "กรุณาแนบสำเนาบัตรประชาชน (รูปภาพหรือ PDF)";
+            }
             return null;
         }
         if (s === 2) {
@@ -89,12 +92,16 @@ export default function RegistrationPage() {
             Swal.fire("แจ้งเตือน", "กรุณายอมรับข้อตกลงและระเบียบของวิทยาลัย", "warning");
             return;
         }
+        if (!idCardFile) {
+            Swal.fire("แจ้งเตือน", "กรุณาแนบสำเนาบัตรประชาชน (รูปภาพหรือ PDF)", "warning");
+            return;
+        }
         try {
             setSubmitting(true);
             let slip_url = null;
             let id_card_url = null;
             if (slipFile) slip_url = (await uploadSlip(slipFile)).slip_url;
-            if (idCardFile) id_card_url = (await uploadIdCard(idCardFile)).id_card_url;
+            id_card_url = (await uploadIdCard(idCardFile)).id_card_url;
 
             await submitApplication({
                 applicant: { ...formData, id_card_url },

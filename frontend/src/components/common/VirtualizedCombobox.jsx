@@ -104,7 +104,7 @@ export default function VirtualizedCombobox({
                             {disabled ? loadingText : emptyText}
                         </div>
                     ) : (
-                        <>
+                        <div role="none">
                             {topPadding > 0 && <div style={{ height: topPadding }} aria-hidden="true" />}
                             {visibleItems.map((opt) => (
                                 <Combobox.Option
@@ -132,7 +132,7 @@ export default function VirtualizedCombobox({
                                     แสดง {maxResults} รายการแรก พิมพ์เพิ่มเพื่อจำกัดผลลัพธ์ให้แคบลง
                                 </div>
                             )}
-                        </>
+                        </div>
                     )}
                 </Combobox.Options>
             </div>

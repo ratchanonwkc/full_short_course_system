@@ -47,8 +47,22 @@ export default function StepReview({ formData, selectedGroup, paymentMethod, sli
                     <ReviewRow label="ศาสนา" value={formData.religion} />
                     <ReviewRow label="อาชีพปัจจุบัน" value={formData.occupation} />
                 </dl>
-                <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-                    <IdCard size={13} /> {idCardFile ? `แนบรูปบัตรประชาชนแล้ว (${idCardFile.name})` : "ไม่ได้แนบรูปบัตรประชาชน"}
+                <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold">
+                    {idCardFile ? (
+                        (idCardFile.type === "application/pdf" || idCardFile.name?.toLowerCase().endsWith(".pdf")) ? (
+                            <span className="text-red-600 flex items-center gap-1.5">
+                                <span className="font-bold rounded bg-red-100 px-1.5 py-0.5 text-[10px]">PDF</span>
+                                แนบสำเนาบัตรประชาชนแล้ว ({idCardFile.name})
+                            </span>
+                        ) : (
+                            <span className="text-blue-600 flex items-center gap-1.5">
+                                <IdCard size={14} />
+                                แนบสำเนาบัตรประชาชนแล้ว ({idCardFile.name})
+                            </span>
+                        )
+                    ) : (
+                        <span className="text-red-500 font-bold">ยังไม่ได้แนบสำเนาบัตรประชาชน</span>
+                    )}
                 </p>
             </section>
 

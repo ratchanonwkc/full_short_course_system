@@ -27,6 +27,7 @@ const APPLICANT_TRACK_SELECT = `
     tuition_fee,
     application_fee,
     is_waived_fee,
+    is_ac_maintenance_fee,
     total_hours,
     schedule_description,
     start_date,
@@ -142,6 +143,7 @@ export const getApplicantTrackService = async (citizenId) => {
                     tuition_fee: group.tuition_fee,
                     application_fee: group.application_fee,
                     is_waived_fee: group.is_waived_fee,
+                    is_ac_maintenance_fee: Boolean(group.is_ac_maintenance_fee),
                     total_hours: group.total_hours,
                     schedule_description: group.schedule_description || '',
                     start_date: group.start_date,
@@ -152,6 +154,7 @@ export const getApplicantTrackService = async (citizenId) => {
                     term: batch?.term || null,
                     batch_no: batch?.batch_no || null,
                     teacher_name: teacherName,
+                    study_group_subjects: group?.study_group_subjects || [],
                     subjects,
                 }
                 : null,

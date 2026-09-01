@@ -27,10 +27,19 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({
-    origin: 'https://uptech-short-course-system-frontend.onrender.com', // หรือใส่ URL frontend เช่น 'https://short-course-frontend.onrender.com'
+    origin: true,
     credentials: true,
 }));
+
 app.use(express.json());
+
+app.get('/', (req, res) => {
+    res.json({
+        status: 'online',
+        message: 'UPTECH Short Course System API is running 🚀',
+        timestamp: new Date().toISOString()
+    });
+});
 
 // Static: ไฟล์สลิปโอนเงิน / QR Code ที่อัปโหลด
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

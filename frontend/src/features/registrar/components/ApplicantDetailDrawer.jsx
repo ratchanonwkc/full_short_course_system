@@ -3,6 +3,7 @@ import { Dialog, Transition } from "@headlessui/react";
 import {
     X, User, Phone, GraduationCap, Wallet, Printer, Save, Send, Pencil,
     IdCard as IdCardIcon, MapPin, ZoomIn, ZoomOut, RotateCw, CheckCircle2,
+    ExternalLink, FileText,
 } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import Swal from "sweetalert2";
@@ -249,26 +250,45 @@ export default function ApplicantDetailDrawer({
                                                 </Section>
 
                                                 {activeEnrollment.id_card_url && (
-                                                    <Section icon={IdCardIcon} title="รูปบัตรประชาชน">
-                                                        <div className="mb-2 flex items-center justify-end gap-1 print:hidden">
-                                                            <button type="button" onClick={() => setZoom((z) => Math.min(3, z + 0.25))} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title="ซูมเข้า">
-                                                                <ZoomIn size={15} />
-                                                            </button>
-                                                            <button type="button" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title="ซูมออก">
-                                                                <ZoomOut size={15} />
-                                                            </button>
-                                                            <button type="button" onClick={() => setRotation((r) => (r + 90) % 360)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title="หมุนภาพ">
-                                                                <RotateCw size={15} />
-                                                            </button>
-                                                        </div>
-                                                        <div className="flex max-h-72 items-center justify-center overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
-                                                            <img
-                                                                src={activeEnrollment.id_card_url}
-                                                                alt="บัตรประชาชน"
-                                                                style={{ transform: `scale(${zoom}) rotate(${rotation}deg)`, transition: "transform 0.15s ease" }}
-                                                                className="max-h-64 object-contain"
-                                                            />
-                                                        </div>
+                                                    <Section icon={IdCardIcon} title="สำเนาบัตรประชาชน">
+                                                        {activeEnrollment.id_card_url.toLowerCase().endsWith(".pdf") ? (
+                                                            <div className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-4 text-center">
+                                                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-red-600 mb-2">
+                                                                    <FileText size={24} />
+                                                                </div>
+                                                                <p className="text-xs font-semibold text-slate-700 mb-2">เอกสารสำเนาบัตรประชาชน (PDF)</p>
+                                                                <a
+                                                                    href={activeEnrollment.id_card_url}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition shadow-2xs"
+                                                                >
+                                                                    <ExternalLink size={13} /> เปิดดูไฟล์ PDF
+                                                                </a>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="mb-2 flex items-center justify-end gap-1 print:hidden">
+                                                                    <button type="button" onClick={() => setZoom((z) => Math.min(3, z + 0.25))} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title="ซูมเข้า">
+                                                                        <ZoomIn size={15} />
+                                                                    </button>
+                                                                    <button type="button" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title="ซูมออก">
+                                                                        <ZoomOut size={15} />
+                                                                    </button>
+                                                                    <button type="button" onClick={() => setRotation((r) => (r + 90) % 360)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" title="หมุนภาพ">
+                                                                        <RotateCw size={15} />
+                                                                    </button>
+                                                                </div>
+                                                                <div className="flex max-h-72 items-center justify-center overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
+                                                                    <img
+                                                                        src={activeEnrollment.id_card_url}
+                                                                        alt="บัตรประชาชน"
+                                                                        style={{ transform: `scale(${zoom}) rotate(${rotation}deg)`, transition: "transform 0.15s ease" }}
+                                                                        className="max-h-64 object-contain"
+                                                                    />
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </Section>
                                                 )}
 
