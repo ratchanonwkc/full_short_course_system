@@ -137,35 +137,68 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
                 cellClass: "font-semibold text-slate-900",
                 valueGetter: (p) => buildBatchDisplayName(p.data),
             },
-            { field: "academic_year", headerName: "ปีการศึกษา", flex: 1 },
-            { field: "term", headerName: "ภาคเรียน", flex: 1 },
-            { field: "batch_no", headerName: "รุ่นที่", flex: 0.8 },
+            {
+                field: "academic_year",
+                headerName: "ปีการศึกษา",
+                flex: 1,
+                headerClass: "ag-header-cell-center",
+                cellClass: "text-center",
+            },
+            {
+                field: "term",
+                headerName: "ภาคเรียน",
+                flex: 0.9,
+                headerClass: "ag-header-cell-center",
+                cellClass: "text-center",
+            },
+            {
+                field: "batch_no",
+                headerName: "รุ่นที่",
+                flex: 0.8,
+                headerClass: "ag-header-cell-center",
+                cellClass: "text-center",
+            },
             {
                 field: "status",
                 headerName: "สถานะ",
                 flex: 1,
+                headerClass: "ag-header-cell-center",
+                cellClass: "text-center",
                 cellRenderer: StatusBadgeRenderer,
             },
             {
                 field: "study_open_date",
                 headerName: "วันเริ่มเรียน",
                 flex: 1.2,
+                headerClass: "ag-header-cell-center",
+                cellClass: "text-center",
                 valueFormatter: thaiDateValueFormatter,
             },
             {
                 field: "study_close_date",
                 headerName: "วันสิ้นสุด",
                 flex: 1.2,
+                headerClass: "ag-header-cell-center",
+                cellClass: "text-center",
                 valueFormatter: thaiDateValueFormatter,
             },
-            { field: "total_hours", headerName: "จำนวนชั่วโมง", flex: 1.2, type: "numericColumn" },
-            { field: "director_name", headerName: "ผอ.", flex: 2 },
+            {
+                field: "total_hours",
+                headerName: "จำนวนชั่วโมง",
+                flex: 1.1,
+                type: "numericColumn",
+                headerClass: "ag-header-cell-center",
+                cellClass: "text-center font-semibold",
+            },
+            { field: "director_name", headerName: "ผอ.", flex: 1.8 },
             {
                 headerName: "จัดการ",
                 pinned: "right",
                 width: 160,
                 sortable: false,
                 filter: false,
+                headerClass: "ag-header-cell-center",
+                cellClass: "text-center",
                 cellRenderer: ActionsRenderer,
             },
         ],
@@ -178,6 +211,8 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
             sortable: true,
             filter: true,
             floatingFilter: false,
+            cellClass: "flex items-center text-sm text-slate-700",
+            headerClass: "font-semibold text-slate-700",
         }),
         []
     );
@@ -194,8 +229,8 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
                 pagination
                 paginationPageSize={20}
                 domLayout="normal"
-                headerHeight={42}
-                rowHeight={44}
+                headerHeight={44}
+                rowHeight={56}
                 animateRows
                 overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ไม่พบข้อมูลรุ่นการเรียน</span>"
                 getRowId={(params) => String(params.data.id)}

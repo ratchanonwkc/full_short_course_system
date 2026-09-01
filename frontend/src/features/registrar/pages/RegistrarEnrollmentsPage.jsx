@@ -37,7 +37,11 @@ const PAYMENT_METHOD_OPTIONS = [
 
 function StatusBadgeRenderer({ value }) {
     const meta = STATUS_META[value] || STATUS_META.pending_payment;
-    return <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.className}`}>{meta.label}</span>;
+    return (
+        <div className="flex h-full w-full items-center justify-center">
+            <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.className}`}>{meta.label}</span>
+        </div>
+    );
 }
 
 function matchesStatusFilter(enrollmentStatus, filterValue) {
@@ -194,59 +198,149 @@ export default function RegistrarEnrollmentsPage() {
     };
 
     const ActionsRenderer = (params) => (
-        <div className="flex h-full items-center gap-2">
+        <div className="flex h-full w-full items-center justify-center gap-1.5">
             <button
+                type="button"
                 onClick={() => handleViewDetail(params.data)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition active:scale-95"
             >
-                <Eye size={13} /> ดูรายละเอียด
+                <Eye size={13} /> รายละเอียด
             </button>
             {params.data.status !== "cancelled" && (
-                <button onClick={() => handleCancel(params.data)} className="text-xs font-bold text-red-500 hover:underline">
-                    ยกเลิก
+                <button
+                    type="button"
+                    onClick={() => handleCancel(params.data)}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition active:scale-95"
+                >
+                    <X size={13} /> ยกเลิก
                 </button>
             )}
         </div>
     );
 
-    const GroupBadgeRenderer = ({ value, data }) => (
-        <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-600">
-            {data.group_code || value || "-"}
-        </span>
-    );
+    const getShiftInfo = (data) => {
+        if (!data) return null;
+        const text = `${data.time_slot_code || ""} ${data.time_slot_name || ""} ${data.group_code || ""} ${data.schedule_description || ""}`;
+        if (text.includes("ค่ำ") || text.includes("ค1") || text.includes("ค2") || text.includes("17:") || text.includes("18:")) {
+            return { label: "รอบค่ำ", cls: "bg-purple-50 text-purple-700 border-purple-200" };
+        }
+        if (text.includes("บ่าย") || text.includes("บ1") || text.includes("บ2") || text.includes("13:")) {
+            return { label: "รอบบ่าย", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+        }
+        if (text.includes("เสาร์") || text.includes("อาทิตย์") || text.includes("ส-อา") || text.includes("ส.") || text.includes("อ.")) {
+            return { label: "ส-อา", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+        }
+        if (text.includes("เช้า") || text.includes("ช1") || text.includes("ช2") || text.includes("08:") || text.includes("09:")) {
+            return { label: "รอบเช้า", cls: "bg-blue-50 text-blue-700 border-blue-200" };
+        }
+        if (text.includes("พ1") || text.includes("พ2") || text.includes("พิเศษ")) {
+            return { label: "รอบพิเศษ", cls: "bg-rose-50 text-rose-700 border-rose-200" };
+        }
+        return null;
+    };
+
+    const GroupDualLineRenderer = ({ data }) => {
+        if (!data) return null;
+        const shift = getShiftInfo(data);
+        const tooltipParts = [
+            data.teacher_name && `ผู้สอน: ${data.teacher_name}`,
+            (data.room_code || data.location_name) && `ห้องเรียน: ${data.room_code || data.location_name}`,
+            data.schedule_description && `เวลา: ${data.schedule_description}`,
+        ].filter(Boolean);
+
+        return (
+            <div className="flex flex-col justify-center h-full py-1 leading-tight min-w-0" title={tooltipParts.join(" • ") || undefined}>
+                <div className="font-semibold text-slate-800 text-sm truncate">
+                    {data.group_name || data.subject_name || "-"}
+                </div>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                    {data.group_code && (
+                        <span className="font-mono text-xs text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
+                            {data.group_code}
+                        </span>
+                    )}
+                    {shift && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${shift.cls}`}>
+                            {shift.label}
+                        </span>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     const columnDefs = useMemo(
         () => [
-            { field: "citizen_id", headerName: "เลขบัตรประชาชน", flex: 1, minWidth: 130, cellClass: "font-mono text-xs" },
-            { field: "applicant_name", headerName: "ชื่อ-นามสกุล", flex: 1.4, minWidth: 160, cellClass: "font-semibold text-slate-900" },
+            {
+                field: "citizen_id",
+                headerName: "เลขบัตรประชาชน",
+                flex: 1,
+                minWidth: 130,
+                headerClass: "ag-header-cell-center",
+                cellClass: "font-mono text-xs flex items-center justify-center",
+            },
+            {
+                field: "applicant_name",
+                headerName: "ชื่อ-นามสกุล",
+                flex: 1.3,
+                minWidth: 150,
+                cellClass: "font-semibold text-slate-900 flex items-center",
+            },
             {
                 headerName: "ติดต่อ",
                 flex: 1.1,
-                minWidth: 150,
+                minWidth: 140,
+                cellClass: "flex items-center text-xs text-slate-600",
                 valueGetter: (p) => `${p.data.phone || "-"}${p.data.email ? ` / ${p.data.email}` : ""}`,
             },
-            { field: "batch_name", headerName: "รุ่นการเรียน", flex: 1, minWidth: 130 },
             {
-                headerName: "กลุ่มเรียน",
-                field: "group_code",
+                field: "batch_name",
+                headerName: "รุ่นการเรียน",
                 flex: 0.9,
-                minWidth: 120,
-                cellRenderer: GroupBadgeRenderer,
+                minWidth: 110,
+                headerClass: "ag-header-cell-center",
+                cellClass: "flex items-center justify-center text-xs text-slate-700",
             },
-            { field: "status", headerName: "สถานะชำระเงิน", flex: 1, minWidth: 130, cellRenderer: StatusBadgeRenderer },
+            {
+                headerName: "กลุ่มเรียน / รายวิชา",
+                field: "group_name",
+                flex: 1.6,
+                minWidth: 190,
+                cellRenderer: GroupDualLineRenderer,
+            },
+            {
+                field: "status",
+                headerName: "สถานะชำระเงิน",
+                flex: 1,
+                minWidth: 130,
+                headerClass: "ag-header-cell-center",
+                cellClass: "flex items-center justify-center",
+                cellRenderer: StatusBadgeRenderer,
+            },
             {
                 headerName: "จัดการ",
                 pinned: "right",
-                width: 160,
+                width: 185,
                 sortable: false,
                 filter: false,
+                headerClass: "ag-header-cell-center",
+                cellClass: "flex items-center justify-center",
                 cellRenderer: ActionsRenderer,
             },
         ],
         []
     );
 
-    const defaultColDef = useMemo(() => ({ resizable: true, sortable: true, filter: true }), []);
+    const defaultColDef = useMemo(
+        () => ({
+            resizable: true,
+            sortable: true,
+            filter: true,
+            cellClass: "flex items-center text-sm text-slate-700",
+            headerClass: "font-semibold text-slate-700",
+        }),
+        []
+    );
 
     // Study groups scoped to the applicant being viewed in the drawer (their own batch)
     const [modalGroupOptions, setModalGroupOptions] = useState([]);
@@ -383,9 +477,18 @@ export default function RegistrarEnrollmentsPage() {
             </div>
 
             {currentGroup && (
-                <p className="mb-3 text-sm font-semibold text-slate-500 shrink-0">
-                    ที่นั่ง {currentGroup.current_seats}/{currentGroup.max_seats}
-                </p>
+                <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-600 shrink-0">
+                    <span
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 shadow-2xs"
+                        title="นับเฉพาะผู้สมัครที่ได้รับการยืนยันการชำระเงินแล้ว (Confirmed Paid)"
+                    >
+                        <Users size={14} className="text-blue-600" />
+                        จำนวนที่นั่ง: <span className="font-bold text-slate-900">{currentGroup.current_seats || 0}</span> / {currentGroup.max_seats || 0}
+                        <span className="ml-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-100">
+                            (ชำระเงินแล้ว)
+                        </span>
+                    </span>
+                </div>
             )}
 
             <div className="h-[calc(100vh-260px)] min-h-[480px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
@@ -399,8 +502,8 @@ export default function RegistrarEnrollmentsPage() {
                     paginationPageSize={25}
                     paginationPageSizeSelector={[10, 25, 50, 100]}
                     domLayout="normal"
-                    headerHeight={42}
-                    rowHeight={44}
+                    headerHeight={44}
+                    rowHeight={56}
                     animateRows
                     overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ยังไม่มีผู้ลงทะเบียน</span>"
                     getRowId={(params) => String(params.data.id)}

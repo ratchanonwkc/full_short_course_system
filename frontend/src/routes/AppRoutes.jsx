@@ -56,8 +56,8 @@ export default function AppRoutes() {
                         <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
                     </Route>
 
-                    {/* 📚 Academic & Planning Module (Admin + Planning) */}
-                    <Route element={<ProtectedRoute allowedRoles={['admin', 'planning']} />}>
+                    {/* 📚 Academic, Batches & Study Groups Module (Admin + Planning + Registrar) */}
+                    <Route element={<ProtectedRoute allowedRoles={['admin', 'planning', 'registrar']} />}>
                         <Route path="/batches" element={<BatchesPage />} />
                         <Route path="/batches/:batchId/groups" element={<StudyGroupsPage />} />
                         <Route path="/planning/study-groups" element={<StudyGroupsPage />} />
@@ -67,8 +67,8 @@ export default function AppRoutes() {
                         <Route path="/subjects" element={<SubjectsPage />} />
                     </Route>
 
-                    {/* 📋 Registrar Module (Admin + Registrar) */}
-                    <Route element={<ProtectedRoute allowedRoles={['admin', 'registrar']} />}>
+                    {/* 📋 Registrar Module (Admin + Registrar + Planning) */}
+                    <Route element={<ProtectedRoute allowedRoles={['admin', 'registrar', 'planning']} />}>
                         <Route path="/registrar/enrollments" element={<RegistrarEnrollmentsPage />} />
                     </Route>
 

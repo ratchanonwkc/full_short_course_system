@@ -68,3 +68,11 @@ textarea,
 select {
   cursor: pointer;
 }
+
+/* Ensure AG-Grid headers with center class align label contents to center */
+.ag-header-cell-center .ag-header-cell-label,
+.text-center .ag-header-cell-label {
+  justify-content: center !important;
+  text-align: center !important;
+}
+

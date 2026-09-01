@@ -29,22 +29,22 @@ const menuSections = [
     ],
   },
   {
-    title: 'งานแผนงาน (Planning)',
-    roles: ['admin', 'planning'],
+    title: 'งานแผนงานและวิชาการ (Planning & Academic)',
+    roles: ['admin', 'planning', 'registrar'],
     items: [
-      { name: 'หลักสูตรและสาขาวิชา', to: '/academic-structure', icon: BookOpen, roles: ['admin', 'planning'] },
-      { name: 'จัดการรายวิชา', to: '/subjects', icon: BookMarked, roles: ['admin', 'planning'] },
-      { name: 'ข้อมูลอาจารย์ผู้สอน', to: '/teachers', icon: GraduationCap, roles: ['admin', 'planning'] },
-      { name: 'จัดการรุ่นการเรียน', to: '/batches', icon: CalendarRange, roles: ['admin', 'planning'] },
-      { name: 'จัดการกลุ่มเรียน', to: '/planning/study-groups', icon: Users, roles: ['admin', 'planning'] },
+      { name: 'หลักสูตรและสาขาวิชา', to: '/academic-structure', icon: BookOpen, roles: ['admin', 'planning', 'registrar'] },
+      { name: 'จัดการรายวิชา', to: '/subjects', icon: BookMarked, roles: ['admin', 'planning', 'registrar'] },
+      { name: 'ข้อมูลอาจารย์ผู้สอน', to: '/teachers', icon: GraduationCap, roles: ['admin', 'planning', 'registrar'] },
+      { name: 'จัดการรุ่นการเรียน', to: '/batches', icon: CalendarRange, roles: ['admin', 'planning', 'registrar'] },
+      { name: 'จัดการกลุ่มเรียน', to: '/planning/study-groups', icon: Users, roles: ['admin', 'planning', 'registrar'] },
     ],
   },
   {
     title: 'งานทะเบียน (Registrar)',
-    roles: ['admin', 'registrar'],
+    roles: ['admin', 'registrar', 'planning'],
     items: [
-      { name: 'รายชื่อผู้สมัครและจัดกลุ่ม', to: '/registrar/enrollments', icon: UserCheck, roles: ['admin', 'registrar'] },
-      // { name: 'รับสมัครหน้าเคาน์เตอร์ (Walk-in)', to: '/registrar/enrollments', icon: UserPlus, roles: ['admin', 'registrar'] },
+      { name: 'รายชื่อผู้สมัครและจัดกลุ่ม', to: '/registrar/enrollments', icon: UserCheck, roles: ['admin', 'registrar', 'planning'] },
+      // { name: 'รับสมัครหน้าเคาน์เตอร์ (Walk-in)', to: '/registrar/enrollments', icon: UserPlus, roles: ['admin', 'registrar', 'planning'] },
     ],
   },
   {

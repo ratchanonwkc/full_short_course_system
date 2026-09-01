@@ -74,7 +74,29 @@ export const getOpenStudyGroupsService = async ({ search, majorId, batchId } = {
         return batchStatus === 'admitting' || batchStatus === 'studying';
     });
 
-    let mapped = activeBatchesOnly.map(mapGroup);
+    if (activeBatchesOnly.length === 0) return [];
+
+    // Strictly count confirmed/paid enrollments
+    const groupIds = activeBatchesOnly.map((g) => g.id);
+    const { data: paidEnrollments } = await supabase
+        .from('enrollments')
+        .select('study_group_id')
+        .eq('status', 'paid')
+        .in('study_group_id', groupIds);
+
+    const paidCountMap = {};
+    (paidEnrollments || []).forEach((e) => {
+        paidCountMap[e.study_group_id] = (paidCountMap[e.study_group_id] || 0) + 1;
+    });
+
+    let mapped = activeBatchesOnly.map((row) => {
+        const paidCount = paidCountMap[row.id] || 0;
+        return mapGroup({
+            ...row,
+            current_seats: paidCount,
+            paid_count: paidCount,
+        });
+    });
 
     if (search?.trim()) {
         const q = search.trim().toLowerCase();
@@ -105,7 +127,19 @@ export const getStudyGroupDetailService = async (id) => {
         throw err;
     }
 
-    return mapGroup(data);
+    const { count } = await supabase
+        .from('enrollments')
+        .select('id', { count: 'exact', head: true })
+        .eq('study_group_id', id)
+        .eq('status', 'paid');
+
+    const paidCount = count || 0;
+
+    return mapGroup({
+        ...data,
+        current_seats: paidCount,
+        paid_count: paidCount,
+    });
 };
 
 export const lookupPostalCodeService = (code) => {

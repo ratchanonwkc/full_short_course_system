@@ -39,10 +39,12 @@ const ENROLLMENT_SELECT = `
     phone, email, postal_code, subdistrict, district, province, id_card_url
   ),
   study_groups:study_group_id (
-    id, group_code, group_name, max_seats, current_seats, tuition_fee, application_fee, is_waived_fee, is_ac_maintenance_fee, batch_id,
+    id, group_code, group_name, room_code, max_seats, current_seats, tuition_fee, application_fee, is_waived_fee, is_ac_maintenance_fee, batch_id,
     total_hours, schedule_description, start_date,
     batches:batch_id ( id, batch_name, academic_year, term, batch_no, study_open_date ),
-    teachers:teacher_id ( id, first_name_th, last_name_th ),
+    teachers:teacher_id ( id, first_name_th, last_name_th, prefixes:prefix_id (short_name) ),
+    locations:joint_location_id ( id, name ),
+    time_slots:time_slot_id ( id, time_code, time_name, time_range ),
     study_group_subjects ( id, moe_code, sequence_order, subjects:subject_id ( id, subject_code, name_th, total_hours ) )
   )
 `;
@@ -54,7 +56,8 @@ const flatten = (row) => {
     const subjectCode = firstSubject?.subject_code || studyGroup?.study_group_subjects?.[0]?.moe_code || '';
     const subjectName = firstSubject?.name_th || '';
     const teacher = studyGroup?.teachers;
-    const teacherName = teacher ? `${teacher.first_name_th} ${teacher.last_name_th}` : '';
+    const teacherPrefix = teacher?.prefixes?.short_name || '';
+    const teacherName = teacher ? `${teacherPrefix}${teacher.first_name_th} ${teacher.last_name_th}`.trim() : '';
     const groupSubjects = (studyGroup?.study_group_subjects || []).map((sgs) => ({
         id: sgs.subjects?.id || sgs.id,
         subject_code: sgs.subjects?.subject_code || sgs.moe_code || '',
@@ -92,6 +95,11 @@ const flatten = (row) => {
         email: row.applicants?.email,
         group_code: studyGroup?.group_code,
         group_name: studyGroup?.group_name,
+        room_code: studyGroup?.room_code || '',
+        location_name: studyGroup?.locations?.name || '',
+        time_slot_name: studyGroup?.time_slots?.time_name || '',
+        time_slot_code: studyGroup?.time_slots?.time_code || '',
+        time_slot_range: studyGroup?.time_slots?.time_range || '',
         total_hours: studyGroup?.total_hours || firstSubject?.total_hours || 75,
         is_ac_maintenance_fee: Boolean(studyGroup?.is_ac_maintenance_fee),
         is_waived_fee: Boolean(studyGroup?.is_waived_fee),

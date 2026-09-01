@@ -93,13 +93,55 @@ export const getAllStudyGroupsService = async ({ batchId, majorId, timeSlot } = 
 
     const { data, error } = await query;
     if (error) throw error;
-    return data.map(flatten);
+
+    if (!data || data.length === 0) return [];
+
+    // Strictly count confirmed/paid enrollments
+    const groupIds = data.map((g) => g.id);
+    const { data: paidEnrollments } = await supabase
+        .from('enrollments')
+        .select('study_group_id')
+        .eq('status', 'paid')
+        .in('study_group_id', groupIds);
+
+    const paidCountMap = {};
+    (paidEnrollments || []).forEach((e) => {
+        paidCountMap[e.study_group_id] = (paidCountMap[e.study_group_id] || 0) + 1;
+    });
+
+    return data.map((row) => {
+        const paidCount = paidCountMap[row.id] || 0;
+        const maxSeats = Number(row.max_seats) || 0;
+        return flatten({
+            ...row,
+            current_seats: paidCount,
+            paid_count: paidCount,
+            remaining_seats: Math.max(0, maxSeats - paidCount),
+            is_full: maxSeats > 0 && paidCount >= maxSeats,
+        });
+    });
 };
 
 export const getStudyGroupByIdService = async (id) => {
     const { data, error } = await supabase.from('study_groups').select(SELECT_WITH_JOINS).eq('id', id).single();
     if (error) throw error;
-    return flatten(data);
+
+    const { count } = await supabase
+        .from('enrollments')
+        .select('id', { count: 'exact', head: true })
+        .eq('study_group_id', id)
+        .eq('status', 'paid');
+
+    const paidCount = count || 0;
+    const maxSeats = Number(data.max_seats) || 0;
+
+    return flatten({
+        ...data,
+        current_seats: paidCount,
+        paid_count: paidCount,
+        remaining_seats: Math.max(0, maxSeats - paidCount),
+        is_full: maxSeats > 0 && paidCount >= maxSeats,
+    });
 };
 
 export const createStudyGroupService = async (payload) => {

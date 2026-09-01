@@ -20,6 +20,7 @@ export default function CourseCard({ course, view = "grid" }) {
         >
             {/* Seats badge — top-right corner */}
             <span
+                title={`รับทั้งหมด ${course.max_seats || 0} คน • ชำระเงินแล้ว ${course.current_seats || 0} คน • เหลือ ${course.remaining_seats || 0} ที่นั่ง`}
                 className={`absolute right-4 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[13px] font-extrabold shadow-sm ring-2 ring-white ${isFull ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"
                     }`}
             >

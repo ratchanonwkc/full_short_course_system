@@ -35,16 +35,22 @@ const TABS = [
 
 function StatusBadgeRenderer({ value }) {
     const meta = STATUS_META[value] || STATUS_META.pending_payment;
-    return <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.className}`}>{meta.label}</span>;
+    return (
+        <div className="flex h-full w-full items-center justify-center">
+            <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.className}`}>{meta.label}</span>
+        </div>
+    );
 }
 
 function PaymentTypeRenderer({ value }) {
     const label = PAYMENT_TYPE_LABELS[value] || PAYMENT_TYPE_LABELS.online_transfer;
     const isCash = value === "counter_cash";
     return (
-        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${isCash ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
-            {label}
-        </span>
+        <div className="flex h-full w-full items-center justify-center">
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${isCash ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
+                {label}
+            </span>
+        </div>
     );
 }
 
@@ -143,49 +149,146 @@ export default function FinanceVerificationPage() {
     );
     const currentBatch = useMemo(() => batches.find((b) => String(b.id) === String(filterBatchId)), [batches, filterBatchId]);
 
+    const getShiftInfo = (data) => {
+        if (!data) return null;
+        const text = `${data.time_slot_code || ""} ${data.time_slot_name || ""} ${data.group_code || ""} ${data.schedule_description || ""}`;
+        if (text.includes("ค่ำ") || text.includes("ค1") || text.includes("ค2") || text.includes("17:") || text.includes("18:")) {
+            return { label: "รอบค่ำ", cls: "bg-purple-50 text-purple-700 border-purple-200" };
+        }
+        if (text.includes("บ่าย") || text.includes("บ1") || text.includes("บ2") || text.includes("13:")) {
+            return { label: "รอบบ่าย", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+        }
+        if (text.includes("เสาร์") || text.includes("อาทิตย์") || text.includes("ส-อา") || text.includes("ส.") || text.includes("อ.")) {
+            return { label: "ส-อา", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+        }
+        if (text.includes("เช้า") || text.includes("ช1") || text.includes("ช2") || text.includes("08:") || text.includes("09:")) {
+            return { label: "รอบเช้า", cls: "bg-blue-50 text-blue-700 border-blue-200" };
+        }
+        if (text.includes("พ1") || text.includes("พ2") || text.includes("พิเศษ")) {
+            return { label: "รอบพิเศษ", cls: "bg-rose-50 text-rose-700 border-rose-200" };
+        }
+        return null;
+    };
+
+    const GroupDualLineRenderer = ({ data }) => {
+        if (!data) return null;
+        const shift = getShiftInfo(data);
+        const tooltipParts = [
+            data.teacher_name && `ผู้สอน: ${data.teacher_name}`,
+            (data.room_code || data.location_name) && `ห้องเรียน: ${data.room_code || data.location_name}`,
+            data.schedule_description && `เวลา: ${data.schedule_description}`,
+        ].filter(Boolean);
+
+        return (
+            <div className="flex flex-col justify-center h-full py-1 leading-tight min-w-0" title={tooltipParts.join(" • ") || undefined}>
+                <div className="font-semibold text-slate-800 text-sm truncate">
+                    {data.group_name || data.subject_name || "-"}
+                </div>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                    {data.group_code && (
+                        <span className="font-mono text-xs text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
+                            {data.group_code}
+                        </span>
+                    )}
+                    {shift && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${shift.cls}`}>
+                            {shift.label}
+                        </span>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     const ActionsRenderer = (params) => (
-        <button
-            onClick={() => setViewing(params.data)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-blue-700 active:scale-95"
-        >
-            <Eye size={14} /> ตรวจสอบ / ยืนยัน
-        </button>
+        <div className="flex h-full w-full items-center justify-center">
+            <button
+                type="button"
+                onClick={() => setViewing(params.data)}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition active:scale-95"
+            >
+                <Eye size={13} /> ตรวจสอบ / ยืนยัน
+            </button>
+        </div>
     );
 
     const columnDefs = useMemo(
         () => [
-            { field: "applicant_name", headerName: "ผู้สมัคร", flex: 1.4, minWidth: 160 },
-            { field: "citizen_id", headerName: "เลขบัตรประชาชน", flex: 1.2, minWidth: 140, cellClass: "font-mono text-xs" },
-            { field: "group_code", headerName: "กลุ่มเรียน", flex: 1, minWidth: 120 },
-            { field: "payment_method", headerName: "ประเภทการชำระ", flex: 1, minWidth: 130, cellRenderer: PaymentTypeRenderer },
+            {
+                field: "applicant_name",
+                headerName: "ผู้สมัคร",
+                flex: 1.3,
+                minWidth: 150,
+                cellClass: "font-semibold text-slate-900 flex items-center",
+            },
+            {
+                field: "citizen_id",
+                headerName: "เลขบัตรประชาชน",
+                flex: 1.1,
+                minWidth: 130,
+                headerClass: "ag-header-cell-center",
+                cellClass: "font-mono text-xs flex items-center justify-center",
+            },
+            {
+                headerName: "กลุ่มเรียน / รายวิชา",
+                field: "group_name",
+                flex: 1.6,
+                minWidth: 190,
+                cellRenderer: GroupDualLineRenderer,
+            },
             {
                 field: "total_amount",
                 headerName: "ยอดชำระ",
                 flex: 0.8,
                 minWidth: 100,
                 type: "numericColumn",
+                headerClass: "ag-header-cell-center",
+                cellClass: "font-bold flex items-center justify-center text-slate-800",
                 valueFormatter: (p) => `${Number(p.value).toLocaleString()} บ.`,
             },
+            {
+                field: "payment_method",
+                headerName: "ประเภทการชำระ",
+                flex: 1,
+                minWidth: 130,
+                headerClass: "ag-header-cell-center",
+                cellClass: "flex items-center justify-center",
+                cellRenderer: PaymentTypeRenderer,
+            },
+
             {
                 field: "status",
                 headerName: "สถานะ",
                 flex: 1,
                 minWidth: 130,
+                headerClass: "ag-header-cell-center",
+                cellClass: "flex items-center justify-center",
                 cellRenderer: StatusBadgeRenderer,
             },
             {
                 headerName: "จัดการ",
                 pinned: "right",
-                width: 150,
+                width: 165,
                 sortable: false,
                 filter: false,
+                headerClass: "ag-header-cell-center",
+                cellClass: "flex items-center justify-center",
                 cellRenderer: ActionsRenderer,
             },
         ],
         []
     );
 
-    const defaultColDef = useMemo(() => ({ resizable: true, sortable: true, filter: true }), []);
+    const defaultColDef = useMemo(
+        () => ({
+            resizable: true,
+            sortable: true,
+            filter: true,
+            cellClass: "flex items-center text-sm text-slate-700",
+            headerClass: "font-semibold text-slate-700",
+        }),
+        []
+    );
 
     return (
         <div className="w-full flex-1 flex flex-col min-h-0 p-4 sm:p-6">
@@ -283,9 +386,8 @@ export default function FinanceVerificationPage() {
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
-                            className={`relative inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition ${
-                                isSelected ? "text-blue-600" : "text-slate-500 hover:text-slate-700"
-                            }`}
+                            className={`relative inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition ${isSelected ? "text-blue-600" : "text-slate-500 hover:text-slate-700"
+                                }`}
                         >
                             <span>{tab.label}</span>
                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs transition ${badgeCls}`}>
@@ -308,8 +410,8 @@ export default function FinanceVerificationPage() {
                     pagination
                     paginationPageSize={20}
                     domLayout="normal"
-                    headerHeight={42}
-                    rowHeight={44}
+                    headerHeight={44}
+                    rowHeight={56}
                     animateRows
                     overlayNoRowsTemplate="<span class='text-sm text-slate-400'>ไม่มีรายการในหมวดนี้</span>"
                     getRowId={(params) => String(params.data.id)}
