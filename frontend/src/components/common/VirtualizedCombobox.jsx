@@ -11,7 +11,7 @@ export default function VirtualizedCombobox({
     placeholder = "พิมพ์เพื่อค้นหา...",
     disabled = false,
     clearable = true,
-    maxResults = 50,
+    maxResults = 200,
     itemHeight = 36,
     maxHeight = 240,
     emptyText = "ไม่พบรายการ",
@@ -30,11 +30,42 @@ export default function VirtualizedCombobox({
     const filtered = useMemo(() => {
         const q = debouncedQuery.trim().toLowerCase();
         if (!q) return options;
+
+        const qNorm = q.replace(/[\s\-_./\\]+/g, "");
         const result = [];
+
         for (let i = 0; i < options.length; i++) {
-            if (options[i].label.toLowerCase().includes(q)) {
-                result.push(options[i]);
+            const opt = options[i];
+            const labelStr = String(opt.label || "").toLowerCase();
+            const codeStr = String(opt.subject_code || opt.code || "").toLowerCase();
+            const nameStr = String(opt.name_th || opt.name || "").toLowerCase();
+            const enStr = String(opt.name_en || "").toLowerCase();
+
+            // Direct substring match
+            if (
+                labelStr.includes(q) ||
+                codeStr.includes(q) ||
+                nameStr.includes(q) ||
+                enStr.includes(q)
+            ) {
+                result.push(opt);
                 if (result.length >= maxResults) break;
+                continue;
+            }
+
+            // Normalized match (ignore dashes, slashes, whitespace)
+            if (qNorm) {
+                const labelNorm = labelStr.replace(/[\s\-_./\\]+/g, "");
+                const codeNorm = codeStr.replace(/[\s\-_./\\]+/g, "");
+                const nameNorm = nameStr.replace(/[\s\-_./\\]+/g, "");
+                if (
+                    labelNorm.includes(qNorm) ||
+                    codeNorm.includes(qNorm) ||
+                    nameNorm.includes(qNorm)
+                ) {
+                    result.push(opt);
+                    if (result.length >= maxResults) break;
+                }
             }
         }
         return result;

@@ -9,15 +9,17 @@ import {
 
 export const getSubjects = async (req, res, next) => {
     try {
-        const { level_id, subject_type_id, major_id, minor_id, search, page, pageSize } = req.query;
+        const { level_id, subject_type_id, major_id, minor_id, department_id, search, page, pageSize, all } = req.query;
         const result = await getAllSubjectsService({
             levelId: level_id,
             subjectTypeId: subject_type_id,
             majorId: major_id,
             minorId: minor_id,
+            departmentId: department_id,
             search,
             page: page || 1,
             pageSize: pageSize || 20,
+            all: all === 'true' || all === true,
         });
         res.json(result);
     } catch (error) {

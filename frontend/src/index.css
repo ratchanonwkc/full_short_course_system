@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'TH Sarabun PSK';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/fonts/THSARABUN.TTF') format('truetype'),
+       local('TH Sarabun PSK'),
+       local('TH Sarabun New');
+}
+
+@font-face {
+  font-family: 'TH Sarabun PSK';
+  font-style: normal;
+  font-weight: 700;
+  src: url('/fonts/THSARABUN BOLD.TTF') format('truetype'),
+       local('TH Sarabun PSK Bold'),
+       local('TH Sarabun New Bold');
+}
+
 @theme {
   /* กำหนดโทนสีน้ำเงิน/กรมท่าทางการสำหรับสถาบัน (Institutional Navy / Blue Theme) */
   --color-primary-50: #f0f7ff;
@@ -67,6 +85,23 @@ button,
 textarea,
 select {
   cursor: pointer;
+}
+
+/* Ensure AG-Grid cells and headers align vertically centered */
+.ag-theme-quartz .ag-cell,
+.ag-cell {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.ag-cell.text-center,
+.ag-cell.justify-center {
+  justify-content: center !important;
+}
+
+.ag-cell.text-right,
+.ag-cell.justify-end {
+  justify-content: flex-end !important;
 }
 
 /* Ensure AG-Grid headers with center class align label contents to center */

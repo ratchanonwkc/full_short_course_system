@@ -3,7 +3,7 @@ import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 import { useReactToPrint } from "react-to-print";
 import Swal from "sweetalert2";
-import { Users, UserPlus, IdCard, X, Search, Eye, BadgeCheck, UserCheck, AlertCircle, GraduationCap, Printer } from "lucide-react";
+import { Users, UserPlus, IdCard, X, Search, Eye, BadgeCheck, UserCheck, AlertCircle, GraduationCap, Printer, RotateCw } from "lucide-react";
 import Combobox from "../../../components/common/Combobox";
 import SummaryCard from "../../../components/common/SummaryCard";
 import { getStudyGroups, getBlankPrintTemplate } from "../../study-groups/services/studyGroupApi";
@@ -13,6 +13,7 @@ import ApplicantFormFields, { EMPTY_APPLICANT } from "../../public/components/Ap
 import ApplicantDetailDrawer from "../components/ApplicantDetailDrawer";
 import ApplicationFormPrint from "../../../components/print/ApplicationFormPrint";
 import { findActiveBatch, isBatchActive } from "../../../utils/activeBatch";
+import { supabase } from "../../../config/supabaseClient";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -102,8 +103,9 @@ export default function RegistrarEnrollmentsPage() {
 
     // ── Load study groups for the selected batch ────────────────────────────
     useEffect(() => {
-        if (!selectedBatchId) {
-            setGroups([]);
+        if (!selectedBatchId || selectedBatchId === "all") {
+            getStudyGroups({}).then(setGroups).catch(() => setGroups([]));
+            setSelectedGroupId("");
             return;
         }
         getStudyGroups({ batch_id: selectedBatchId }).then(setGroups).catch(() => setGroups([]));
@@ -111,12 +113,14 @@ export default function RegistrarEnrollmentsPage() {
     }, [selectedBatchId]);
 
     const loadEnrollments = useCallback(async () => {
-        if (!selectedBatchId) return;
         setLoading(true);
         try {
-            const params = selectedGroupId
-                ? { study_group_id: selectedGroupId }
-                : { batch_id: selectedBatchId };
+            const params = {};
+            if (selectedGroupId) {
+                params.study_group_id = selectedGroupId;
+            } else if (selectedBatchId && selectedBatchId !== "all") {
+                params.batch_id = selectedBatchId;
+            }
             const data = await getEnrollments(params);
             setEnrollments(Array.isArray(data) ? data : []);
         } finally {
@@ -126,6 +130,31 @@ export default function RegistrarEnrollmentsPage() {
 
     useEffect(() => {
         loadEnrollments();
+    }, [loadEnrollments]);
+
+    // ── Supabase Realtime Subscription ──────────────────────────────────────
+    useEffect(() => {
+        const channel = supabase
+            .channel("registrar-enrollments-realtime")
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "enrollments" },
+                () => {
+                    loadEnrollments();
+                }
+            )
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "applicants" },
+                () => {
+                    loadEnrollments();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [loadEnrollments]);
 
     // ── Computed Statistics for Summary Cards ───────────────────────────────
@@ -139,11 +168,13 @@ export default function RegistrarEnrollmentsPage() {
     }, [enrollments]);
 
     const batchOptions = useMemo(
-        () =>
-            batches.map((b) => ({
-                value: b.id,
-                label: isBatchActive(b) ? `${b.batch_name} (รุ่นปัจจุบัน)` : b.batch_name,
+        () => [
+            { value: "all", label: "ทุกรุ่นการศึกษา (All Batches)" },
+            ...batches.map((b) => ({
+                value: String(b.id),
+                label: isBatchActive(b) ? `${b.batch_name} (รุ่นปัจจุบัน / เปิดรับ)` : b.batch_name,
             })),
+        ],
         [batches]
     );
     const groupOptions = useMemo(
@@ -422,58 +453,71 @@ export default function RegistrarEnrollmentsPage() {
             </div>
 
             {/* Global filter bar */}
-            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 shrink-0">
-                <div>
-                    <label className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-400">
-                        รุ่นการเรียน
-                        {currentBatch && isBatchActive(currentBatch) && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                                <BadgeCheck size={10} /> รุ่นปัจจุบัน
-                            </span>
-                        )}
-                    </label>
-                    <Combobox
-                        value={selectedBatchId}
-                        onChange={setSelectedBatchId}
-                        options={batchOptions}
-                        placeholder="เลือกรุ่นการเรียน..."
-                    />
-                </div>
-                <div>
-                    <label className="mb-1 block text-xs font-bold text-slate-400">กลุ่มเรียน</label>
-                    <Combobox
-                        value={selectedGroupId}
-                        onChange={setSelectedGroupId}
-                        options={groupOptions}
-                        placeholder="ทุกกลุ่มเรียนในรุ่นนี้"
-                        disabled={!selectedBatchId}
-                    />
-                </div>
-                <div>
-                    <label className="mb-1 block text-xs font-bold text-slate-400">ค้นหา</label>
-                    <div className="relative">
-                        <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="ชื่อ, เบอร์โทร, อีเมล, เลขบัตร..."
-                            className="w-full rounded-lg border border-slate-300 py-2 pl-8 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3 shrink-0">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 flex-1">
+                    <div>
+                        <label className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                            รุ่นการเรียน
+                            {currentBatch && isBatchActive(currentBatch) && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                                    <BadgeCheck size={10} /> รุ่นปัจจุบัน
+                                </span>
+                            )}
+                        </label>
+                        <Combobox
+                            value={selectedBatchId}
+                            onChange={setSelectedBatchId}
+                            options={batchOptions}
+                            placeholder="เลือกรุ่นการเรียน..."
                         />
                     </div>
+                    <div>
+                        <label className="mb-1 block text-xs font-bold text-slate-400">กลุ่มเรียน</label>
+                        <Combobox
+                            value={selectedGroupId}
+                            onChange={setSelectedGroupId}
+                            options={groupOptions}
+                            placeholder="ทุกกลุ่มเรียนในรุ่นนี้"
+                            disabled={!selectedBatchId}
+                        />
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-xs font-bold text-slate-400">ค้นหา</label>
+                        <div className="relative">
+                            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="ชื่อ, เบอร์โทร, อีเมล, เลขบัตร..."
+                                className="w-full rounded-lg border border-slate-300 py-2 pl-8 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-xs font-bold text-slate-400">สถานะ</label>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+                        >
+                            {STATUS_FILTERS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label className="mb-1 block text-xs font-bold text-slate-400">สถานะ</label>
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
-                    >
-                        {STATUS_FILTERS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                    </select>
-                </div>
+
+                <button
+                    type="button"
+                    onClick={loadEnrollments}
+                    disabled={loading}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-blue-600 active:scale-95 disabled:opacity-50"
+                    title="รีเฟรชข้อมูลล่าสุด"
+                >
+                    <RotateCw size={15} className={`${loading ? "animate-spin text-blue-600" : "text-slate-500"}`} />
+                    รีเฟรช
+                </button>
             </div>
 
             {currentGroup && (

@@ -216,7 +216,7 @@ export default function StudyGroupsPage() {
         setRefLoading(true);
         const [majorsRes, subjectsRes, teachersRes, locationsRes, timeSlotsRes] = await Promise.allSettled([
             getMajors(),
-            getSubjects({ pageSize: 1000 }),
+            getSubjects({ all: true, pageSize: 5000 }),
             getTeachers({ status: "active" }),
             getLocations(),
             getTimeSlots(),
@@ -376,6 +376,7 @@ export default function StudyGroupsPage() {
             batchId={selectedBatchId}
             batch={batch}
             initialData={editingGroup}
+            existingGroups={groups}
             onSaved={handleSaved}
             onCancelEdit={handleCancelEdit}
             majors={majors}

@@ -36,8 +36,19 @@ export default function ApplicantFormFields({
     };
 
     const handleAddressField = (scope) => (field) => (e) => {
-        const key = scope === "registered" ? field : `current_${field}`;
-        setFormData((prev) => ({ ...prev, [key]: e.target.value }));
+        const val = e.target.value;
+        setFormData((prev) => {
+            const next = { ...prev };
+            if (scope === "registered") {
+                next[field] = val;
+                if (prev.is_same_address) {
+                    next[`current_${field}`] = val;
+                }
+            } else {
+                next[`current_${field}`] = val;
+            }
+            return next;
+        });
     };
 
     const handleCitizenIdInput = async (cid) => {
@@ -385,7 +396,11 @@ export default function ApplicantFormFields({
                         province={formData.province || ""}
                         postalCode={formData.postal_code || ""}
                         onChangeField={(field, val) =>
-                            setFormData((prev) => ({ ...prev, [field]: val }))
+                            setFormData((prev) => ({
+                                ...prev,
+                                [field]: val,
+                                ...(prev.is_same_address ? { [`current_${field}`]: val } : {}),
+                            }))
                         }
                         onSelectAddress={(addr) =>
                             setFormData((prev) => ({
@@ -394,6 +409,14 @@ export default function ApplicantFormFields({
                                 district: addr.district,
                                 province: addr.province,
                                 postal_code: addr.postal_code,
+                                ...(prev.is_same_address
+                                    ? {
+                                          current_subdistrict: addr.subdistrict,
+                                          current_district: addr.district,
+                                          current_province: addr.province,
+                                          current_postal_code: addr.postal_code,
+                                      }
+                                    : {}),
                             }))
                         }
                         nextFocusSelector="#registered_house_no"

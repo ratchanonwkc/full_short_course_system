@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen, Layers, Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import { formatCompactSchedule } from "../../../utils/groupCode";
 
 /**
  * Carousel — แสดงวิชาเปิดสอน (status='open') แบบสไลด์อัตโนมัติ พร้อม fluid transition
- * props: courses: Array<mapped study_group>
+ * รองรับ 24h time format, study days, multi-subject tag, และ paid-only seat capacity.
  */
 export default function Carousel({ courses = [] }) {
     const [index, setIndex] = useState(0);
@@ -27,27 +28,56 @@ export default function Carousel({ courses = [] }) {
                 className="flex transition-transform duration-500 ease-out"
                 style={{ transform: `translateX(-${index * 100}%)` }}
             >
-                {courses.map((course) => (
-                    <div
-                        key={course.id}
-                        className="flex w-full shrink-0 flex-col items-center gap-3 bg-gradient-to-br from-blue-600 to-blue-800 px-6 py-10 text-center text-white sm:px-12"
-                    >
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
-                            <BookOpen size={13} /> วิชาเปิดรับสมัคร
-                        </span>
-                        <h3 className="text-xl font-extrabold sm:text-2xl">{course.group_name}</h3>
-                        <p className="text-sm text-blue-100">
-                            {course.schedule_description || `${course.total_hours} ชั่วโมง`} •{" "}
-                            {course.is_free ? "ไม่มีค่าใช้จ่าย" : `${course.fee.toLocaleString()} บาท`}
-                        </p>
-                        <Link
-                            to={`/register/${course.id}`}
-                            className="mt-2 rounded-lg bg-white px-5 py-2 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-50"
+                {courses.map((course) => {
+                    const paidCount = course.paid_count ?? course.current_seats ?? 0;
+                    const maxSeats = course.max_seats || 0;
+                    const remainingSeats = Math.max(0, maxSeats - paidCount);
+                    const isFull = maxSeats > 0 && paidCount >= maxSeats;
+                    const isMultiSubject = Array.isArray(course.subjects) && course.subjects.length > 1;
+                    const displayName = (course.subject_name || course.subjects?.[0]?.name_th || course.group_name || "").replace(/\s*\[.*?\]|\s*\(.*?\)/g, "").trim() || course.group_name;
+                    const scheduleLine = formatCompactSchedule(course);
+
+                    return (
+                        <div
+                            key={course.id}
+                            className="flex w-full shrink-0 flex-col items-center gap-3 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 px-6 py-10 text-center text-white sm:px-12"
                         >
-                            สมัครเรียนวิชานี้
-                        </Link>
-                    </div>
-                ))}
+                            <div className="flex flex-wrap items-center justify-center gap-2">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
+                                    <BookOpen size={13} /> {course.major_name || "วิชาเปิดรับสมัคร"}
+                                </span>
+                                {isMultiSubject && (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-400/30 px-2.5 py-0.5 text-xs font-semibold">
+                                        <Layers size={12} /> ชุดวิชา ({course.subjects.length} วิชา)
+                                    </span>
+                                )}
+                                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${isFull ? "bg-red-500/80" : "bg-emerald-500/80"}`}>
+                                    <Users size={12} /> {isFull ? "ที่นั่งเต็ม" : `ว่าง ${remainingSeats} ที่`}
+                                </span>
+                            </div>
+
+                            <h3 className="text-xl font-extrabold sm:text-2xl">{displayName}</h3>
+
+                            <p className="text-sm text-blue-100 max-w-xl">
+                                {scheduleLine} •{" "}
+                                {course.is_free ? "เรียนฟรี" : `${Number(course.fee || 0).toLocaleString()} บาท`}
+                            </p>
+
+                            <Link
+                                to={isFull ? "#" : `/register/${course.id}`}
+                                aria-disabled={isFull}
+                                onClick={(e) => isFull && e.preventDefault()}
+                                className={`mt-2 rounded-xl px-6 py-2.5 text-sm font-bold shadow-sm transition ${
+                                    isFull
+                                        ? "cursor-not-allowed bg-white/30 text-white/60"
+                                        : "bg-white text-blue-700 hover:bg-blue-50 active:scale-[0.98]"
+                                }`}
+                            >
+                                {isFull ? "ที่นั่งเต็มแล้ว" : "สมัครเรียนวิชานี้"}
+                            </Link>
+                        </div>
+                    );
+                })}
             </div>
 
             {count > 1 && (

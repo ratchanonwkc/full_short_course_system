@@ -45,13 +45,94 @@ export function currentBeYear2Digit() {
     return String(beYear).slice(-2);
 }
 
+export const ALL_STUDY_DAYS = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"];
+export const WEEKDAYS = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์"];
+export const WEEKENDS = ["เสาร์", "อาทิตย์"];
+
 /**
- * ข้อความ Default ของ "รูปแบบวันเรียน" จาก time_slot ที่เลือก
- * เช่น time_range = "09:00 - 12:00" -> "เรียนวันจันทร์ - ศุกร์ เวลา 09:00 - 12:00 น."
+ * แปลง array วันเรียนให้อ่านเข้าใจง่าย เช่น: "จันทร์ - ศุกร์", "เสาร์ - อาทิตย์"
  */
-export function buildScheduleDescription({ timeRange }) {
-    if (!timeRange) return "";
-    return `เรียนวันจันทร์ - ศุกร์ เวลา ${timeRange} น.`;
+export function formatStudyDaysOnly(studyDays) {
+    const days = Array.isArray(studyDays) ? studyDays : [];
+    if (days.length === 0) return "";
+    if (days.length === 7) return "ทุกวัน (จันทร์ - อาทิตย์)";
+    if (days.length === 5 && WEEKDAYS.every((d) => days.includes(d))) return "จันทร์ - ศุกร์";
+    if (days.length === 2 && WEEKENDS.every((d) => days.includes(d))) return "เสาร์ - อาทิตย์";
+    return days.join(", ");
+}
+
+/**
+ * รวมวันเรียน, เวลา 24 ชม., และจำนวนชั่วโมงเป็นบรรทัดเดียว ป้องกันข้อความซ้ำซ้อน
+ * เช่น: "จันทร์ - ศุกร์ • 09:00 - 12:00 น. (150 ชม.)"
+ */
+export function formatCompactSchedule(course) {
+    if (!course) return "";
+
+    // 1. วันเรียน
+    let days = "";
+    if (Array.isArray(course.study_days) && course.study_days.length > 0) {
+        days = formatStudyDaysOnly(course.study_days);
+    } else if (course.schedule_description) {
+        const cleaned = course.schedule_description.replace(/เวลา.*$/, "").replace(/^เรียน(วัน)?/, "").replace(/^วัน/, "").trim();
+        days = cleaned || "จันทร์ - ศุกร์";
+    } else {
+        days = "จันทร์ - ศุกร์";
+    }
+
+    // 2. เวลาเรียน 24 ชม.
+    let time = "";
+    if (course.custom_start_time && course.custom_end_time) {
+        const format24 = (t) => {
+            const p = String(t).split(":");
+            return `${p[0].padStart(2, "0")}:${(p[1] || "00").padStart(2, "0")}`;
+        };
+        time = `${format24(course.custom_start_time)} - ${format24(course.custom_end_time)} น.`;
+    } else if (course.time_range) {
+        time = course.time_range.includes("น.") ? course.time_range : `${course.time_range} น.`;
+    }
+
+    // 3. ชั่วโมง
+    const hours = course.total_hours ? `(${course.total_hours} ชม.)` : "";
+
+    const parts = [days, time, hours].filter(Boolean);
+    return parts.join(" • ");
+}
+
+/**
+ * จัดรูปแบบข้อความ "รูปแบบวันเรียน" จาก studyDays, startTime, endTime หรือ timeRange
+ * เช่น: "เรียนวันจันทร์ - ศุกร์ เวลา 09:00 - 11:00 น."
+ */
+export function buildScheduleDescription({ studyDays = [], startTime = "", endTime = "", timeRange = "" } = {}) {
+    let dayText = "";
+
+    const days = Array.isArray(studyDays) ? studyDays : [];
+    if (days.length === 7) {
+        dayText = "เรียนทุกวัน";
+    } else if (
+        days.length === 5 &&
+        WEEKDAYS.every((d) => days.includes(d))
+    ) {
+        dayText = "เรียนวันจันทร์ - ศุกร์";
+    } else if (
+        days.length === 2 &&
+        WEEKENDS.every((d) => days.includes(d))
+    ) {
+        dayText = "เรียนวันเสาร์ - อาทิตย์";
+    } else if (days.length > 0) {
+        dayText = `เรียนวัน${days.join(", ")}`;
+    } else {
+        dayText = "เรียนวันจันทร์ - ศุกร์";
+    }
+
+    let timeText = "";
+    if (startTime && endTime) {
+        timeText = `เวลา ${startTime} - ${endTime} น.`;
+    } else if (timeRange) {
+        timeText = timeRange.includes("น.") ? `เวลา ${timeRange}` : `เวลา ${timeRange} น.`;
+    }
+
+    if (!timeText) return dayText;
+    return `${dayText} ${timeText}`.trim();
 }
 
 const TIME_CODE_DAY_LABEL = {
@@ -62,18 +143,18 @@ const TIME_CODE_DAY_LABEL = {
 };
 
 /**
- * ชื่อกลุ่มเรียนอัตโนมัติ (สูตรใหม่):
- * "{ชื่อวิชา} [{ประเภทกลุ่ม}] - {schedule_description} (รอบ {time_code}/{group_no})"
+ * ชื่อกลุ่มเรียนอัตโนมัติ (สูตรมาตรฐานอาชีวศึกษา):
+ * "[ชื่อวิชา] [ประเภท] (รอบ [รหัสย่อรอบ]/[กลุ่มที่] [ชื่อรอบเต็ม])"
+ * เช่น: "อาหารไทย [ปกติ] (รอบ ช/1 เช้า)", "ศิลปะการชงกาแฟสด [พิเศษ] (รอบ พ/1 เช้า-บ่าย)"
  */
-export function buildGroupName({ subjectName, groupType, scheduleDescription, timeCode, groupNo }) {
+export function buildGroupName({ subjectName, groupType, timeCode, groupNo, }) {
     const parts = [];
-    if (subjectName) parts.push(subjectName);
+    if (subjectName) parts.push(subjectName.trim());
     if (groupType && GROUP_TYPE_LABELS[groupType]) parts.push(`[${GROUP_TYPE_LABELS[groupType]}]`);
-    if (scheduleDescription) parts.push(`- ${scheduleDescription}`);
 
-    const dayLabel = TIME_CODE_DAY_LABEL[timeCode] || "";
     if (timeCode || groupNo) {
-        parts.push(`(รอบ ${timeCode || "?"}/${groupNo || "?"})`);
+        const roundText = `รอบ ${timeCode || "?"}/${groupNo || "?"}`;
+        parts.push(`(${roundText})`);
     }
 
     return parts.join(" ").trim();

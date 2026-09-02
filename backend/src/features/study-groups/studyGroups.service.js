@@ -58,6 +58,13 @@ const flatten = (row) => {
 
     return {
         ...row,
+        application_fee: row.application_fee !== undefined && row.application_fee !== null ? Number(row.application_fee) : 10,
+        tuition_rate_per_hour: row.tuition_rate_per_hour !== undefined && row.tuition_rate_per_hour !== null ? Number(row.tuition_rate_per_hour) : 1,
+        air_con_rate_per_hour: row.air_con_rate_per_hour !== undefined && row.air_con_rate_per_hour !== null ? Number(row.air_con_rate_per_hour) : 5,
+        is_waived_fee: Boolean(row.is_waived_fee || row.is_free_tuition),
+        study_days: Array.isArray(row.study_days) ? row.study_days : (typeof row.study_days === 'string' ? row.study_days.split(',').map((s) => s.trim()).filter(Boolean) : []),
+        custom_start_time: row.custom_start_time || '',
+        custom_end_time: row.custom_end_time || '',
         major_name: major?.name_th || '',
         major_short_name_th: major?.short_name_th || '',
         major_full_code: major?.full_major_code || '',
@@ -195,14 +202,15 @@ export const getNextRoomSequenceService = async (departmentPrefix) => {
 };
 
 /**
- * ใช้สำหรับปุ่ม Auto Fill -> คำนวณ "ลำดับ 3 หลัก" ของ moe_code (เลข ศธ.) ถัดไป
+ * คำนวณ "ลำดับ 3 หลัก" ของ moe_code (เลข ศธ.) ถัดไป
  * ภายใต้ ปี พ.ศ. (2 หลัก) + รหัสแผนก เดียวกัน โดยอ่านจาก study_group_subjects.moe_code
  * รูปแบบ moe_code: {ปี 2 หลัก}{รหัสแผนก}{ลำดับ 3 หลัก}
  */
 export const getNextMoeSequenceService = async (yearPrefix, departmentId) => {
     if (!yearPrefix || !departmentId) return { sequence: '001' };
 
-    const prefix = `${yearPrefix}${departmentId}`;
+    const year2 = String(yearPrefix).slice(-2);
+    const prefix = `${year2}${departmentId}`;
 
     const { data, error } = await supabase
         .from('study_group_subjects')
@@ -211,15 +219,18 @@ export const getNextMoeSequenceService = async (yearPrefix, departmentId) => {
 
     if (error) throw error;
 
-    const used = (data || [])
+    const sequences = (data || [])
         .map((row) => {
-            const tail = (row.moe_code || '').slice(prefix.length);
+            const raw = (row.moe_code || '').trim();
+            if (!raw.startsWith(prefix)) return null;
+            const tail = raw.slice(prefix.length);
             const n = parseInt(tail, 10);
             return Number.isNaN(n) ? null : n;
         })
         .filter((n) => n !== null);
 
-    const nextN = used.length ? Math.max(...used) + 1 : 1;
+    const maxSeq = sequences.length > 0 ? Math.max(...sequences) : 0;
+    const nextN = maxSeq + 1;
     if (nextN > 999) {
         return { sequence: null, message: 'ลำดับเลข ศธ. ในแผนกนี้/ปีนี้เต็ม (001-999) กรุณาตรวจสอบข้อมูล' };
     }
@@ -227,19 +238,63 @@ export const getNextMoeSequenceService = async (yearPrefix, departmentId) => {
 };
 
 /**
- * เรียก PostgreSQL RPC function 'generate_next_moe_code'
- * เพื่อสร้างเลข ศธ. 9 หลักที่ไม่ซ้ำกันสำหรับรายวิชาย่อยในกลุ่มเรียน
+ * Intelligent Next-Code Generator สำหรับเลข ศธ. 9 หลัก
+ * รูปแบบ: [ปี พ.ศ. 2 หลัก][รหัสแผนก][ลำดับ 3 หลัก] (เช่น 691041001)
+ * ดึงรหัสที่มีอยู่ทั้งหมดในฐานข้อมูล แล้วหา sequence สูงสุด (Max) + 1 เพื่อรองรับทั้ง Manual Override และ Migration
  */
 export const generateNextMoeCodeService = async (academicYear, majorId) => {
     if (!academicYear || !majorId) {
         throw new Error('academicYear and majorId are required');
     }
-    const { data, error } = await supabase.rpc('generate_next_moe_code', {
-        p_academic_year: String(academicYear),
-        p_major_id: Number(majorId),
-    });
-    if (error) throw error;
-    return data;
+
+    try {
+        const year2 = String(academicYear).slice(-2);
+
+        // 1. ดึงข้อมูลแผนกวิชาเพื่อนำ full_major_code มาเป็น prefix
+        const { data: major, error: majorErr } = await supabase
+            .from('academic_majors')
+            .select('id, full_major_code, department_id, level_id, subject_type_id')
+            .eq('id', majorId)
+            .maybeSingle();
+
+        if (majorErr) throw majorErr;
+
+        const deptCode = major?.full_major_code || `${major?.level_id || '1'}${major?.subject_type_id || '1'}${major?.department_id || '01'}`;
+        const prefix = `${year2}${deptCode}`;
+
+        // 2. ดึงรายการ moe_code ทั้งหมดที่ขึ้นต้นด้วย prefix เดียวกันใน study_group_subjects
+        const { data: existing, error: codeErr } = await supabase
+            .from('study_group_subjects')
+            .select('moe_code')
+            .like('moe_code', `${prefix}%`);
+
+        if (codeErr) throw codeErr;
+
+        // 3. แยกเฉพาะตัวเลขลำดับ 3 หลักท้าย แล้วหาค่าสูงสุด (Max Sequence)
+        const sequences = (existing || [])
+            .map((row) => {
+                const raw = (row.moe_code || '').trim();
+                if (!raw.startsWith(prefix)) return null;
+                const tail = raw.slice(prefix.length);
+                const n = parseInt(tail, 10);
+                return Number.isNaN(n) ? null : n;
+            })
+            .filter((n) => n !== null);
+
+        const maxSeq = sequences.length > 0 ? Math.max(...sequences) : 0;
+        const nextSeq = maxSeq + 1;
+
+        return `${prefix}${String(nextSeq).padStart(3, '0')}`;
+    } catch (err) {
+        console.warn('generateNextMoeCodeService direct query failed, trying RPC fallback:', err.message);
+        // Fallback to RPC if available
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('generate_next_moe_code', {
+            p_academic_year: String(academicYear),
+            p_major_id: Number(majorId),
+        });
+        if (rpcErr) throw rpcErr;
+        return rpcData;
+    }
 };
 
 /**

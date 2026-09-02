@@ -25,7 +25,7 @@ export default function SplitPanelLayout({ grid, form, isFormOpen = true, onClos
 
             {/* ฝั่งขวา: Form Panel (desktop เต็มความสูง, ติดหน้าจอเสมอ) */}
             <div className="hidden lg:block lg:basis-[38%] lg:min-h-0 h-full">
-                <div className="h-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div className="h-full min-h-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm flex flex-col">
                     {form}
                 </div>
             </div>
@@ -52,7 +52,7 @@ export default function SplitPanelLayout({ grid, form, isFormOpen = true, onClos
                                     leaveFrom="translate-x-0" leaveTo="translate-x-full"
                                 >
                                     <Dialog.Panel className="pointer-events-auto flex h-full w-screen max-w-md flex-col bg-white shadow-xl">
-                                        <div className="flex items-center justify-end border-b border-slate-100 px-4 py-2 lg:hidden">
+                                        <div className="flex items-center justify-end border-b border-slate-100 px-4 py-2 lg:hidden flex-shrink-0">
                                             <button
                                                 type="button"
                                                 onClick={onCloseForm}
@@ -61,7 +61,7 @@ export default function SplitPanelLayout({ grid, form, isFormOpen = true, onClos
                                                 <X size={18} />
                                             </button>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto">{form}</div>
+                                        <div className="flex-1 min-h-0 overflow-hidden">{form}</div>
                                     </Dialog.Panel>
                                 </Transition.Child>
                             </div>

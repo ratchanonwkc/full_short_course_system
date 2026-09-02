@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
-import { Wallet, Eye, BadgeCheck, Clock, CheckCircle2, AlertCircle, Banknote } from "lucide-react";
+import { Wallet, Eye, BadgeCheck, Clock, CheckCircle2, AlertCircle, Banknote, RotateCw } from "lucide-react";
 import Combobox from "../../../components/common/Combobox";
 import SummaryCard from "../../../components/common/SummaryCard";
 import { getEnrollments } from "../../enrollments/services/enrollmentApi";
@@ -9,6 +9,7 @@ import { getBatches } from "../../batches/services/batchApi";
 import { getStudyGroups } from "../../study-groups/services/studyGroupApi";
 import FinanceVerificationModal from "../components/FinanceVerificationModal";
 import { findActiveBatch, isBatchActive } from "../../../utils/activeBatch";
+import { supabase } from "../../../config/supabaseClient";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -82,8 +83,8 @@ export default function FinanceVerificationPage() {
     }, []);
 
     useEffect(() => {
-        if (!filterBatchId) {
-            setGroups([]);
+        if (!filterBatchId || filterBatchId === "all") {
+            getStudyGroups({}).then(setGroups).catch(() => setGroups([]));
             setFilterGroupId("");
             return;
         }
@@ -95,8 +96,11 @@ export default function FinanceVerificationPage() {
         setLoading(true);
         try {
             const params = {};
-            if (filterGroupId) params.study_group_id = filterGroupId;
-            else if (filterBatchId) params.batch_id = filterBatchId;
+            if (filterGroupId) {
+                params.study_group_id = filterGroupId;
+            } else if (filterBatchId && filterBatchId !== "all") {
+                params.batch_id = filterBatchId;
+            }
 
             const data = await getEnrollments(params);
             setAllEnrollments(Array.isArray(data) ? data : []);
@@ -109,6 +113,31 @@ export default function FinanceVerificationPage() {
 
     useEffect(() => {
         load();
+    }, [load]);
+
+    // ── Supabase Realtime Subscription ──────────────────────────────────────
+    useEffect(() => {
+        const channel = supabase
+            .channel("finance-verification-realtime")
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "enrollments" },
+                () => {
+                    load();
+                }
+            )
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "applicants" },
+                () => {
+                    load();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [load]);
 
     // ── Computed Metrics & Stats for Summary Cards ──────────────────────────
@@ -140,7 +169,13 @@ export default function FinanceVerificationPage() {
     }, [allEnrollments, activeTab]);
 
     const batchOptions = useMemo(
-        () => batches.map((b) => ({ value: b.id, label: isBatchActive(b) ? `${b.batch_name} (รุ่นปัจจุบัน)` : b.batch_name })),
+        () => [
+            { value: "all", label: "ทุกรุ่นการศึกษา (All Batches)" },
+            ...batches.map((b) => ({
+                value: String(b.id),
+                label: isBatchActive(b) ? `${b.batch_name} (รุ่นปัจจุบัน / เปิดรับ)` : b.batch_name,
+            })),
+        ],
         [batches]
     );
     const groupOptions = useMemo(
@@ -341,29 +376,42 @@ export default function FinanceVerificationPage() {
                 />
             </div>
 
-            {/* Quick filters */}
-            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-[36rem] lg:grid-cols-2 shrink-0">
-                <div>
-                    <label className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-400">
-                        รุ่นการเรียน
-                        {currentBatch && isBatchActive(currentBatch) && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                                <BadgeCheck size={10} /> รุ่นปัจจุบัน
-                            </span>
-                        )}
-                    </label>
-                    <Combobox value={filterBatchId} onChange={setFilterBatchId} options={batchOptions} placeholder="ทุกรุ่นการเรียน" />
+            {/* Quick filters & Refresh Button */}
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3 shrink-0">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-[36rem] lg:grid-cols-2">
+                    <div>
+                        <label className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                            รุ่นการเรียน
+                            {currentBatch && isBatchActive(currentBatch) && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                                    <BadgeCheck size={10} /> รุ่นปัจจุบัน
+                                </span>
+                            )}
+                        </label>
+                        <Combobox value={filterBatchId} onChange={setFilterBatchId} options={batchOptions} placeholder="ทุกรุ่นการเรียน" />
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-xs font-bold text-slate-400">กลุ่มเรียน</label>
+                        <Combobox
+                            value={filterGroupId}
+                            onChange={setFilterGroupId}
+                            options={groupOptions}
+                            placeholder="ทุกกลุ่มเรียน"
+                            disabled={!filterBatchId}
+                        />
+                    </div>
                 </div>
-                <div>
-                    <label className="mb-1 block text-xs font-bold text-slate-400">กลุ่มเรียน</label>
-                    <Combobox
-                        value={filterGroupId}
-                        onChange={setFilterGroupId}
-                        options={groupOptions}
-                        placeholder="ทุกกลุ่มเรียน"
-                        disabled={!filterBatchId}
-                    />
-                </div>
+
+                <button
+                    type="button"
+                    onClick={load}
+                    disabled={loading}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-blue-600 active:scale-95 disabled:opacity-50"
+                    title="รีเฟรชข้อมูลล่าสุด"
+                >
+                    <RotateCw size={15} className={`${loading ? "animate-spin text-blue-600" : "text-slate-500"}`} />
+                    รีเฟรช
+                </button>
             </div>
 
             {/* Tabs */}

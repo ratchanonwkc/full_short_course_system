@@ -159,6 +159,10 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
             []
         );
 
+        const groupTuitionRate = Number(contextData.tuition_rate_per_hour ?? groupData?.tuition_rate_per_hour ?? 1);
+        const groupAppRate = Number(contextData.application_rate_per_subject ?? groupData?.application_rate_per_subject ?? 10);
+        const groupAirRate = Number(contextData.air_con_rate_per_hour ?? groupData?.air_con_rate_per_hour ?? 5);
+
         if (Array.isArray(list) && list.length > 0) {
             return list.map((item) => {
                 const subObj = item.subjects || item;
@@ -170,9 +174,13 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
                     ? Boolean(item.is_waived_fee)
                     : isGroupWaived;
 
-                const tuition = isWaived ? null : hours * 1;
-                const regFee = isWaived ? null : 10;
-                const acFee = isWaived ? null : (isAc ? hours * 5 : 0);
+                const itemTuitionRate = Number(item.tuition_rate_per_hour ?? groupTuitionRate);
+                const itemAppFee = Number(item.application_fee ?? item.application_rate_per_subject ?? groupAppRate);
+                const itemAirRate = Number(item.air_con_rate_per_hour ?? groupAirRate);
+
+                const tuition = isWaived ? null : (item.tuition_fee !== undefined && item.tuition_fee !== null ? Number(item.tuition_fee) : hours * itemTuitionRate);
+                const regFee = isWaived ? null : itemAppFee;
+                const acFee = isWaived ? null : (isAc ? hours * itemAirRate : 0);
                 const total = isWaived ? null : ((tuition || 0) + (regFee || 0) + (acFee || 0));
 
                 return {
@@ -197,9 +205,10 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
             const hours = Number(contextData.total_hours || 0);
             const isAc = isAcMaintenanceFee;
             const isWaived = isGroupWaived;
-            const tuition = isWaived ? null : hours * 1;
-            const regFee = isWaived ? null : 10;
-            const acFee = isWaived ? null : (isAc ? hours * 5 : 0);
+            const singleAppFee = Number(contextData.application_fee ?? groupAppRate);
+            const tuition = isWaived ? null : (contextData.tuition_fee !== undefined && contextData.tuition_fee !== null ? Number(contextData.tuition_fee) : hours * groupTuitionRate);
+            const regFee = isWaived ? null : singleAppFee;
+            const acFee = isWaived ? null : (isAc ? hours * groupAirRate : 0);
             const total = isWaived ? null : ((tuition || 0) + (regFee || 0) + (acFee || 0));
 
             return [{

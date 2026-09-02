@@ -32,6 +32,7 @@ const attachLookupNames = async (rows) => {
 
     return rows.map((r) => ({
         ...r,
+        department_id: majorMap[String(r.major_id)]?.department_id || null,
         level_name: levelMap[String(r.level_id)]?.level_name || '',
         curriculum_name: curriculumMap[String(r.curriculum_id)]?.curriculum_name || '',
         subject_type_name: typeMap[String(r.subject_type_id)]?.name_th || '',
@@ -40,32 +41,81 @@ const attachLookupNames = async (rows) => {
     }));
 };
 
-// ดึงรายวิชาแบบมี Filter + Search + Pagination
+// ดึงรายวิชาแบบมี Filter + Search + Pagination (รองรับ chunked fetch ทะลุลิมิต 1,000 แถวของ Supabase)
 export const getAllSubjectsService = async ({
     levelId,
     subjectTypeId,
     majorId,
     minorId,
+    departmentId,
     search,
     page = 1,
     pageSize = 20,
+    all = false,
 } = {}) => {
-    let query = supabase.from('subjects').select('*', { count: 'exact' }).order('subject_code', { ascending: true });
+    let baseQuery = supabase.from('subjects').select('*', { count: 'exact' }).order('subject_code', { ascending: true });
 
-    if (levelId) query = query.eq('level_id', levelId);
-    if (subjectTypeId) query = query.eq('subject_type_id', subjectTypeId);
-    if (majorId) query = query.eq('major_id', majorId);
-    if (minorId) query = query.eq('minor_id', minorId);
+    if (levelId) baseQuery = baseQuery.eq('level_id', levelId);
+    if (subjectTypeId) baseQuery = baseQuery.eq('subject_type_id', subjectTypeId);
+    if (majorId) baseQuery = baseQuery.eq('major_id', majorId);
+    if (minorId) baseQuery = baseQuery.eq('minor_id', minorId);
+    if (departmentId) {
+        const { data: deptMajors } = await supabase
+            .from('academic_majors')
+            .select('id')
+            .eq('department_id', String(departmentId));
+        const deptMajorIds = (deptMajors || []).map((m) => m.id);
+        if (deptMajorIds.length > 0) {
+            baseQuery = baseQuery.or(`major_id.in.(${deptMajorIds.join(',')}),major_id.is.null`);
+        }
+    }
     if (search) {
-        // ค้นหาได้ทั้งรหัสวิชาและชื่อวิชา (ไทย/อังกฤษ)
-        query = query.or(`subject_code.ilike.%${search}%,name_th.ilike.%${search}%,name_en.ilike.%${search}%`);
+        const trimmed = String(search).trim();
+        const normalized = trimmed.replace(/[\s\-_.]+/g, '');
+        if (normalized && normalized !== trimmed) {
+            baseQuery = baseQuery.or(`subject_code.ilike.%${trimmed}%,subject_code.ilike.%${normalized}%,name_th.ilike.%${trimmed}%,name_en.ilike.%${trimmed}%`);
+        } else {
+            baseQuery = baseQuery.or(`subject_code.ilike.%${trimmed}%,name_th.ilike.%${trimmed}%,name_en.ilike.%${trimmed}%`);
+        }
+    }
+
+    // เมื่อต้องการดึงทั้งหมด (all=true หรือ pageSize >= 1000) ดึงแบบวนลูป chunk ทีละ 1,000 แถว เพื่อป้องกัน PostgREST ตัดทิ้ง
+    if (all || Number(pageSize) >= 1000) {
+        let allRows = [];
+        let from = 0;
+        const chunkSize = 1000;
+        let totalCount = null;
+
+        while (true) {
+            const { data, error, count } = await baseQuery.range(from, from + chunkSize - 1);
+            if (error) throw error;
+            if (totalCount === null && count !== null && count !== undefined) {
+                totalCount = count;
+            }
+            if (data && data.length > 0) {
+                allRows.push(...data);
+            }
+            if (!data || data.length < chunkSize || (totalCount !== null && allRows.length >= totalCount)) {
+                break;
+            }
+            from += chunkSize;
+        }
+
+        const rows = await attachLookupNames(allRows);
+        return {
+            data: rows,
+            pagination: {
+                page: 1,
+                pageSize: rows.length,
+                total: totalCount ?? rows.length,
+                totalPages: 1,
+            },
+        };
     }
 
     const from = (Number(page) - 1) * Number(pageSize);
     const to = from + Number(pageSize) - 1;
-    query = query.range(from, to);
-
-    const { data, error, count } = await query;
+    const { data, error, count } = await baseQuery.range(from, to);
     if (error) throw error;
 
     const rows = await attachLookupNames(data);

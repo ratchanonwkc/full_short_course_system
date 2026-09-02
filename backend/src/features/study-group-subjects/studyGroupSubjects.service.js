@@ -1,4 +1,5 @@
 import { supabase } from '../../config/supabase.js';
+import { generateNextMoeCodeService } from '../study-groups/studyGroups.service.js';
 
 /**
  * studyGroupSubjects.service.js
@@ -30,7 +31,7 @@ export const getSubjectsInGroupService = async (studyGroupId) => {
 export const addSubjectToGroupService = async (payload) => {
     let insertPayload = { ...payload };
 
-    // ถ้าไม่มี moe_code ส่งมา ให้ auto-generate ผ่าน database RPC generate_next_moe_code
+    // ถ้าไม่มี moe_code ส่งมา ให้ auto-generate ผ่าน generateNextMoeCodeService
     if (!insertPayload.moe_code && insertPayload.study_group_id) {
         try {
             const { data: group } = await supabase
@@ -41,11 +42,8 @@ export const addSubjectToGroupService = async (payload) => {
 
             if (group && group.major_id) {
                 const year = group.batches?.academic_year || String(new Date().getFullYear() + 543);
-                const { data: generatedCode, error: rpcErr } = await supabase.rpc('generate_next_moe_code', {
-                    p_academic_year: String(year),
-                    p_major_id: Number(group.major_id),
-                });
-                if (!rpcErr && generatedCode) {
+                const generatedCode = await generateNextMoeCodeService(year, group.major_id);
+                if (generatedCode) {
                     insertPayload.moe_code = generatedCode;
                 }
             }

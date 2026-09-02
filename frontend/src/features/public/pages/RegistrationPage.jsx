@@ -103,8 +103,23 @@ export default function RegistrationPage() {
             if (slipFile) slip_url = (await uploadSlip(slipFile)).slip_url;
             id_card_url = (await uploadIdCard(idCardFile)).id_card_url;
 
+            const isSame = formData.is_same_address !== false;
+            const applicantPayload = {
+                ...formData,
+                id_card_url,
+                is_same_address: isSame,
+                current_house_no: isSame ? (formData.house_no || "") : (formData.current_house_no || ""),
+                current_moo: isSame ? (formData.moo || "") : (formData.current_moo || ""),
+                current_soi: isSame ? (formData.soi || "") : (formData.current_soi || ""),
+                current_road: isSame ? (formData.road || "") : (formData.current_road || ""),
+                current_subdistrict: isSame ? (formData.subdistrict || "") : (formData.current_subdistrict || ""),
+                current_district: isSame ? (formData.district || "") : (formData.current_district || ""),
+                current_province: isSame ? (formData.province || "") : (formData.current_province || ""),
+                current_postal_code: isSame ? (formData.postal_code || "") : (formData.current_postal_code || ""),
+            };
+
             await submitApplication({
-                applicant: { ...formData, id_card_url },
+                applicant: applicantPayload,
                 study_group_id: Number(selectedGroup.id),
                 slip_url,
                 payment_method: paymentMethod,
@@ -128,6 +143,11 @@ export default function RegistrationPage() {
     }
     if (!selectedGroup) return null;
 
+    const paidCount = selectedGroup?.paid_count ?? selectedGroup?.current_seats ?? 0;
+    const maxSeats = selectedGroup?.max_seats || 0;
+    const remainingSeats = Math.max(0, maxSeats - paidCount);
+    const isFull = maxSeats > 0 && paidCount >= maxSeats;
+
     return (
         <div className="min-h-screen bg-slate-50">
             <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-md">
@@ -140,6 +160,13 @@ export default function RegistrationPage() {
             </div>
 
             <div className="mx-auto max-w-3xl px-4 py-8">
+                {isFull && (
+                    <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-center text-red-700">
+                        <p className="font-bold text-base">⚠️ ที่นั่งในกลุ่มเรียนนี้เต็มแล้ว ({paidCount}/{maxSeats} ที่นั่ง)</p>
+                        <p className="text-xs mt-1 text-red-600">ผู้สมัครได้ชำระเงินยืนยันสิทธิ์ครบตามจำนวนที่เปิดรับแล้ว กรุณาเลือกกลุ่มเรียนหรือวิชาอื่น</p>
+                    </div>
+                )}
+
                 <Stepper steps={STEP_LABELS} currentStep={step} />
 
                 {step === 1 && (
@@ -187,7 +214,8 @@ export default function RegistrationPage() {
                         <button
                             type="button"
                             onClick={handleNext}
-                            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
+                            disabled={isFull}
+                            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300"
                         >
                             ถัดไป <ArrowRight size={16} />
                         </button>
@@ -195,8 +223,8 @@ export default function RegistrationPage() {
                         <button
                             type="button"
                             onClick={handleSubmit}
-                            disabled={submitting}
-                            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50"
+                            disabled={submitting || isFull}
+                            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {submitting ? (
                                 <>

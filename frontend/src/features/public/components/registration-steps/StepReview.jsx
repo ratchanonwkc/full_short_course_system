@@ -1,4 +1,5 @@
 import { CheckCircle, User, BookOpen, Wallet, IdCard, MapPin, GraduationCap, PhoneCall } from "lucide-react";
+import { formatCompactSchedule } from "../../../../utils/groupCode";
 
 export default function StepReview({ formData, selectedGroup, paymentMethod, slipFile, idCardFile }) {
     const registeredAddress = [
@@ -101,17 +102,50 @@ export default function StepReview({ formData, selectedGroup, paymentMethod, sli
             </section>
 
             {/* วิชาที่สมัครเรียน */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-black text-[#00204E]">
-                    <BookOpen size={18} className="text-blue-600" /> วิชาที่สมัครเรียน
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+                <h3 className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2.5 text-sm font-black text-[#00204E]">
+                    <BookOpen size={16} className="text-blue-600" /> วิชาที่สมัครเรียน
                 </h3>
-                <p className="text-sm font-bold text-slate-800">{selectedGroup?.group_name}</p>
-                <p className="text-sm text-slate-500">
-                    รหัส {selectedGroup?.group_code} • {selectedGroup?.schedule_description || `${selectedGroup?.total_hours} ชั่วโมง`} • {selectedGroup?.location_name}
-                </p>
-                <p className="mt-1 text-sm text-slate-500">
-                    {selectedGroup?.is_free ? "ไม่มีค่าใช้จ่าย" : `${selectedGroup?.fee.toLocaleString()} บาท`}
-                </p>
+                <div className="space-y-2.5 text-xs">
+                    <div>
+                        <span className="font-semibold text-blue-600 text-[11px]">
+                            {selectedGroup?.major_name || selectedGroup?.major_short_name || "หลักสูตรระยะสั้น"}
+                        </span>
+                        <h4 className="text-base font-bold text-slate-900">
+                            {(selectedGroup?.subject_name || selectedGroup?.subjects?.[0]?.name_th || selectedGroup?.group_name || "").replace(/\s*\[.*?\]|\s*\(.*?\)/g, "").trim() || selectedGroup?.group_name}
+                        </h4>
+                        <p className="mt-1 text-slate-600 font-medium">
+                            {formatCompactSchedule(selectedGroup)}
+                            {selectedGroup?.teacher_name ? ` • ผู้สอน: ${selectedGroup.teacher_name}` : ""}
+                        </p>
+                    </div>
+
+                    {/* Child Subjects (if multi-subject group) */}
+                    {Array.isArray(selectedGroup?.subjects) && selectedGroup.subjects.length > 1 && (
+                        <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-2.5 space-y-1">
+                            <p className="font-bold text-slate-700">รายวิชาในชุดวิชานี้ ({selectedGroup.subjects.length} วิชา):</p>
+                            <div className="divide-y divide-slate-200/60">
+                                {selectedGroup.subjects.map((sub, idx) => (
+                                    <div key={sub.id || idx} className="flex items-center justify-between py-0.5 text-slate-600">
+                                        <span>{sub.name_th}</span>
+                                        <span className="font-semibold text-slate-500">{sub.total_hours} ชม.</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center justify-between border-t border-slate-100 pt-2.5 text-sm">
+                        <span className="font-semibold text-slate-700">ยอดเงินค่าลงทะเบียน</span>
+                        {selectedGroup?.is_free ? (
+                            <span className="font-black text-emerald-600">เรียนฟรี</span>
+                        ) : (
+                            <span className="text-base font-black text-blue-700">
+                                ฿{Number(selectedGroup?.fee || 0).toLocaleString()}
+                            </span>
+                        )}
+                    </div>
+                </div>
             </section>
 
             {/* การชำระเงิน */}

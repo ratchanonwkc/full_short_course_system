@@ -211,8 +211,78 @@ export const getEnrollmentByIdService = async (id) => {
     return resolved[0];
 };
 
+const sanitizeAndNormalizeApplicant = (data) => {
+    if (!data || typeof data !== 'object') return data;
+    const isSame = data.is_same_address !== false;
+    const houseNo = (data.house_no || '').trim();
+    const moo = (data.moo || '').trim();
+    const soi = (data.soi || '').trim();
+    const road = (data.road || '').trim();
+    const subdistrict = (data.subdistrict || '').trim();
+    const district = (data.district || '').trim();
+    const province = (data.province || '').trim();
+    const postalCode = (data.postal_code || '').trim();
+
+    const registeredAddress = [
+        houseNo,
+        moo && `หมู่ ${moo}`,
+        soi && `ซอย ${soi}`,
+        road && `ถนน ${road}`,
+        subdistrict && `ต.${subdistrict}`,
+        district && `อ.${district}`,
+        province && `จ.${province}`,
+        postalCode,
+    ].filter(Boolean).join(' ') || data.registered_address || '-';
+
+    const currentHouseNo = isSame ? houseNo : (data.current_house_no || '').trim();
+    const currentMoo = isSame ? moo : (data.current_moo || '').trim();
+    const currentSoi = isSame ? soi : (data.current_soi || '').trim();
+    const currentRoad = isSame ? road : (data.current_road || '').trim();
+    const currentSubdistrict = isSame ? subdistrict : (data.current_subdistrict || '').trim();
+    const currentDistrict = isSame ? district : (data.current_district || '').trim();
+    const currentProvince = isSame ? province : (data.current_province || '').trim();
+    const currentPostalCode = isSame ? postalCode : (data.current_postal_code || '').trim();
+
+    const currentAddress = isSame
+        ? registeredAddress
+        : ([
+            currentHouseNo,
+            currentMoo && `หมู่ ${currentMoo}`,
+            currentSoi && `ซอย ${currentSoi}`,
+            currentRoad && `ถนน ${currentRoad}`,
+            currentSubdistrict && `ต.${currentSubdistrict}`,
+            currentDistrict && `อ.${currentDistrict}`,
+            currentProvince && `จ.${currentProvince}`,
+            currentPostalCode,
+        ].filter(Boolean).join(' ') || data.current_address || '-');
+
+    return {
+        ...data,
+        is_same_address: isSame,
+        house_no: houseNo,
+        moo,
+        soi,
+        road,
+        subdistrict,
+        district,
+        province,
+        postal_code: postalCode,
+        registered_address: registeredAddress,
+        current_house_no: currentHouseNo,
+        current_moo: currentMoo,
+        current_soi: currentSoi,
+        current_road: currentRoad,
+        current_subdistrict: currentSubdistrict,
+        current_district: currentDistrict,
+        current_province: currentProvince,
+        current_postal_code: currentPostalCode,
+        current_address: currentAddress,
+    };
+};
+
 const upsertApplicant = async (applicantData) => {
-    const { citizen_id } = applicantData;
+    const normalized = sanitizeAndNormalizeApplicant(applicantData);
+    const { citizen_id } = normalized;
     const { data: existing, error: findErr } = await supabase
         .from('applicants')
         .select('id, student_type')
@@ -221,8 +291,8 @@ const upsertApplicant = async (applicantData) => {
     if (findErr) throw findErr;
 
     const payload = {
-        ...applicantData,
-        student_type: existing ? 'นักศึกษาเก่า' : (applicantData.student_type || 'นักศึกษาใหม่'),
+        ...normalized,
+        student_type: existing ? 'นักศึกษาเก่า' : (normalized.student_type || 'นักศึกษาใหม่'),
     };
 
     if (existing) {
@@ -471,7 +541,8 @@ export const updateApplicantDetailsService = async (enrollmentId, { applicant, s
 
     if (applicant && Object.keys(applicant).length > 0) {
         // Never let stray id/relation keys leak into the update payload.
-        const { id, ...safeApplicant } = applicant;
+        const normalized = sanitizeAndNormalizeApplicant(applicant);
+        const { id, created_at, ...safeApplicant } = normalized;
         const { error: appErr } = await supabase.from('applicants').update(safeApplicant).eq('id', enrollment.applicant_id);
         if (appErr) {
             if (appErr.code === '23505') {
@@ -529,7 +600,8 @@ export const updateApplicantSelfService = async (enrollmentId, { applicant, slip
     // 1. Update applicant table if applicant object is provided
     let updatedApplicant = null;
     if (applicant && Object.keys(applicant).length > 0) {
-        const { id, created_at, ...safeApplicant } = applicant;
+        const normalized = sanitizeAndNormalizeApplicant(applicant);
+        const { id, created_at, ...safeApplicant } = normalized;
         const { data: appData, error: appErr } = await supabase
             .from('applicants')
             .update(safeApplicant)

@@ -7,6 +7,7 @@ import { getOpenStudyGroups } from "../../public/services/publicApi";
 import { getMajors } from "../../curriculums/services/academicStructureApi";
 import { getTimeSlots } from "../../study-groups/services/studyGroupApi";
 import useDebouncedValue from "../../../hooks/useDebouncedValue";
+import { formatThaiDate } from "../../../utils/dateUtils";
 
 export default function IndexPage() {
   const [courses, setCourses] = useState([]);
@@ -42,6 +43,19 @@ export default function IndexPage() {
   }, [courses, filterTimeCode]);
 
   const carouselCourses = useMemo(() => filteredCourses.slice(0, 5), [filteredCourses]);
+
+  const activeBatchInfo = useMemo(() => {
+    if (!courses || courses.length === 0) return null;
+    const sample = courses.find((c) => c.registration_start_date || c.registration_end_date) || courses[0];
+    if (!sample || (!sample.registration_start_date && !sample.registration_end_date)) return null;
+    return {
+      batch_name: sample.batch_name,
+      reg_start: sample.registration_start_date,
+      reg_end: sample.registration_end_date,
+      study_start: sample.start_date,
+      study_end: sample.end_date,
+    };
+  }, [courses]);
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-blue-50/60 via-white to-white">
@@ -80,6 +94,26 @@ export default function IndexPage() {
 
       {/* Course Listing */}
       <section id="open-courses" className="mx-auto max-w-6xl px-4 pb-24 pt-4">
+        {/* Centralized Batch Application Schedule Banner */}
+        {activeBatchInfo && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200/80 bg-gradient-to-r from-blue-50/90 via-indigo-50/60 to-blue-50/90 px-4 py-3 text-xs sm:text-sm text-slate-700 shadow-2xs">
+            <div className="flex items-center gap-2 font-medium">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-xs">
+                🗓️
+              </span>
+              <span>
+                <strong className="text-slate-900 font-bold">{activeBatchInfo.batch_name || "รุ่นปัจจุบัน"}:</strong>{" "}
+                รับสมัคร {formatThaiDate(activeBatchInfo.reg_start)} ถึง {formatThaiDate(activeBatchInfo.reg_end)}
+              </span>
+            </div>
+            {activeBatchInfo.study_start && (
+              <span className="rounded-lg bg-white/80 px-2.5 py-1 text-xs font-semibold text-blue-700 border border-blue-100">
+                เปิดเรียน: {formatThaiDate(activeBatchInfo.study_start)}
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-bold text-slate-800 sm:text-2xl">
             📋 วิชาที่กำลังเปิดรับสมัครออนไลน์
@@ -110,7 +144,7 @@ export default function IndexPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="ค้นหาชื่อวิชา / รหัสกลุ่ม / รหัสวิชา..."
-            className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-12 pr-4 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 sm:text-base"
+            className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 sm:text-base"
           />
         </div>
 

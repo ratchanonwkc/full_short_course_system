@@ -133,6 +133,9 @@ const CourseScheduleTablePrint = forwardRef(function CourseScheduleTablePrint(
           shift: shift,
           hours: subjHours,
           tuition_fee: group.tuition_fee,
+          application_fee: group.application_rate_per_subject ?? (Array.isArray(group.subjects) && group.subjects.length > 1 ? 10 : (group.application_fee ?? 10)),
+          tuition_rate_per_hour: group.tuition_rate_per_hour ?? 1,
+          air_con_rate_per_hour: group.air_con_rate_per_hour ?? 5,
           is_ac_maintenance_fee: Boolean(group.is_ac_maintenance_fee),
           is_waived_fee: Boolean(group.is_waived_fee || group.is_free_tuition),
           footnote_text: footnoteText || null,
@@ -151,6 +154,9 @@ const CourseScheduleTablePrint = forwardRef(function CourseScheduleTablePrint(
           shift: shift,
           hours: Number(group.total_hours || 75),
           tuition_fee: group.tuition_fee,
+          application_fee: group.application_rate_per_subject ?? (group.application_fee ?? 10),
+          tuition_rate_per_hour: group.tuition_rate_per_hour ?? 1,
+          air_con_rate_per_hour: group.air_con_rate_per_hour ?? 5,
           is_ac_maintenance_fee: Boolean(group.is_ac_maintenance_fee),
           is_waived_fee: Boolean(group.is_waived_fee || group.is_free_tuition),
           footnote_text: footnoteText || null,
@@ -323,25 +329,20 @@ const CourseScheduleTablePrint = forwardRef(function CourseScheduleTablePrint(
                   const isAirCon = Boolean(s.is_ac_maintenance_fee);
                   const asteriskSymbol = s.footnote_text ? uniqueNotesMap.get(s.footnote_text) : null;
                   const isExempt = Boolean(
-                    asteriskSymbol ||
                     s.is_waived_fee ||
-                    s.is_free_tuition ||
-                    (s.tuition_fee !== undefined && s.tuition_fee !== null && Number(s.tuition_fee) === 0)
+                    s.is_free_tuition
                   );
 
-                  const tuition = hours * 1;
-                  const regFee = 10;
-                  const airFee = isAirCon ? hours * 5 : 0;
+                  const tuitionRate = Number(s.tuition_rate_per_hour) || 1;
+                  const regFee = Number(s.application_fee) || 10;
+                  const airRate = Number(s.air_con_rate_per_hour) || 5;
+                  const tuition = s.tuition_fee !== undefined && s.tuition_fee !== null && !s.is_waived_fee
+                    ? Number(s.tuition_fee)
+                    : hours * tuitionRate;
+                  const airFee = isAirCon ? hours * airRate : 0;
                   const totalFee = tuition + regFee + airFee;
 
-                  let totalDisplay = '-';
-                  if (asteriskSymbol) {
-                    totalDisplay = asteriskSymbol;
-                  } else if (isExempt) {
-                    totalDisplay = '-';
-                  } else {
-                    totalDisplay = num(totalFee);
-                  }
+                  const totalDisplay = isExempt ? '-' : num(totalFee);
 
                   if (subjIdx === 0) {
                     totalCapacity += Number(s.max_seats || 20);
@@ -357,7 +358,7 @@ const CourseScheduleTablePrint = forwardRef(function CourseScheduleTablePrint(
                         {num(s.subject_code)}
                       </td>
                       <td className="border-r border-black p-1 text-left pl-2 font-medium">
-                        {s.subject_name}
+                        {s.subject_name}{asteriskSymbol ? <span className="font-bold ml-1">{asteriskSymbol}</span> : null}
                       </td>
                       <td className="border-r border-black p-1">
                         {s.shift}

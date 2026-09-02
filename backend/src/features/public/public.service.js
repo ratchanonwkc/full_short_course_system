@@ -2,43 +2,111 @@ import { supabase } from '../../config/supabase.js';
 import postalData from '../../data/thaiPostalCodes.json' with { type: 'json' };
 
 const GROUP_SELECT = `
-  id, group_code, group_name, status, max_seats, current_seats,
+  id, group_code, group_name, status, max_seats, current_seats, room_code,
   tuition_fee, application_fee, is_waived_fee, is_ac_maintenance_fee,
+  air_con_rate_per_hour, tuition_rate_per_hour, has_footnote, footnote_text,
+  study_days, time_slot_id, custom_start_time, custom_end_time,
   total_hours, study_dates_description, schedule_description,
   start_date, end_date, registration_start_date, registration_end_date,
-  major_id, batch_id,
+  major_id, batch_id, teacher_id, joint_location_id,
+  time_slots:time_slot_id ( id, time_code, time_name, time_range ),
   academic_majors:major_id ( id, name_th, short_name_th ),
-  teachers:teacher_id ( id, first_name_th, last_name_th ),
+  teachers:teacher_id ( id, first_name_th, last_name_th, prefixes:prefix_id ( short_name ) ),
   locations:joint_location_id ( id, name ),
   study_group_subjects (
-    id, subject_id, sequence_order,
+    id, subject_id, sequence_order, moe_code,
     subjects:subject_id ( id, subject_code, name_th, total_hours )
   ),
-  batches:batch_id ( id, batch_name, status )
+  batches:batch_id ( id, batch_name, status, academic_year, term, batch_no )
 `;
 
 const mapGroup = (row) => {
-    const fee = row.is_waived_fee ? 0 : Number(row.tuition_fee || 0) + Number(row.application_fee || 0);
+    // Parse study days safely
+    let studyDays = [];
+    if (Array.isArray(row.study_days)) {
+        studyDays = row.study_days;
+    } else if (typeof row.study_days === 'string') {
+        try {
+            studyDays = JSON.parse(row.study_days);
+        } catch {
+            studyDays = row.study_days.split(',').map((s) => s.trim()).filter(Boolean);
+        }
+    }
+
+    // Map all subjects sorted by sequence_order
+    const subjects = (row.study_group_subjects || [])
+        .slice()
+        .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
+        .map((s) => ({
+            id: s.id,
+            subject_id: s.subject_id,
+            subject_code: s.subjects?.subject_code || '',
+            name_th: s.subjects?.name_th || '',
+            total_hours: s.subjects?.total_hours || 0,
+            moe_code: s.moe_code || '',
+        }));
+
+    const primarySubject = subjects[0] || null;
+    const moeCode = primarySubject?.moe_code || '';
+    const subjectCount = Math.max(1, subjects.length);
+
+    // Derived Time & Schedule formatting
     const timeCodeMatch = row.group_code ? /[ชบคพ]/.exec(row.group_code) : null;
-    const derivedTimeCode = timeCodeMatch ? timeCodeMatch[0] : '';
-    const scheduleText = row.schedule_description || row.study_dates_description || '';
-    const timeRangeMatch = /(\d{1,2}[:.]\d{2})\s*[-–—to至]\s*(\d{1,2}[:.]\d{2})/.exec(scheduleText);
-    const derivedTimeRange = timeRangeMatch ? `${timeRangeMatch[1]} - ${timeRangeMatch[2]}` : '';
+    const derivedTimeCode = row.time_slots?.time_code || (timeCodeMatch ? timeCodeMatch[0] : '');
+    const shiftName = row.time_slots?.time_name || '';
+
+    // Standard 24h custom time format
+    let customTimeRange = '';
+    if (row.custom_start_time && row.custom_end_time) {
+        const format24h = (t) => {
+            const parts = String(t).split(':');
+            return `${parts[0].padStart(2, '0')}:${(parts[1] || '00').padStart(2, '0')}`;
+        };
+        customTimeRange = `${format24h(row.custom_start_time)} - ${format24h(row.custom_end_time)} น.`;
+    } else if (row.time_slots?.time_range) {
+        customTimeRange = row.time_slots.time_range;
+    }
+
+    // Fee calculation: Application fee 10 THB per subject (unless explicitly customized)
+    const baseAppFee = row.application_fee !== null && row.application_fee !== undefined
+        ? Number(row.application_fee)
+        : subjectCount * 10;
+    const tuitionFee = Number(row.tuition_fee || 0);
+    const isWaived = Boolean(row.is_waived_fee);
+    const fee = isWaived ? 0 : tuitionFee + baseAppFee;
+
+    const teacherPrefix = row.teachers?.prefixes?.short_name || '';
+    const teacherFullName = row.teachers
+        ? [teacherPrefix, row.teachers.first_name_th, row.teachers.last_name_th].filter(Boolean).join(' ')
+        : '';
 
     return {
         id: row.id,
         group_code: row.group_code,
         group_name: row.group_name,
-        time_code: row.time_code || derivedTimeCode,
-        time_range: row.time_range || derivedTimeRange,
+        moe_code: moeCode,
+        time_code: derivedTimeCode,
+        time_name: shiftName,
+        time_range: customTimeRange,
+        custom_start_time: row.custom_start_time,
+        custom_end_time: row.custom_end_time,
+        study_days: studyDays,
         status: row.status,
         max_seats: row.max_seats,
         current_seats: row.current_seats,
+        paid_count: row.paid_count || row.current_seats || 0,
         remaining_seats: Math.max(0, (row.max_seats || 0) - (row.current_seats || 0)),
         fee,
-        is_free: Boolean(row.is_waived_fee),
+        tuition_fee: tuitionFee,
+        application_fee: baseAppFee,
+        is_free: isWaived,
+        is_waived_fee: isWaived,
+        is_ac_maintenance_fee: Boolean(row.is_ac_maintenance_fee),
+        has_footnote: Boolean(row.has_footnote),
+        footnote_text: row.footnote_text || '',
         total_hours: row.total_hours,
-        schedule_description: row.schedule_description || row.study_dates_description,
+        schedule_description: row.schedule_description || row.study_dates_description || '',
+        study_dates_description: row.study_dates_description || '',
         start_date: row.start_date,
         end_date: row.end_date,
         registration_start_date: row.registration_start_date,
@@ -47,15 +115,16 @@ const mapGroup = (row) => {
         batch_id: row.batch_id,
         batch_name: row.batches?.batch_name || '',
         batch_status: row.batches?.status || '',
+        academic_year: row.batches?.academic_year || '',
+        term: row.batches?.term || '',
+        batch_no: row.batches?.batch_no || '',
         major_name: row.academic_majors?.name_th || '',
         major_short_name: row.academic_majors?.short_name_th || '',
-        teacher_name: row.teachers ? `${row.teachers.first_name_th} ${row.teachers.last_name_th}` : '',
+        teacher_name: teacherFullName,
         location_name: row.locations?.name || '',
-        subjects: (row.study_group_subjects || []).map((s) => ({
-            subject_id: s.subject_id,
-            subject_code: s.subjects?.subject_code,
-            name_th: s.subjects?.name_th,
-        })),
+        room_code: row.room_code || '',
+        subjects,
+        primary_subject: primarySubject,
     };
 };
 
@@ -156,8 +225,78 @@ export const getActivePaymentMethodsService = async () => {
     return data;
 };
 
+export const sanitizeAndNormalizeApplicant = (data) => {
+    if (!data || typeof data !== 'object') return data;
+    const isSame = data.is_same_address !== false;
+    const houseNo = (data.house_no || '').trim();
+    const moo = (data.moo || '').trim();
+    const soi = (data.soi || '').trim();
+    const road = (data.road || '').trim();
+    const subdistrict = (data.subdistrict || '').trim();
+    const district = (data.district || '').trim();
+    const province = (data.province || '').trim();
+    const postalCode = (data.postal_code || '').trim();
+
+    const registeredAddress = [
+        houseNo,
+        moo && `หมู่ ${moo}`,
+        soi && `ซอย ${soi}`,
+        road && `ถนน ${road}`,
+        subdistrict && `ต.${subdistrict}`,
+        district && `อ.${district}`,
+        province && `จ.${province}`,
+        postalCode,
+    ].filter(Boolean).join(' ') || data.registered_address || '-';
+
+    const currentHouseNo = isSame ? houseNo : (data.current_house_no || '').trim();
+    const currentMoo = isSame ? moo : (data.current_moo || '').trim();
+    const currentSoi = isSame ? soi : (data.current_soi || '').trim();
+    const currentRoad = isSame ? road : (data.current_road || '').trim();
+    const currentSubdistrict = isSame ? subdistrict : (data.current_subdistrict || '').trim();
+    const currentDistrict = isSame ? district : (data.current_district || '').trim();
+    const currentProvince = isSame ? province : (data.current_province || '').trim();
+    const currentPostalCode = isSame ? postalCode : (data.current_postal_code || '').trim();
+
+    const currentAddress = isSame
+        ? registeredAddress
+        : ([
+            currentHouseNo,
+            currentMoo && `หมู่ ${currentMoo}`,
+            currentSoi && `ซอย ${currentSoi}`,
+            currentRoad && `ถนน ${currentRoad}`,
+            currentSubdistrict && `ต.${currentSubdistrict}`,
+            currentDistrict && `อ.${currentDistrict}`,
+            currentProvince && `จ.${currentProvince}`,
+            currentPostalCode,
+        ].filter(Boolean).join(' ') || data.current_address || '-');
+
+    return {
+        ...data,
+        is_same_address: isSame,
+        house_no: houseNo,
+        moo,
+        soi,
+        road,
+        subdistrict,
+        district,
+        province,
+        postal_code: postalCode,
+        registered_address: registeredAddress,
+        current_house_no: currentHouseNo,
+        current_moo: currentMoo,
+        current_soi: currentSoi,
+        current_road: currentRoad,
+        current_subdistrict: currentSubdistrict,
+        current_district: currentDistrict,
+        current_province: currentProvince,
+        current_postal_code: currentPostalCode,
+        current_address: currentAddress,
+    };
+};
+
 const upsertApplicant = async (applicantData) => {
-    const { citizen_id } = applicantData;
+    const normalized = sanitizeAndNormalizeApplicant(applicantData);
+    const { citizen_id } = normalized;
     const { data: existing, error: findErr } = await supabase
         .from('applicants')
         .select('id, student_type')
@@ -166,8 +305,8 @@ const upsertApplicant = async (applicantData) => {
     if (findErr) throw findErr;
 
     const payload = {
-        ...applicantData,
-        student_type: existing ? 'นักศึกษาเก่า' : (applicantData.student_type || 'นักศึกษาใหม่'),
+        ...normalized,
+        student_type: existing ? 'นักศึกษาเก่า' : (normalized.student_type || 'นักศึกษาใหม่'),
     };
 
     if (existing) {
@@ -255,9 +394,21 @@ export const getStatusByCitizenIdService = async (citizenId) => {
     const { data: enrollments, error: enrollError } = await supabase
         .from('enrollments')
         .select(
-            `id, status, total_amount, slip_url, receipt_number, receipt_book_no, apply_date, payment_date, receipt_date,
+            `id, application_no, status, total_amount, slip_url, receipt_number, receipt_book_no, apply_date, payment_date, receipt_date,
        rejection_reason,
-       study_groups:study_group_id ( id, group_code, group_name, tuition_fee, application_fee, start_date )`
+       study_groups:study_group_id (
+         id, group_code, group_name, room_code, tuition_fee, application_fee, is_waived_fee, is_ac_maintenance_fee,
+         has_footnote, footnote_text, total_hours, start_date, end_date, schedule_description, study_dates_description,
+         study_days, custom_start_time, custom_end_time,
+         academic_majors:major_id ( id, name_th, short_name_th ),
+         teachers:teacher_id ( id, first_name_th, last_name_th, prefixes:prefix_id ( short_name ) ),
+         locations:joint_location_id ( id, name ),
+         batches:batch_id ( id, batch_name, status, academic_year, term, batch_no ),
+         study_group_subjects (
+           id, subject_id, sequence_order, moe_code,
+           subjects:subject_id ( id, subject_code, name_th, total_hours )
+         )
+       )`
         )
         .eq('applicant_id', applicant.id)
         .order('apply_date', { ascending: false });

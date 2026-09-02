@@ -147,7 +147,34 @@ export default function TeacherFormModal({
         setIsSubmitting(true);
         try {
             // ตัด field ที่ backend ไม่ต้องการ/เป็นค่า derived ออกก่อนส่ง (เช่น *_name ที่ join มา)
-            const { prefix_name, position_name, sub_position_name, created_at, ...payload } = form;
+            const { prefix_name, position_name, sub_position_name, created_at, id: _id, ...cleanForm } = form;
+
+            const parseNullableId = (val) => {
+                if (val === "" || val === null || val === undefined || val === "none") return null;
+                const num = Number(val);
+                return isNaN(num) ? null : num;
+            };
+
+            const parseNullableString = (val) => {
+                if (typeof val !== "string") return val;
+                const trimmed = val.trim();
+                return trimmed === "" ? null : trimmed;
+            };
+
+            const payload = {
+                ...cleanForm,
+                citizen_id: String(cleanForm.citizen_id || "").trim(),
+                first_name_th: String(cleanForm.first_name_th || "").trim(),
+                last_name_th: String(cleanForm.last_name_th || "").trim(),
+                first_name_en: parseNullableString(cleanForm.first_name_en),
+                last_name_en: parseNullableString(cleanForm.last_name_en),
+                email: parseNullableString(cleanForm.email),
+                phone: parseNullableString(cleanForm.phone),
+                is_active: Boolean(cleanForm.is_active),
+                prefix_id: parseNullableId(cleanForm.prefix_id),
+                position_id: parseNullableId(cleanForm.position_id),
+                sub_position_id: parseNullableId(cleanForm.sub_position_id),
+            };
 
             const { data } = isEditMode
                 ? await axiosInstance.put(`/teachers/${form.id}`, payload)

@@ -557,54 +557,74 @@ export default function ApplicantTrackingCard({ applicant, enrollment, onUpdated
                     /* ── READ-ONLY OFFICIAL VIEW ───────────────────────── */
                     <div className="space-y-6">
                         {/* 1. Course Information Card */}
-                        <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                            <h3 className="mb-3 flex items-center gap-2 text-xs font-black text-slate-800 uppercase tracking-wider">
-                                <BookOpen size={15} className="text-blue-600" /> ข้อมูลกลุ่มเรียนและรายวิชา
-                            </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                        {/* 1. Course Information Card */}
+                        <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-2">
                                 <div>
-                                    <span className="text-slate-400 block font-medium">รหัสวิชา (Subject Code)</span>
-                                    <span className="font-mono font-bold text-slate-800 text-sm">
-                                        {enrollment.subject_code || "-"}
+                                    <span className="text-[11px] font-semibold text-blue-600 block">
+                                        {enrollment.study_group?.academic_majors?.name_th || enrollment.major_name || "หลักสูตรระยะสั้น"}
+                                    </span>
+                                    <h3 className="text-sm font-bold text-slate-900 sm:text-base">
+                                        {(enrollment.study_group?.group_name || enrollment.subject_name || "").replace(/\s*\[.*?\]|\s*\(.*?\)/g, "").trim() || enrollment.study_group?.group_name || enrollment.subject_name}
+                                    </h3>
+                                </div>
+                                <span className="rounded bg-white px-2 py-0.5 text-xs font-semibold text-slate-600 border border-slate-200">
+                                    {enrollment.study_group?.batches?.batch_name || enrollment.study_group?.batch_name || enrollment.batch_name || "รุ่นปัจจุบัน"}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                <div>
+                                    <span className="text-slate-400 block font-medium">กำหนดการและเวลาเรียน</span>
+                                    <span className="text-slate-700 font-semibold">
+                                        {enrollment.study_group?.schedule_description || "ตามตารางที่กำหนด"}
+                                        {enrollment.study_group?.custom_start_time && enrollment.study_group?.custom_end_time
+                                            ? ` (${enrollment.study_group.custom_start_time} - ${enrollment.study_group.custom_end_time} น.)`
+                                            : ""}
                                     </span>
                                 </div>
                                 <div>
-                                    <span className="text-slate-400 block font-medium">รหัส ศธ. (MOE Code)</span>
-                                    <span className="font-mono font-bold text-blue-700 text-sm">
-                                        {enrollment.moe_code || "-"}
-                                    </span>
-                                </div>
-                                <div>
-                                    <span className="text-slate-400 block font-medium">รุ่นการศึกษา (Batch)</span>
+                                    <span className="text-slate-400 block font-medium">อาจารย์ผู้สอน</span>
                                     <span className="font-semibold text-slate-800">
-                                        {enrollment.study_group?.batch_name || "-"}
-                                    </span>
-                                </div>
-                                <div>
-                                    <span className="text-slate-400 block font-medium">ครูผู้สอน</span>
-                                    <span className="font-semibold text-slate-800">
-                                        {enrollment.study_group?.teacher_name || "อาจารย์ประจำวิชา"}
-                                    </span>
-                                </div>
-                                <div className="sm:col-span-2">
-                                    <span className="text-slate-400 block font-medium">กำหนดการเรียน</span>
-                                    <span className="text-slate-700">
-                                        {enrollment.study_group?.schedule_description || "ตามตารางที่กำหนด"} (รวม {enrollment.study_group?.total_hours || 75} ชั่วโมง)
+                                        {enrollment.study_group?.teachers
+                                            ? `${enrollment.study_group.teachers.prefixes?.short_name || ""} ${enrollment.study_group.teachers.first_name_th || ""} ${enrollment.study_group.teachers.last_name_th || ""}`.trim()
+                                            : enrollment.study_group?.teacher_name || "อาจารย์ประจำวิชา"}
                                     </span>
                                 </div>
                                 <div>
                                     <span className="text-slate-400 block font-medium">ยอดเงินค่าลงทะเบียน</span>
-                                    <span className="font-bold text-slate-900 text-sm">
-                                        {Number(enrollment.total_amount || 0).toLocaleString()} บาท
+                                    <span className="font-black text-blue-700 text-sm">
+                                        {enrollment.study_group?.is_waived_fee ? "เรียนฟรี" : `฿${Number(enrollment.total_amount || 0).toLocaleString()}`}
                                     </span>
-                                </div>
-                                <div>
-                                    <span className="text-slate-400 block font-medium">ช่องทางการชำระ</span>
-                                    <span className="font-semibold text-slate-700">
-                                        {enrollment.payment_method === "walk_in_cash" ? "ชำระเงินสดที่เคาน์เตอร์" : "โอนเงินผ่านธนาคาร"}
+                                    <span className="block text-[11px] text-slate-500">
+                                        ({enrollment.payment_method === "counter_cash" || enrollment.payment_method === "walk_in_cash"
+                                            ? "ชำระเงินที่ห้องการเงิน"
+                                            : "โอนเงินออนไลน์"})
                                     </span>
                                 </div>
                             </div>
+
+                            {/* Multi-subject list if any */}
+                            {Array.isArray(enrollment.study_group?.study_group_subjects) && enrollment.study_group.study_group_subjects.length > 1 && (
+                                <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-xs space-y-1">
+                                    <p className="font-bold text-slate-700">รายวิชาในชุดวิชานี้ ({enrollment.study_group.study_group_subjects.length} วิชา):</p>
+                                    <div className="divide-y divide-slate-100">
+                                        {enrollment.study_group.study_group_subjects.map((sub, idx) => (
+                                            <div key={sub.id || idx} className="flex items-center justify-between py-0.5 text-slate-600">
+                                                <span>{sub.subjects?.name_th || sub.name_th}</span>
+                                                <span className="font-medium text-slate-400">{sub.subjects?.total_hours || sub.total_hours || 0} ชม.</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Footnote Notice */}
+                            {enrollment.study_group?.has_footnote && enrollment.study_group.footnote_text && (
+                                <div className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800 border border-amber-200">
+                                    * หมายเหตุ: {enrollment.study_group.footnote_text}
+                                </div>
+                            )}
                         </div>
 
                         {/* 2. Personal Profile Information */}

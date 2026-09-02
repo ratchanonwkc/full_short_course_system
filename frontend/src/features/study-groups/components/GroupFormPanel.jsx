@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { Save, Zap, Plus, Settings, X, Pencil, AlertCircle } from "lucide-react";
+import { Plus, Pencil, X, Save, RotateCcw } from "lucide-react";
 import Swal from "sweetalert2";
-import VirtualizedCombobox from "../../../components/common/VirtualizedCombobox";
-import MaskedDateInput from "../../../components/common/MaskedDateInput";
 import ManageLocationsModal from "./ManageLocationsModal";
-import GroupSubjectsTable from "./GroupSubjectsTable";
 import useEnterKeyNav from "../../../hooks/useEnterKeyNav";
+import SectionPrerequisites from "./form/SectionPrerequisites";
+import SectionSubjectBuilder from "./form/SectionSubjectBuilder";
+import SectionScheduleTimes from "./form/SectionScheduleTimes";
+import SectionGroupIdentity from "./form/SectionGroupIdentity";
+import SectionAssignments from "./form/SectionAssignments";
+import SectionFeeSettings from "./form/SectionFeeSettings";
+import SectionFormFooter from "./form/SectionFormFooter";
 import {
     createStudyGroup,
     updateStudyGroup,
@@ -19,8 +23,8 @@ import {
     removeSubjectFromGroup,
 } from "../services/studyGroupApi";
 import {
-    GROUP_TYPE_LABELS,
-    GROUP_STATUS_META,
+    ALL_STUDY_DAYS,
+    WEEKDAYS,
     buildGroupCode,
     buildGroupCodePreview,
     buildRoomCode,
@@ -30,14 +34,6 @@ import {
     calculateNextConsecutiveMoeCode,
     currentBeYear2Digit,
 } from "../../../utils/groupCode";
-
-const inputClass =
-    "w-full rounded-lg border border-slate-300 py-2 px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40";
-
-const GROUP_TYPE_OPTIONS = Object.entries(GROUP_TYPE_LABELS).map(([value, label]) => ({ value, label }));
-const GROUP_STATUS_OPTIONS = Object.entries(GROUP_STATUS_META).map(([value, meta]) => ({ value, ...meta }));
-
-const AC_FEE_PER_HOUR = 5; // เปลี่ยนจาก +1 -> +5 บาท/ชม. ตามสเปกใหม่
 
 const EMPTY_FORM = {
     major_id: "",
@@ -54,14 +50,20 @@ const EMPTY_FORM = {
     footnote_text: "",
     max_seats: 20,
     total_hours: "",
-    study_dates_description: "", // = "schedule_description" ตามสเปก
+    study_dates_description: "",
+    study_days: ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์"],
+    custom_start_time: "",
+    custom_end_time: "",
     start_date: "",
     end_date: "",
     education_type: "วิชาชีพระยะสั้น",
     student_type: "ประชาชนทั่วไป",
     tuition_fee: "0",
     application_fee: "10",
-    is_waived_fee: false, // = "ฟรีค่าเรียน"
+    application_rate_per_subject: "10",
+    tuition_rate_per_hour: "1",
+    air_con_rate_per_hour: "5",
+    is_waived_fee: false,
     is_ac_maintenance_fee: false,
     registration_start_date: "",
     registration_end_date: "",
@@ -72,15 +74,81 @@ let localIdCounter = 0;
 const nextLocalId = () => `local-${Date.now()}-${localIdCounter++}`;
 
 /**
+ * getDefaultTimesForSlot
+ * -------------------------------------------------------------------------
+ * Pre-populates standard 24-hour time strings ("HH:mm") based on time_slot range or shift codes
+ */
+function getDefaultTimesForSlot(slot) {
+    let startTime = "";
+    let endTime = "";
+
+    if (slot?.time_range) {
+        const match = /(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})/.exec(slot.time_range);
+        if (match) {
+            startTime = `${match[1].padStart(2, "0")}:${match[2]}`;
+            endTime = `${match[3].padStart(2, "0")}:${match[4]}`;
+        }
+    }
+
+    if (!startTime || !endTime) {
+        const name = (slot?.time_name || "").trim();
+        const code = (slot?.time_code || "").trim();
+        if (code === "ช" || (name.includes("เช้า") && !name.includes("บ่าย"))) {
+            startTime = "08:30";
+            endTime = "12:30";
+        } else if (code === "บ" || (name.includes("บ่าย") && !name.includes("เช้า"))) {
+            startTime = "13:00";
+            endTime = "17:00";
+        } else if (code === "ค" || name.includes("ค่ำ")) {
+            startTime = "17:30";
+            endTime = "20:30";
+        } else if (code === "พ" || name.includes("เช้า-บ่าย") || name.includes("เต็มวัน") || name.includes("ทั้งวัน")) {
+            startTime = "08:30";
+            endTime = "16:30";
+        } else {
+            startTime = "08:30";
+            endTime = "12:30";
+        }
+    }
+
+    return { startTime, endTime };
+}
+
+function extractTimeCodeFromGroupCode(groupCode) {
+    if (!groupCode) return "";
+    const match = /[ชบคพ]/.exec(groupCode);
+    return match ? match[0] : "";
+}
+
+/**
+ * calculateNextGroupNo
+ * -------------------------------------------------------------------------
+ * คำนวณลำดับกลุ่มที่ (group_no) อัตโนมัติจากกลุ่มที่มีอยู่แล้วในรุ่นการเรียนเดียวกัน
+ */
+function calculateNextGroupNo(existingGroups = [], subjectId, timeCode) {
+    if (!subjectId || !timeCode) return 1;
+    const matching = existingGroups.filter((g) => {
+        const hasSubject =
+            String(g.subject_id) === String(subjectId) ||
+            (Array.isArray(g.subjects_in_group) && g.subjects_in_group.some((s) => String(s.subject_id) === String(subjectId)));
+        const code = g.time_code || extractTimeCodeFromGroupCode(g.group_code);
+        return hasSubject && code === timeCode;
+    });
+    if (matching.length === 0) return 1;
+    const groupNos = matching.map((g) => Number(g.group_no) || 1);
+    return Math.max(...groupNos) + 1;
+}
+
+/**
  * GroupFormPanel
  * -------------------------------------------------------------------------
- * Props:
- * - batch: Batch | null   -> ใช้ดึงวันที่ default และ academic_year
+ * Main Orchestrator component with Sticky Bottom Actions and Zero Ghost Blank Space
  */
 export default function GroupFormPanel({
     batchId,
     batch = null,
     initialData = null,
+    existingGroups = [],
     onSaved,
     onCancelEdit,
     majors = [],
@@ -97,10 +165,11 @@ export default function GroupFormPanel({
     const [isAutoFilling, setIsAutoFilling] = useState(false);
     const [isManageLocationsOpen, setIsManageLocationsOpen] = useState(false);
     const [isQuickAddingLocation, setIsQuickAddingLocation] = useState(false);
+    const [primarySubjectId, setPrimarySubjectId] = useState("");
+    const [showAllSubjects, setShowAllSubjects] = useState(false);
     const isEditMode = Boolean(initialData);
     const { formRef, handleKeyDown } = useEnterKeyNav();
 
-    // ติดตามว่าผู้ใช้เคยแก้ "รูปแบบวันเรียน" เองหรือยัง เพื่อไม่ auto-overwrite ทับของที่แก้เอง
     const scheduleDescTouchedRef = useRef(false);
 
     const majorOptions = useMemo(
@@ -108,20 +177,50 @@ export default function GroupFormPanel({
         [majors]
     );
 
-    // ── 1. Filter รายวิชาตามแผนกที่เลือก (ถ้ายังไม่เลือกแผนก แสดงทั้งหมด) ──────
+    const selectedMajor = useMemo(
+        () => majors.find((m) => String(m.id) === String(form.major_id)),
+        [majors, form.major_id]
+    );
+
     const subjectOptions = useMemo(() => {
-        const source = form.major_id
-            ? subjects.filter((s) => String(s.major_id) === String(form.major_id))
-            : subjects;
-        return source.map((s) => ({
-            value: s.id,
-            label: `${s.subject_code} - ${s.name_th}`,
-            subject_code: s.subject_code,
-            name_th: s.name_th,
-            total_hours: s.total_hours,
-            major_id: s.major_id,
-        }));
-    }, [subjects, form.major_id]);
+        let source = subjects;
+
+        if (!showAllSubjects && form.major_id) {
+            const deptId = selectedMajor?.department_id ? String(selectedMajor.department_id) : "";
+            const sameDeptMajorIds = new Set(
+                majors
+                    .filter((m) => deptId && String(m.department_id) === deptId)
+                    .map((m) => String(m.id))
+            );
+
+            source = subjects.filter((s) => {
+                // 1. General / Common subjects without a specific major or department assigned
+                if (!s.major_id && !s.department_id) return true;
+                // 2. Direct department_id match
+                if (s.department_id && deptId && String(s.department_id) === deptId) return true;
+                // 3. Exact major match
+                if (s.major_id && String(s.major_id) === String(form.major_id)) return true;
+                // 4. Same department major match
+                if (s.major_id && sameDeptMajorIds.has(String(s.major_id))) return true;
+                return false;
+            });
+        }
+
+        return source.map((s) => {
+            const majorName = s.major_name || majors.find((m) => String(m.id) === String(s.major_id))?.name_th || "";
+            return {
+                value: s.id,
+                label: `${s.subject_code} - ${s.name_th}${majorName ? ` [${majorName}]` : ""} (${s.total_hours || 0} ชม.)`,
+                subject_code: s.subject_code,
+                name_th: s.name_th,
+                name_en: s.name_en || "",
+                total_hours: s.total_hours,
+                major_id: s.major_id,
+                department_id: s.department_id,
+                major_name: majorName,
+            };
+        });
+    }, [subjects, form.major_id, showAllSubjects, selectedMajor, majors]);
 
     const teacherOptions = useMemo(
         () =>
@@ -131,10 +230,12 @@ export default function GroupFormPanel({
             })),
         [teachers]
     );
+
     const locationOptions = useMemo(
         () => locations.map((l) => ({ value: l.id, label: l.name })),
         [locations]
     );
+
     const timeSlotOptions = useMemo(
         () =>
             timeSlots.map((t) => ({
@@ -147,10 +248,7 @@ export default function GroupFormPanel({
         [timeSlots]
     );
 
-    const selectedMajor = majors.find((m) => String(m.id) === String(form.major_id));
-    const [primarySubjectId, setPrimarySubjectId] = useState("");
-
-    // ── โหลด/รีเซ็ตฟอร์มเมื่อสลับโหมดสร้าง/แก้ไข ──────────────────────────────
+    // ── Load / Reset Form on InitialData Change ──────────────────────────────
     useEffect(() => {
         scheduleDescTouchedRef.current = false;
 
@@ -161,17 +259,37 @@ export default function GroupFormPanel({
                     : t.time_code === extractTimeCodeFromGroupCode(initialData.group_code)
             );
 
+            const initialDays = Array.isArray(initialData.study_days) && initialData.study_days.length > 0
+                ? initialData.study_days
+                : (typeof initialData.study_days === 'string' && initialData.study_days.trim()
+                    ? initialData.study_days.split(',').map((s) => s.trim()).filter(Boolean)
+                    : ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์"]);
+
+            const initialSubjectsCount = Array.isArray(initialData.subjects) ? initialData.subjects.length : 1;
+            const appRate = initialData.application_rate_per_subject
+                ? String(initialData.application_rate_per_subject)
+                : "10";
+            const appFee = initialData.application_fee !== undefined && initialData.application_fee !== null
+                ? String(initialData.application_fee)
+                : String(initialSubjectsCount * Number(appRate));
+
             setForm({
                 ...EMPTY_FORM,
                 ...initialData,
+                application_fee: appFee,
+                application_rate_per_subject: appRate,
                 time_slot_id: initialData.time_slot_id || matchedSlot?.id || "",
+                study_days: initialDays,
+                custom_start_time: initialData.custom_start_time || "",
+                custom_end_time: initialData.custom_end_time || "",
                 has_footnote: Boolean(initialData.has_footnote || initialData.footnote_text || (initialData.fee_exception_type && initialData.fee_exception_type !== 'none')),
                 footnote_text: initialData.footnote_text || (initialData.fee_exception_type && initialData.fee_exception_type !== 'none' ? initialData.fee_exception_type : ""),
                 group_no: initialData.group_no ?? 1,
                 max_seats: initialData.max_seats ?? 20,
                 status: initialData.status || "open",
                 tuition_fee: String(initialData.tuition_fee ?? "0"),
-                application_fee: String(initialData.application_fee ?? "10"),
+                tuition_rate_per_hour: String(initialData.tuition_rate_per_hour ?? "1"),
+                air_con_rate_per_hour: String(initialData.air_con_rate_per_hour ?? "5"),
                 is_waived_fee: Boolean(initialData.is_waived_fee),
                 is_ac_maintenance_fee: Boolean(initialData.is_ac_maintenance_fee),
                 time_code: matchedSlot?.time_code || extractTimeCodeFromGroupCode(initialData.group_code),
@@ -198,7 +316,6 @@ export default function GroupFormPanel({
             })();
             setPrimarySubjectId("");
         } else {
-            // ── 2. Default วันที่จาก Batch ต้นทาง (โหมดสร้างใหม่เท่านั้น) ──────
             setForm({
                 ...EMPTY_FORM,
                 batch_id: batchId,
@@ -213,34 +330,70 @@ export default function GroupFormPanel({
         setRemovedSubjectIds([]);
     }, [initialData, batchId, batch, timeSlots]);
 
+    // ── Form Handlers ────────────────────────────────────────────────────────
+    const handleResetForm = (e) => {
+        if (e) e.preventDefault();
+        scheduleDescTouchedRef.current = false;
+        setShowAllSubjects(false);
+        setForm({
+            ...EMPTY_FORM,
+            batch_id: batchId,
+            registration_start_date: batch?.admit_open_date || "",
+            registration_end_date: batch?.admit_close_date || "",
+            start_date: batch?.study_open_date || "",
+            end_date: batch?.study_close_date || "",
+        });
+        setSubjectsInGroup([]);
+        setRemovedSubjectIds([]);
+        setPrimarySubjectId("");
+        if (isEditMode) {
+            onCancelEdit?.();
+        }
+    };
+
     const handleChange = (field) => (e) => {
         const { value, type, checked } = e.target;
         setForm((prev) => ({ ...prev, [field]: type === "checkbox" ? checked : value }));
     };
-    const handleComboChange = (field) => (value) => {
-        setForm((prev) => ({ ...prev, [field]: value }));
-    };
+
     const handleDateChange = (field) => (isoValue) => {
         setForm((prev) => ({ ...prev, [field]: isoValue }));
     };
 
-    // ── major เปลี่ยน -> เคลียร์วิชาที่ไม่ตรงแผนกออกจากตารางวิชาย่อยที่ยังไม่บันทึก ──
     const handleMajorChange = (value) => {
         setForm((prev) => ({ ...prev, major_id: value }));
     };
 
-    // ── 3. รอบเรียน (time_slot_id): sync time_code และสร้างรูปแบบวันเรียนอัตโนมัติ ──
     const handleTimeSlotChange = (e) => {
         const slotId = e.target.value;
         const slot = timeSlots.find((t) => String(t.id) === String(slotId));
         const timeCode = slot?.time_code || "";
+        const { startTime, endTime } = getDefaultTimesForSlot(slot);
+
+        const currentDays = form.study_days && form.study_days.length > 0 ? form.study_days : WEEKDAYS;
         const shouldAutoFill = !scheduleDescTouchedRef.current;
+
+        // Auto calculate group_no based on subject and shift if in create mode
+        let nextGroupNo = form.group_no;
+        if (!isEditMode && primarySubjectId && timeCode) {
+            nextGroupNo = calculateNextGroupNo(existingGroups, primarySubjectId, timeCode);
+        }
+
         setForm((prev) => ({
             ...prev,
             time_slot_id: slotId,
             time_code: timeCode,
+            group_no: nextGroupNo,
+            custom_start_time: startTime || prev.custom_start_time,
+            custom_end_time: endTime || prev.custom_end_time,
+            study_days: currentDays,
             study_dates_description: shouldAutoFill
-                ? buildScheduleDescription({ timeRange: slot?.time_range })
+                ? buildScheduleDescription({
+                      studyDays: currentDays,
+                      startTime: startTime || prev.custom_start_time,
+                      endTime: endTime || prev.custom_end_time,
+                      timeRange: slot?.time_range,
+                  })
                 : prev.study_dates_description,
         }));
     };
@@ -250,7 +403,132 @@ export default function GroupFormPanel({
         setForm((prev) => ({ ...prev, study_dates_description: e.target.value }));
     };
 
-    // ── Quick add สถานที่ ──────────────────────────────────────────────────
+    const handleAutoBuildScheduleDesc = (e) => {
+        e.preventDefault();
+        scheduleDescTouchedRef.current = false;
+        setForm((prev) => ({
+            ...prev,
+            study_dates_description: buildScheduleDescription({
+                studyDays: prev.study_days,
+                startTime: prev.custom_start_time,
+                endTime: prev.custom_end_time,
+                timeRange: timeSlots.find((t) => String(t.id) === String(prev.time_slot_id))?.time_range,
+            }),
+        }));
+    };
+
+    const handleToggleStudyDay = (day) => {
+        setForm((prev) => {
+            const current = prev.study_days || [];
+            const nextDays = current.includes(day)
+                ? current.filter((d) => d !== day)
+                : [...current, day];
+            const shouldAutoFill = !scheduleDescTouchedRef.current;
+            return {
+                ...prev,
+                study_days: nextDays,
+                study_dates_description: shouldAutoFill
+                    ? buildScheduleDescription({
+                          studyDays: nextDays,
+                          startTime: prev.custom_start_time,
+                          endTime: prev.custom_end_time,
+                      })
+                    : prev.study_dates_description,
+            };
+        });
+    };
+
+    const handleSetStudyDays = (days) => {
+        setForm((prev) => {
+            const shouldAutoFill = !scheduleDescTouchedRef.current;
+            return {
+                ...prev,
+                study_days: days,
+                study_dates_description: shouldAutoFill
+                    ? buildScheduleDescription({
+                          studyDays: days,
+                          startTime: prev.custom_start_time,
+                          endTime: prev.custom_end_time,
+                      })
+                    : prev.study_dates_description,
+            };
+        });
+    };
+
+    const handleCustomTimeChange = (field) => (e) => {
+        const val = e.target.value;
+        setForm((prev) => {
+            const nextForm = { ...prev, [field]: val };
+            const shouldAutoFill = !scheduleDescTouchedRef.current;
+            if (shouldAutoFill) {
+                nextForm.study_dates_description = buildScheduleDescription({
+                    studyDays: nextForm.study_days,
+                    startTime: nextForm.custom_start_time,
+                    endTime: nextForm.custom_end_time,
+                });
+            }
+            return nextForm;
+        });
+    };
+
+    const handleRecalculateTuition = () => {
+        const hours = Number(form.total_hours) || 0;
+        const rate = Number(form.tuition_rate_per_hour) || 1;
+        const appRate = Number(form.application_rate_per_subject ?? 10) || 10;
+        const subjectsCount = subjectsInGroup.length || 1;
+        const calculatedTuition = hours * rate;
+        const calculatedAppFee = subjectsCount * appRate;
+        setForm((prev) => ({
+            ...prev,
+            tuition_fee: String(calculatedTuition),
+            application_fee: String(calculatedAppFee),
+        }));
+    };
+
+    const handleTotalFeeChange = (e) => {
+        const manualTotal = Number(e.target.value) || 0;
+        const appFee = Number(form.application_fee) || 0;
+        const airFee = form.is_ac_maintenance_fee ? (Number(form.total_hours) || 0) * (Number(form.air_con_rate_per_hour) || 5) : 0;
+        const remainingTuition = Math.max(0, manualTotal - appFee - airFee);
+        setForm((prev) => ({
+            ...prev,
+            tuition_fee: String(remainingTuition),
+        }));
+    };
+
+    const handleToggleFreeTuition = (e) => {
+        const checked = e.target.checked;
+        setForm((prev) => ({
+            ...prev,
+            is_waived_fee: checked,
+            tuition_fee: checked ? "0" : prev.tuition_fee,
+        }));
+    };
+
+    const handleResetFeeRates = () => {
+        const subjectsCount = subjectsInGroup.length || 1;
+        setForm((prev) => ({
+            ...prev,
+            application_rate_per_subject: "10",
+            application_fee: String(subjectsCount * 10),
+            tuition_rate_per_hour: "1",
+            air_con_rate_per_hour: "5",
+        }));
+    };
+
+    const handleTotalHoursChange = (e) => {
+        const val = e.target.value;
+        setForm((prev) => {
+            const h = Number(val) || 0;
+            const rate = Number(prev.tuition_rate_per_hour) || 1;
+            return {
+                ...prev,
+                total_hours: val,
+                tuition_fee: prev.is_waived_fee ? "0" : String(h * rate),
+            };
+        });
+    };
+
     const handleQuickAddLocation = async () => {
         const { value: name, isConfirmed } = await Swal.fire({
             title: "เพิ่มสถานที่ใหม่ด่วน",
@@ -289,7 +567,7 @@ export default function GroupFormPanel({
         }
     };
 
-    // ── ตารางวิชาย่อย ──────────────────────────────────────────────────────
+    // ── Subjects In Group Handlers ────────────────────────────────────────────
     const handleAddSubjectToGroup = async (opt) => {
         const localId = nextLocalId();
         let generatedMoeCode = "";
@@ -299,14 +577,12 @@ export default function GroupFormPanel({
             const existingCodes = subjectsInGroup.filter((s) => s.moe_code?.trim()?.length >= 9);
 
             if (existingCodes.length > 0) {
-                // Safeguard 1: Calculate consecutive offset directly from in-memory list without redundant RPC!
                 generatedMoeCode = calculateNextConsecutiveMoeCode(
                     subjectsInGroup,
                     "",
                     selectedMajor?.full_major_code ? `${currentBeYear2Digit()}${selectedMajor.full_major_code}` : ""
                 );
             } else {
-                // First subject in list: call RPC once to get base code
                 try {
                     const baseCode = await getNextMoeCode(yearForMoe, form.major_id);
                     generatedMoeCode = baseCode || "";
@@ -336,19 +612,55 @@ export default function GroupFormPanel({
                 sequence_order: prev.length + 1,
             },
         ]);
-        setPrimarySubjectId((prev) => prev || String(opt.value));
+
+        const nextPrimaryId = primarySubjectId || String(opt.value);
+        setPrimarySubjectId(nextPrimaryId);
+
+        // Auto update group_no if time_code is already selected
+        let updatedGroupNo = form.group_no;
+        if (!isEditMode && form.time_code) {
+            updatedGroupNo = calculateNextGroupNo(existingGroups, nextPrimaryId, form.time_code);
+        }
+
+        const nextSubjectsCount = subjectsInGroup.length + 1;
         setForm((prev) => {
             const currentTotal = Number(prev.total_hours) || 0;
-            return { ...prev, total_hours: String(currentTotal + (Number(opt.total_hours) || 0)) };
+            const newTotal = currentTotal + (Number(opt.total_hours) || 0);
+            const rate = Number(prev.tuition_rate_per_hour) || 1;
+            const appRate = Number(prev.application_rate_per_subject ?? 10) || 10;
+            const newAppFee = nextSubjectsCount * appRate;
+            return {
+                ...prev,
+                group_no: updatedGroupNo,
+                total_hours: String(newTotal),
+                tuition_fee: prev.is_waived_fee ? "0" : String(newTotal * rate),
+                application_fee: prev.is_waived_fee ? "0" : String(newAppFee),
+            };
         });
     };
+
     const handleRemoveSubjectFromGroup = (localId) => {
         setSubjectsInGroup((prev) => {
             const target = prev.find((s) => s._localId === localId);
             if (target?._persistedId) setRemovedSubjectIds((ids) => [...ids, target._persistedId]);
-            return prev.filter((s) => s._localId !== localId);
+            const filtered = prev.filter((s) => s._localId !== localId);
+            const nextSubjectsCount = filtered.length;
+            const newTotal = filtered.reduce((sum, s) => sum + (Number(s.total_hours) || 0), 0);
+            setForm((f) => {
+                const rate = Number(f.tuition_rate_per_hour) || 1;
+                const appRate = Number(f.application_rate_per_subject ?? 10) || 10;
+                const newAppFee = (nextSubjectsCount || 1) * appRate;
+                return {
+                    ...f,
+                    total_hours: String(newTotal),
+                    tuition_fee: f.is_waived_fee ? "0" : String(newTotal * rate),
+                    application_fee: f.is_waived_fee ? "0" : String(newAppFee),
+                };
+            });
+            return filtered;
         });
     };
+
     const handleMoeCodeChange = (localId, value) => {
         setSubjectsInGroup((prev) => prev.map((s) => (s._localId === localId ? { ...s, moe_code: value } : s)));
     };
@@ -368,7 +680,7 @@ export default function GroupFormPanel({
             Swal.fire({
                 icon: "warning",
                 title: "กรุณาเพิ่มรายวิชาเข้ากลุ่มก่อน",
-                text: "Auto Fill ต้องใช้รหัสวิชาจากตารางวิชาย่อยด้านล่างเพื่อคำนวณรหัสกลุ่มเรียน",
+                text: "Auto Fill ต้องใช้รหัสวิชาจากตารางวิชาย่อยด้านบนเพื่อคำนวณรหัสกลุ่มเรียน",
                 confirmButtonColor: "#0270c7",
             });
             return;
@@ -389,7 +701,6 @@ export default function GroupFormPanel({
 
         setIsAutoFilling(true);
         try {
-            const departmentId = selectedMajor.department_id;
             const fullMajorCode = selectedMajor.full_major_code;
             const beYear2 = currentBeYear2Digit();
             const yearForMoe = batch?.academic_year || beYear2;
@@ -400,7 +711,6 @@ export default function GroupFormPanel({
                 groupNo: form.group_no,
             });
 
-            // room_code: ใช้ full_major_code (4 หลัก) เป็น prefix แทน department_id (2 หลัก)
             const roomSeqRes = await getNextRoomSequence(fullMajorCode);
             let roomCode = form.room_code;
             if (roomSeqRes.sequence) {
@@ -409,7 +719,6 @@ export default function GroupFormPanel({
                 Swal.fire({ icon: "warning", title: "ไม่สามารถคำนวณรหัสห้องเรียนได้", text: roomSeqRes.message, confirmButtonColor: "#0270c7" });
             }
 
-            // Safeguard 1 & 3: Preserve existing codes and calculate consecutive offsets in memory
             let baseRpcCode = "";
             const hasAnyExistingCode = subjectsInGroup.some((s) => s.moe_code?.trim()?.length >= 9);
             if (!hasAnyExistingCode) {
@@ -426,10 +735,8 @@ export default function GroupFormPanel({
 
             const updatedSubjects = [...subjectsInGroup];
             for (let i = 0; i < updatedSubjects.length; i++) {
-                // Safeguard 3: NEVER overwrite existing moe_code!
                 if (updatedSubjects[i].moe_code?.trim()) continue;
 
-                // Safeguard 1: Calculate next consecutive code using in-memory offset
                 const nextCode = calculateNextConsecutiveMoeCode(
                     updatedSubjects.slice(0, i),
                     baseRpcCode,
@@ -445,7 +752,7 @@ export default function GroupFormPanel({
             }
             setSubjectsInGroup(updatedSubjects);
 
-            // group_name (สูตรใหม่): {ชื่อวิชา} [{ประเภท}] - {schedule_description} (รอบ {code}/{กลุ่มที่})
+            // Standard Thai Vocational Group Name: [ชื่อวิชา] [ประเภท] (รอบ [รหัสย่อรอบ]/[กลุ่มที่])
             const groupName = buildGroupName({
                 subjectName: primarySubject.name_th,
                 groupType: form.group_type,
@@ -477,21 +784,7 @@ export default function GroupFormPanel({
         }
     };
 
-    // ── 4. ค่าธรรมเนียม ──────────────────────────────────────────────────
-    const acFeePerHour = form.is_ac_maintenance_fee ? AC_FEE_PER_HOUR : 0;
-    const estimatedTuition = form.is_waived_fee
-        ? (Number(form.application_fee) || 0)
-        : (Number(form.application_fee) || 0) + (Number(form.tuition_fee) || 0) + acFeePerHour * (Number(form.total_hours) || 0);
-
-    const handleToggleFreeTuition = (e) => {
-        const checked = e.target.checked;
-        setForm((prev) => ({
-            ...prev,
-            is_waived_fee: checked,
-            tuition_fee: checked ? "0" : prev.tuition_fee,
-        }));
-    };
-
+    // ── Form Submission ──────────────────────────────────────────────────────
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!form.major_id) {
@@ -526,13 +819,18 @@ export default function GroupFormPanel({
                 fee_exception_type: form.has_footnote ? (form.footnote_text?.trim() || "custom") : "none",
                 max_seats: Number(form.max_seats) || 20,
                 total_hours: Number(form.total_hours) || 0,
+                study_days: form.study_days || [],
+                custom_start_time: form.custom_start_time || null,
+                custom_end_time: form.custom_end_time || null,
                 study_dates_description: form.study_dates_description || null,
                 start_date: form.start_date || null,
                 end_date: form.end_date || null,
                 education_type: form.education_type,
                 student_type: form.student_type,
-                tuition_fee: form.is_waived_fee ? 0 : Number(form.tuition_fee) || 0,
+                tuition_fee: form.is_waived_fee ? 0 : (Number(form.tuition_fee) || 0),
                 application_fee: Number(form.application_fee) || 0,
+                tuition_rate_per_hour: Number(form.tuition_rate_per_hour) || 1,
+                air_con_rate_per_hour: Number(form.air_con_rate_per_hour) || 5,
                 is_waived_fee: Boolean(form.is_waived_fee),
                 is_ac_maintenance_fee: Boolean(form.is_ac_maintenance_fee),
                 registration_start_date: form.registration_start_date || null,
@@ -545,7 +843,6 @@ export default function GroupFormPanel({
 
             await Promise.all(removedSubjectIds.map((id) => removeSubjectFromGroup(id)));
 
-            // Safeguard 1 & 3: Preserve existing codes and calculate consecutive offsets for any missing
             const yearForMoe = batch?.academic_year || currentBeYear2Digit();
             let baseRpcCode = "";
             const hasAnyCode = subjectsInGroup.some((s) => s.moe_code?.trim()?.length >= 9);
@@ -558,7 +855,6 @@ export default function GroupFormPanel({
             }
 
             const preparedSubjects = subjectsInGroup.map((s, index) => {
-                // Safeguard 3: If already has a valid moe_code, PRESERVE IT!
                 if (s.moe_code?.trim()) {
                     return {
                         ...s,
@@ -566,7 +862,6 @@ export default function GroupFormPanel({
                     };
                 }
 
-                // Safeguard 1: Calculate next consecutive code using in-memory offset
                 const nextCode = calculateNextConsecutiveMoeCode(
                     subjectsInGroup.slice(0, index),
                     baseRpcCode,
@@ -614,444 +909,187 @@ export default function GroupFormPanel({
     };
 
     return (
-        <form ref={formRef} onKeyDown={handleKeyDown} onSubmit={handleSubmit} className="flex h-full flex-col">
-            {/* Status banner */}
+        <form
+            id="study-group-form"
+            ref={formRef}
+            onKeyDown={handleKeyDown}
+            onSubmit={handleSubmit}
+            className="flex h-full min-h-0 flex-col bg-white overflow-hidden"
+        >
+            {/* ── 1. Sticky Top Header Banner ── */}
             <div
-                className={`flex items-center justify-between gap-3 border-b px-5 py-4 transition-colors ${isEditMode ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"
-                    }`}
+                className={`flex items-center justify-between gap-2 border-b px-4 py-2.5 shrink-0 transition-colors ${
+                    isEditMode ? "border-amber-200 bg-amber-50/90" : "border-emerald-200 bg-emerald-50/90"
+                }`}
             >
-                <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex min-w-0 items-center gap-2">
                     <span
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isEditMode ? "bg-amber-500 text-white" : "bg-emerald-500 text-white"
-                            }`}
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white text-xs ${
+                            isEditMode ? "bg-amber-500" : "bg-emerald-500"
+                        }`}
                     >
-                        {isEditMode ? <Pencil size={14} /> : <Plus size={16} />}
+                        {isEditMode ? <Pencil size={12} /> : <Plus size={13} />}
                     </span>
                     <div className="min-w-0">
-                        <p className={`text-xs font-bold uppercase tracking-wide ${isEditMode ? "text-amber-700" : "text-emerald-700"}`}>
-                            {isEditMode ? "กำลังแก้ไข" : "เพิ่มกลุ่มเรียนใหม่"}
+                        <p className={`text-[11px] font-bold uppercase tracking-wide leading-tight ${isEditMode ? "text-amber-700" : "text-emerald-700"}`}>
+                            {isEditMode ? "กำลังแก้ไขกลุ่มเรียน" : "เพิ่มกลุ่มเรียนใหม่"}
                         </p>
                         {isEditMode && (
-                            <p className="truncate text-sm font-semibold text-slate-800" title={form.group_code}>
+                            <p className="truncate text-xs font-semibold text-slate-800" title={form.group_code}>
                                 {form.group_code}
                             </p>
                         )}
                     </div>
                 </div>
-                {isEditMode && (
+                {isEditMode ? (
                     <button
                         type="button"
-                        onClick={onCancelEdit}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            onCancelEdit?.();
+                        }}
                         title="ยกเลิกการแก้ไข / ล้างฟอร์ม"
-                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-700 shadow-2xs transition hover:bg-amber-100"
                     >
-                        <X size={13} />
-                        ยกเลิกแก้ไข
-                    </button>
-                )}
-            </div>
-
-            <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-                {/* แผนกวิชา */}
-                <Field label="แผนกวิชา">
-                    <VirtualizedCombobox
-                        value={form.major_id}
-                        onChange={handleMajorChange}
-                        options={majorOptions}
-                        placeholder="เลือกแผนกวิชา..."
-                        className={inputClass}
-                    />
-                    {!form.major_id && (
-                        <p className="mt-1 text-xs text-slate-400">* เลือกแผนกก่อนเพื่อกรองรายวิชาให้ตรงแผนก</p>
-                    )}
-                </Field>
-
-                {/* สถานะกลุ่มเรียน */}
-                <Field label="สถานะกลุ่มเรียน">
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        {GROUP_STATUS_OPTIONS.map((opt) => (
-                            <label
-                                key={opt.value}
-                                className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition ${form.status === opt.value ? `${opt.className} border-current` : "border-slate-200 text-slate-500 hover:bg-slate-50"
-                                    }`}
-                            >
-                                <input
-                                    type="radio"
-                                    name="status"
-                                    value={opt.value}
-                                    checked={form.status === opt.value}
-                                    onChange={handleChange("status")}
-                                    className="sr-only"
-                                />
-                                <span>{opt.emoji}</span>
-                                {opt.label}
-                            </label>
-                        ))}
-                    </div>
-                </Field>
-
-                {/* ตารางวิชาย่อย (กรองตามแผนกที่เลือกแล้ว) */}
-                <GroupSubjectsTable
-                    subjectsInGroup={subjectsInGroup}
-                    subjectOptions={subjectOptions}
-                    onAdd={handleAddSubjectToGroup}
-                    onRemove={handleRemoveSubjectFromGroup}
-                    onMoeCodeChange={handleMoeCodeChange}
-                />
-                {subjectsInGroup.length > 1 && (
-                    <Field label="วิชาหลัก (ใช้คำนวณรหัสกลุ่มเรียน)">
-                        <VirtualizedCombobox
-                            value={primarySubjectId}
-                            onChange={setPrimarySubjectId}
-                            options={subjectsInGroup.map((s) => ({
-                                value: s.subject_id,
-                                label: `${s.subject_code} - ${s.name_th}`,
-                            }))}
-                            placeholder="เลือกวิชาหลัก..."
-                            className={inputClass}
-                        />
-                    </Field>
-                )}
-
-                {/* รอบเรียน (time_slot_id) + กลุ่มที่ (group_no) */}
-                <div className="grid grid-cols-2 gap-3">
-                    <Field label="รอบเรียน (time_slot)">
-                        <select
-                            value={form.time_slot_id || ""}
-                            onChange={handleTimeSlotChange}
-                            className={inputClass}
-                        >
-                            <option value="">-- เลือกรอบเรียน --</option>
-                            {timeSlotOptions.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                </option>
-                            ))}
-                        </select>
-                    </Field>
-                    <Field label="กลุ่มที่ (group_no)">
-                        <input
-                            type="number"
-                            min="1"
-                            value={form.group_no}
-                            onChange={handleChange("group_no")}
-                            className={inputClass}
-                        />
-                    </Field>
-                </div>
-
-                {/* ประเภทกลุ่มเรียน */}
-                <Field label="ประเภทกลุ่มเรียน">
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {GROUP_TYPE_OPTIONS.map((opt) => (
-                            <label
-                                key={opt.value}
-                                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${form.group_type === opt.value
-                                    ? "border-blue-400 bg-blue-50 text-blue-700 font-semibold"
-                                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                                    }`}
-                            >
-                                <input
-                                    type="radio"
-                                    name="group_type"
-                                    value={opt.value}
-                                    checked={form.group_type === opt.value}
-                                    onChange={handleChange("group_type")}
-                                    className="accent-blue-600"
-                                />
-                                {opt.label}
-                            </label>
-                        ))}
-                    </div>
-                </Field>
-
-                {/* Auto Fill button + code previews */}
-                <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3.5">
-                    <div className="mb-2 flex items-center justify-between">
-                        <p className="text-xs font-semibold text-blue-700">รหัสกลุ่มเรียน (Preview)</p>
-                        <button
-                            type="button"
-                            onClick={handleAutoFill}
-                            disabled={isAutoFilling}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-amber-600 disabled:opacity-60"
-                        >
-                            <Zap size={13} />
-                            {isAutoFilling ? "กำลังคำนวณ..." : "Auto Fill"}
-                        </button>
-                    </div>
-                    <p className="font-mono text-lg font-bold text-blue-700">
-                        {form.group_code || groupCodePreview}
-                    </p>
-                    <p className="mt-1 text-[11px] text-slate-400">
-                        สูตร: {"{รหัสวิชา}"}-{"{รอบ}"}{"{กลุ่มที่}"} — ห้องเรียนคำนวณจาก full_major_code (4 หลัก) — กด Auto Fill
-                        เพื่อคำนวณรหัสห้องเรียน, เลข ศธ. และชื่อกลุ่มเรียนให้อัตโนมัติ
-                    </p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Field label="รหัสกลุ่มเรียน (group_code)">
-                        <input
-                            type="text"
-                            value={form.group_code}
-                            onChange={handleChange("group_code")}
-                            placeholder="กด Auto Fill หรือกรอกเอง"
-                            className={`${inputClass} font-mono`}
-                        />
-                    </Field>
-                    <Field label="รหัสห้องเรียน (room_code)">
-                        <input
-                            type="text"
-                            value={form.room_code}
-                            onChange={handleChange("room_code")}
-                            placeholder="กด Auto Fill หรือกรอกเอง"
-                            className={`${inputClass} font-mono`}
-                        />
-                    </Field>
-                </div>
-
-                <Field label="ชื่อกลุ่มเรียน (group_name)">
-                    <input
-                        type="text"
-                        value={form.group_name}
-                        onChange={handleChange("group_name")}
-                        placeholder="กด Auto Fill เพื่อสร้างชื่อ หรือกรอกเอง"
-                        className={inputClass}
-                    />
-                </Field>
-
-                {/* ผู้สอน */}
-                <Field label="ครูผู้สอน">
-                    <VirtualizedCombobox
-                        value={form.teacher_id}
-                        onChange={handleComboChange("teacher_id")}
-                        options={teacherOptions}
-                        placeholder="พิมพ์ค้นหาชื่อครูผู้สอน..."
-                        className={inputClass}
-                    />
-                </Field>
-
-                {/* สถานที่จัดเรียนร่วม */}
-                <Field label="สถานที่จัดเรียนร่วม">
-                    <div className="flex items-stretch gap-1.5">
-                        <div className="min-w-0 flex-1">
-                            <VirtualizedCombobox
-                                value={form.joint_location_id}
-                                onChange={handleComboChange("joint_location_id")}
-                                options={locationOptions}
-                                placeholder="เลือกสถานที่..."
-                                className={inputClass}
-                            />
-                        </div>
-                        <button
-                            type="button"
-                            title="เพิ่มสถานที่ใหม่ด่วน"
-                            onClick={handleQuickAddLocation}
-                            disabled={isQuickAddingLocation}
-                            className="flex shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-blue-600 transition hover:bg-blue-100 disabled:opacity-60"
-                        >
-                            <Plus size={15} />
-                        </button>
-                        <button
-                            type="button"
-                            title="จัดการรายการสถานที่"
-                            onClick={() => setIsManageLocationsOpen(true)}
-                            className="flex shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-slate-500 transition hover:bg-slate-100"
-                        >
-                            <Settings size={15} />
-                        </button>
-                    </div>
-                </Field>
-
-                {/* ช่วงวันที่ (default มาจาก batch ตอนสร้างใหม่, แก้ไขต่อได้) */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Field label="วันเริ่มเรียน">
-                        <MaskedDateInput
-                            value={form.start_date}
-                            onChange={handleDateChange("start_date")}
-                            calendar="BE"
-                            className={inputClass}
-                        />
-                    </Field>
-                    <Field label="วันจบเรียน">
-                        <MaskedDateInput
-                            value={form.end_date}
-                            onChange={handleDateChange("end_date")}
-                            calendar="BE"
-                            className={inputClass}
-                        />
-                    </Field>
-                    <Field label="วันเปิดรับสมัคร">
-                        <MaskedDateInput
-                            value={form.registration_start_date}
-                            onChange={handleDateChange("registration_start_date")}
-                            calendar="BE"
-                            className={inputClass}
-                        />
-                    </Field>
-                    <Field label="วันปิดรับสมัคร">
-                        <MaskedDateInput
-                            value={form.registration_end_date}
-                            onChange={handleDateChange("registration_end_date")}
-                            calendar="BE"
-                            className={inputClass}
-                        />
-                    </Field>
-                </div>
-                {!isEditMode && batch && (
-                    <p className="-mt-3 text-xs text-slate-400">
-                        * วันที่ด้านบนถูกตั้งค่าเริ่มต้นจากรุ่นการเรียน "{batch.batch_name}" แก้ไขได้ตามต้องการ
-                    </p>
-                )}
-
-                <Field label="รูปแบบวันเรียน (คำอธิบาย)">
-                    <input
-                        type="text"
-                        value={form.study_dates_description}
-                        onChange={handleScheduleDescChange}
-                        placeholder="เลือกรอบเรียนเพื่อสร้างข้อความอัตโนมัติ หรือกรอกเอง"
-                        className={inputClass}
-                    />
-                </Field>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <Field label="จำนวนที่นั่งสูงสุด">
-                        <input
-                            type="number"
-                            min="1"
-                            value={form.max_seats}
-                            onChange={handleChange("max_seats")}
-                            className={inputClass}
-                        />
-                    </Field>
-                    <Field label="ชั่วโมงรวม">
-                        <input
-                            type="number"
-                            min="0"
-                            value={form.total_hours}
-                            onChange={handleChange("total_hours")}
-                            className={inputClass}
-                        />
-                    </Field>
-                </div>
-
-                {/* หมายเหตุดอกจันทร์ในตารางประกาศ (*) */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={Boolean(form.has_footnote)}
-                            onChange={(e) => {
-                                const checked = e.target.checked;
-                                const selectedLoc = locations.find((l) => String(l.id) === String(form.joint_location_id));
-                                const defaultText = selectedLoc?.name && selectedLoc?.name !== "วิทยาลัยสารพัดช่างอุดรธานี"
-                                    ? `การจัดการเรียนการสอนร่วมกับ${selectedLoc.name}`
-                                    : "";
-                                setForm((prev) => ({
-                                    ...prev,
-                                    has_footnote: checked,
-                                    footnote_text: checked ? (prev.footnote_text || defaultText) : "",
-                                }));
-                            }}
-                            className="h-4 w-4 accent-blue-600 rounded"
-                        />
-                        <span>แสดงหมายเหตุดอกจันทร์ในตารางประกาศ (*)</span>
-                    </label>
-
-                    {form.has_footnote && (
-                        <div className="mt-3">
-                            <label className="block text-xs font-medium text-slate-600 mb-1">
-                                ข้อความหมายเหตุ (จะแสดงท้ายตาราง):
-                            </label>
-                            <input
-                                type="text"
-                                value={form.footnote_text || ""}
-                                onChange={(e) => setForm((prev) => ({ ...prev, footnote_text: e.target.value }))}
-                                placeholder="เช่น การจัดการเรียนการสอนร่วมกับเรือนจำกลางอุดรธานี"
-                                className="w-full rounded-lg border border-slate-300 py-1.5 px-3 text-sm focus:border-blue-500 outline-none bg-white"
-                            />
-                        </div>
-                    )}
-                </div>
-
-                {/* ค่าธรรมเนียม */}
-                <div className="rounded-xl border border-slate-200 p-4">
-                    <div className="mb-3 flex items-center justify-between">
-                        <p className="text-sm font-bold text-slate-800">ค่าธรรมเนียม</p>
-                        {form.is_waived_fee && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
-                                ฟรีค่าเรียน
-                            </span>
-                        )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Field label="ค่าสมัคร (บาท)">
-                            <input
-                                type="number"
-                                min="0"
-                                value={form.application_fee}
-                                onChange={handleChange("application_fee")}
-                                className={inputClass}
-                            />
-                        </Field>
-                        <Field label="ค่าเรียน (บาท)">
-                            <input
-                                type="number"
-                                min="0"
-                                value={form.tuition_fee}
-                                onChange={handleChange("tuition_fee")}
-                                disabled={form.is_waived_fee}
-                                className={`${inputClass} disabled:bg-slate-50 disabled:text-slate-400`}
-                            />
-                        </Field>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={form.is_waived_fee}
-                                onChange={handleToggleFreeTuition}
-                                className="h-4 w-4 accent-blue-600"
-                            />
-                            ฟรีค่าเรียน (ค่าเรียนจะถูกปรับเป็น 0 บาท และล็อกช่องกรอก)
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={form.is_ac_maintenance_fee}
-                                onChange={handleChange("is_ac_maintenance_fee")}
-                                className="h-4 w-4 accent-blue-600"
-                            />
-                            ค่าบำรุงแอร์ (+{AC_FEE_PER_HOUR} บาท/ชม.)
-                        </label>
-                    </div>
-                    <p className="mt-3 text-xs text-slate-500">
-                        ประมาณการค่าเรียนรวม:{" "}
-                        <span className="font-semibold text-blue-600">
-                            {estimatedTuition.toLocaleString()} บาท
-                        </span>
-                    </p>
-                </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 px-5 py-4">
-                {isEditMode && (
-                    <button
-                        type="button"
-                        onClick={onCancelEdit}
-                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-                    >
+                        <X size={12} />
                         ยกเลิก
                     </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={handleResetForm}
+                        title="ล้างข้อมูลในฟอร์มเพื่อเริ่มใหม่"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-500 shadow-2xs transition hover:bg-slate-100 hover:text-slate-800"
+                    >
+                        <RotateCcw size={11} />
+                        ล้างฟอร์ม
+                    </button>
                 )}
+            </div>
+
+            {/* ── 2. Scrollable Form Body ── */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3.5 space-y-3.5">
+                {/* Step 1: Prerequisites (Major & Batch) */}
+                <SectionPrerequisites
+                    majorId={form.major_id}
+                    onMajorChange={handleMajorChange}
+                    majorOptions={majorOptions}
+                    batch={batch}
+                />
+
+                {/* Step 2: Subject Selection & Total Hours */}
+                <SectionSubjectBuilder
+                    subjectsInGroup={subjectsInGroup}
+                    subjectOptions={subjectOptions}
+                    allSubjectsCount={subjects.length}
+                    showAllSubjects={showAllSubjects}
+                    onToggleShowAllSubjects={setShowAllSubjects}
+                    primarySubjectId={primarySubjectId}
+                    onPrimarySubjectChange={setPrimarySubjectId}
+                    onAddSubject={handleAddSubjectToGroup}
+                    onRemoveSubject={handleRemoveSubjectFromGroup}
+                    onMoeCodeChange={handleMoeCodeChange}
+                />
+
+                {/* Step 3: Schedule & Times (Shift, 24h Times, Study Days, Dates) */}
+                <SectionScheduleTimes
+                    form={form}
+                    timeSlotOptions={timeSlotOptions}
+                    isEditMode={isEditMode}
+                    batch={batch}
+                    onTimeSlotChange={handleTimeSlotChange}
+                    onCustomTimeChange={handleCustomTimeChange}
+                    onToggleStudyDay={handleToggleStudyDay}
+                    onSetStudyDays={handleSetStudyDays}
+                    onScheduleDescChange={handleScheduleDescChange}
+                    onAutoBuildScheduleDesc={handleAutoBuildScheduleDesc}
+                    onDateChange={handleDateChange}
+                />
+
+                {/* Step 4: Group Identity & Codes (Auto Fill & Group Name) */}
+                <SectionGroupIdentity
+                    form={form}
+                    groupCodePreview={groupCodePreview}
+                    isAutoFilling={isAutoFilling}
+                    onAutoFill={handleAutoFill}
+                    onChange={handleChange}
+                />
+
+                {/* Step 5: Assignments & Capacity (Teacher, Location, Max Seats) */}
+                <SectionAssignments
+                    form={form}
+                    teacherOptions={teacherOptions}
+                    locationOptions={locationOptions}
+                    isQuickAddingLocation={isQuickAddingLocation}
+                    onTeacherChange={(val) => setForm((prev) => ({ ...prev, teacher_id: val }))}
+                    onLocationChange={(val) => setForm((prev) => ({ ...prev, joint_location_id: val }))}
+                    onQuickAddLocation={handleQuickAddLocation}
+                    onOpenManageLocations={() => setIsManageLocationsOpen(true)}
+                    onChange={handleChange}
+                    onTotalHoursChange={handleTotalHoursChange}
+                />
+
+                {/* Step 6: Fees & Footnotes (Editable Total, AC, Waiver, Footnote) */}
+                <SectionFeeSettings
+                    form={form}
+                    locations={locations}
+                    subjectsCount={subjectsInGroup.length}
+                    onChange={handleChange}
+                    onToggleFreeTuition={handleToggleFreeTuition}
+                    onRecalculateTuition={handleRecalculateTuition}
+                    onTotalFeeChange={handleTotalFeeChange}
+                    onResetFeeRates={handleResetFeeRates}
+                />
+
+                {/* Step 7: Group Status Selector */}
+                <SectionFormFooter
+                    status={form.status}
+                    onChange={handleChange}
+                />
+            </div>
+
+            {/* ── 3. Sticky Bottom Form Action Footer ── */}
+            <div className="p-3 border-t border-slate-200 bg-white/95 backdrop-blur flex items-center justify-between gap-2.5 flex-shrink-0 shadow-xs">
                 <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    type="button"
+                    onClick={handleResetForm}
+                    title="ล้างข้อมูลทั้งหมดในฟอร์ม"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors shadow-2xs"
                 >
-                    <Save size={15} />
-                    {isSubmitting ? "กำลังบันทึก..." : isEditMode ? "บันทึกการแก้ไข" : "บันทึกข้อมูล"}
+                    <RotateCcw size={13} />
+                    <span>ล้างฟอร์ม</span>
                 </button>
+
+                <div className="flex items-center gap-2">
+                    {isEditMode && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                onCancelEdit?.();
+                            }}
+                            className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 border border-slate-300 transition-colors shadow-2xs"
+                        >
+                            ยกเลิกแก้ไข
+                        </button>
+                    )}
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 shadow-sm inline-flex items-center gap-1.5 transition-colors"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <span className="animate-spin">⏳</span> กำลังบันทึก...
+                            </>
+                        ) : (
+                            <>
+                                <Save size={14} />
+                                <span>{isEditMode ? "บันทึกการแก้ไข" : "บันทึกข้อมูลกลุ่มเรียน"}</span>
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
             <ManageLocationsModal
@@ -1061,20 +1099,5 @@ export default function GroupFormPanel({
                 onRefresh={onLocationsRefresh}
             />
         </form>
-    );
-}
-
-function extractTimeCodeFromGroupCode(groupCode) {
-    if (!groupCode) return "";
-    const match = /[ชบคพ]/.exec(groupCode);
-    return match ? match[0] : "";
-}
-
-function Field({ label, children }) {
-    return (
-        <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">{label}</label>
-            {children}
-        </div>
     );
 }
