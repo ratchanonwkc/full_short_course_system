@@ -8,7 +8,6 @@ import {
   RotateCcw,
   FileText,
   Megaphone,
-  Table2,
   Layers,
   Sparkles,
   CheckSquare,
@@ -19,13 +18,10 @@ import {
 } from 'lucide-react';
 import OfficialMemoPrint, { resolveGroupTypeLabel } from '../print/announcements/OfficialMemoPrint';
 import CollegeAnnouncementPrint from '../print/announcements/CollegeAnnouncementPrint';
-import CourseScheduleTablePrint from '../print/announcements/CourseScheduleTablePrint';
-import { getStudyGroups } from '../../features/study-groups/services/studyGroupApi';
 
 const TABS = [
   { key: 'memo', label: 'บันทึกข้อความ', icon: FileText },
   { key: 'announcement', label: 'ประกาศวิทยาลัย', icon: Megaphone },
-  { key: 'course_table', label: 'ตารางรายวิชาแนบท้าย', icon: Table2 },
 ];
 
 const DOC_CONFIGS = [
@@ -65,15 +61,6 @@ const DOC_CONFIGS = [
     tab: 'announcement',
     isDraft: false,
   },
-  {
-    id: 'schedule_table',
-    label: 'ตารางรายวิชาแนบท้าย',
-    shortLabel: 'ตารางแนบท้าย',
-    badge: 'ตาราง',
-    badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
-    tab: 'course_table',
-    batchOnly: true,
-  },
 ];
 
 // ── Batch numbering helpers (NEVER use raw id / sequence keys) ──────────────
@@ -103,27 +90,13 @@ export default function AnnouncementPrintModal({
   courseCount = 0,
   groups = [],
   group = null,
-  type = 'regular',
+  type = '',
   initialType = '',
   groupTypeLabel = '',
   initialDepartment = '',
-  mode = '',
 }) {
-  const activeType = initialType || type || 'regular';
-  const isRegular = activeType === 'regular';
-  const isBatchLevel = mode === 'batch' || (mode !== 'group' && !group && isRegular);
-
-  const visibleTabs = useMemo(() => {
-    if (isBatchLevel) {
-      return TABS;
-    }
-    return TABS.filter((t) => t.key !== 'course_table');
-  }, [isBatchLevel]);
-
-  const availableDocs = useMemo(() => {
-    if (isBatchLevel) return DOC_CONFIGS;
-    return DOC_CONFIGS.filter((d) => !d.batchOnly);
-  }, [isBatchLevel]);
+  const visibleTabs = TABS;
+  const availableDocs = DOC_CONFIGS;
 
   const [activeTab, setActiveTab] = useState('memo');
   const [docNo, setDocNo] = useState('');
@@ -134,41 +107,31 @@ export default function AnnouncementPrintModal({
   const [manualCourseCount, setManualCourseCount] = useState(1);
   const [isDraft, setIsDraft] = useState(true);
   const [useThaiDigits, setUseThaiDigits] = useState(true);
-  const [fetchedGroups, setFetchedGroups] = useState([]);
 
   // Multi-document bundle selection state
-  const [selectedDocs, setSelectedDocs] = useState(() =>
-    isBatchLevel ? ['memo_draft', 'announce_draft', 'schedule_table'] : ['memo_draft', 'announce_draft']
-  );
+  const [selectedDocs, setSelectedDocs] = useState(['memo_draft', 'announce_draft']);
 
   const previewPrintRef = useRef(null);
   const multiPrintRef = useRef(null);
 
-  // Preset Bundles Generator
+  // Preset Bundles Generator (4 documents max: Draft Memo/Announcement, Final Memo/Announcement)
   const presets = useMemo(() => {
-    const draftBundle = ['memo_draft', 'announce_draft', ...(isBatchLevel ? ['schedule_table'] : [])];
-    const finalBundle = ['memo_final', 'announce_final', ...(isBatchLevel ? ['schedule_table'] : [])];
-    const allBundle = ['memo_draft', 'memo_final', 'announce_draft', 'announce_final', ...(isBatchLevel ? ['schedule_table'] : [])];
-
     return {
-      draft: draftBundle,
-      final: finalBundle,
-      all: allBundle,
+      draft: ['memo_draft', 'announce_draft'],
+      final: ['memo_final', 'announce_final'],
+      all: ['memo_draft', 'memo_final', 'announce_draft', 'announce_final'],
     };
-  }, [isBatchLevel]);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
       setDocNo('');
       setDocDateIso(new Date().toISOString().slice(0, 10));
       setIsDraft(true);
+      setActiveTab('memo');
 
       // Default to "ชุดเสนอลงนาม (ร่าง)" on opening
-      setSelectedDocs(isBatchLevel ? ['memo_draft', 'announce_draft', 'schedule_table'] : ['memo_draft', 'announce_draft']);
-
-      if (!isBatchLevel && activeTab === 'course_table') {
-        setActiveTab('memo');
-      }
+      setSelectedDocs(['memo_draft', 'announce_draft']);
 
       // Determine initial Department Name
       const dept =
@@ -179,9 +142,9 @@ export default function AnnouncementPrintModal({
       setDepartmentName(dept);
 
       // Determine Group Type Label
-      let rawType = groupTypeLabel || group?.group_type || group?.category || (isRegular ? 'ปกติ' : '');
-      const typeLabel = resolveGroupTypeLabel(rawType);
-      setCurrentGroupTypeLabel(typeLabel);
+      const rawType = groupTypeLabel || group?.group_type || group?.category || initialType || type || 'แบบพิเศษ';
+      const resolvedLabel = resolveGroupTypeLabel(rawType);
+      setCurrentGroupTypeLabel(resolvedLabel);
 
       // Set Course Count
       if (group) {
@@ -189,77 +152,21 @@ export default function AnnouncementPrintModal({
         setManualCourseCount(count);
       } else if (courseCount > 0) {
         setManualCourseCount(courseCount);
-      }
-
-      // Reset and proactively fetch study groups for this specific batch if needed
-      setFetchedGroups([]);
-      if (batch?.id && isRegular) {
-        getStudyGroups({ batch_id: batch.id })
-          .then((data) => {
-            const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-            setFetchedGroups(list);
-          })
-          .catch(() => {});
+      } else if (groups.length > 0) {
+        setManualCourseCount(groups.length);
       }
     }
-  }, [isOpen, isBatchLevel, activeTab, batch?.id, isRegular, group, groups, initialDepartment, groupTypeLabel, courseCount]);
+  }, [isOpen, group, groups, initialDepartment, groupTypeLabel, initialType, type, courseCount]);
 
   const { batchNo, academicYear, batchDisplay } = useMemo(() => extractBatchDisplay(batch), [batch]);
 
-  // Consolidate groups strictly for this batch
-  const allGroups = useMemo(() => {
-    if (fetchedGroups && fetchedGroups.length > 0) {
-      return fetchedGroups;
-    }
-    if (batch?.study_groups && batch.study_groups.length > 0) return batch.study_groups;
+  const resolvedGroupsForPrint = useMemo(() => {
     if (groups && groups.length > 0) return groups;
+    if (group) return [group];
     return [];
-  }, [fetchedGroups, batch, groups]);
+  }, [groups, group]);
 
-  // Permissive Active Regular Group Filter
-  const activeBatchGroups = useMemo(() => {
-    return (allGroups || []).filter((group) => {
-      // Safe Batch ID matching
-      const matchBatch = !batch?.id || !group.batch_id || String(group.batch_id) === String(batch?.id);
-
-      // Safe Group Type matching (regular / normal / ปกติ / empty)
-      const isGroupRegular =
-        !group.group_type ||
-        group.group_type === 'normal' ||
-        group.group_type === 'regular' ||
-        group.group_type === 'ปกติ' ||
-        group.category === 'ปกติ';
-
-      // Safe Status matching (not cancelled)
-      const isNotCancelled = group.status !== 'cancelled' && !group.is_cancelled;
-
-      return matchBatch && isGroupRegular && isNotCancelled;
-    });
-  }, [allGroups, batch?.id]);
-
-  // Calculate regular courses count dynamically for batch mode
-  const calculatedRegularCoursesCount = useMemo(() => {
-    if (!isRegular) return manualCourseCount;
-    if (typeof courseCount === 'number' && courseCount > 0) return courseCount;
-
-    const listToCount = activeBatchGroups.length > 0 ? activeBatchGroups : allGroups;
-    if (listToCount.length > 0) {
-      return listToCount.reduce((acc, group) => {
-        const subjectCount = group.subjects_in_group?.length || group.subjects?.length || 1;
-        return acc + subjectCount;
-      }, 0);
-    }
-    return 1;
-  }, [isRegular, manualCourseCount, courseCount, activeBatchGroups, allGroups]);
-
-  // Sync manualCourseCount with calculatedRegularCoursesCount for regular mode
-  useEffect(() => {
-    if (isRegular && calculatedRegularCoursesCount > 0) {
-      setManualCourseCount(calculatedRegularCoursesCount);
-    }
-  }, [isRegular, calculatedRegularCoursesCount]);
-
-  const finalCourseCount = isRegular ? (manualCourseCount || calculatedRegularCoursesCount) : manualCourseCount;
+  const finalCourseCount = manualCourseCount;
 
   const formattedThaiDate = useMemo(() => {
     const thaiMonths = [
@@ -271,11 +178,9 @@ export default function AnnouncementPrintModal({
     return `${dt.getDate()} ${thaiMonths[dt.getMonth()]} ${dt.getFullYear() + 543}`;
   }, [docDateIso]);
 
-  const resolvedGroupsForPrint = activeBatchGroups.length > 0 ? activeBatchGroups : allGroups;
-
   const memoData = {
     ...batch,
-    type: activeType,
+    type: currentGroupTypeLabel,
     doc_no: docNo,
     doc_date_display: formattedThaiDate,
     doc_date: docDateIso || new Date().toISOString(),
@@ -286,6 +191,8 @@ export default function AnnouncementPrintModal({
     batch_no: batchNo,
     batch_display: batchDisplay,
     groups: resolvedGroupsForPrint,
+    group: group,
+    teacher_phone: group?.teacher_phone || (groups.length > 0 ? groups[0]?.teacher_phone : ''),
     course_count: finalCourseCount,
     head_registration_name: headRegistrarName,
     group_type_label: resolveGroupTypeLabel(currentGroupTypeLabel),
@@ -312,11 +219,26 @@ export default function AnnouncementPrintModal({
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
           margin: 0;
+          font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
+        }
+        .print-page-wrapper, .print-page-wrapper * {
+          font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
         }
         .print-page-wrapper {
           width: 210mm;
           min-height: 297mm;
           margin: 0 auto;
+        }
+        .thai-distributed {
+          text-align: justify !important;
+          text-justify: distribute !important;
+          text-justify: inter-character !important;
+          text-justify: inter-cluster !important;
+          text-align-last: left !important;
+          -webkit-hyphens: none !important;
+          hyphens: none !important;
+          word-break: normal !important;
+          overflow-wrap: break-word !important;
         }
       }
     `,
@@ -349,9 +271,7 @@ export default function AnnouncementPrintModal({
     setDocNo('');
     setDocDateIso(new Date().toISOString().slice(0, 10));
     setHeadRegistrarName('นายอัคเดช พิสัยสวัสดิ์');
-    if (!isRegular) {
-      setDepartmentName(initialDepartment || group?.major_name || 'อาหาร - ขนม');
-    }
+    setDepartmentName(initialDepartment || group?.major_name || 'อาหาร - ขนม');
   };
 
   // Check which preset is currently active
@@ -406,17 +326,15 @@ export default function AnnouncementPrintModal({
 
                     {/* Center: Metadata inputs */}
                     <div className="flex flex-wrap items-center gap-2 text-xs">
-                      {!isRegular && (
-                        <Field label="แผนกวิชา">
-                          <input
-                            type="text"
-                            value={departmentName}
-                            onChange={(e) => setDepartmentName(e.target.value)}
-                            placeholder="เช่น อาหาร - ขนม"
-                            className={`${inputCls} w-32 font-semibold text-blue-700`}
-                          />
-                        </Field>
-                      )}
+                      <Field label="แผนกวิชา">
+                        <input
+                          type="text"
+                          value={departmentName}
+                          onChange={(e) => setDepartmentName(e.target.value)}
+                          placeholder="เช่น อาหาร - ขนม"
+                          className={`${inputCls} w-32 font-semibold text-blue-700`}
+                        />
+                      </Field>
 
                       <Field label="เลขที่หนังสือ">
                         <input
@@ -498,11 +416,10 @@ export default function AnnouncementPrintModal({
                       <button
                         type="button"
                         onClick={() => handleApplyPreset('draft')}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition ${
-                          isDraftPresetActive
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition ${isDraftPresetActive
                             ? 'bg-amber-600 text-white shadow-xs'
                             : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
-                        }`}
+                          }`}
                       >
                         <FileCheck2 size={13} />
                         ชุดเสนอลงนาม (ร่าง)
@@ -511,11 +428,10 @@ export default function AnnouncementPrintModal({
                       <button
                         type="button"
                         onClick={() => handleApplyPreset('final')}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition ${
-                          isFinalPresetActive
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition ${isFinalPresetActive
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : 'bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100'
-                        }`}
+                          }`}
                       >
                         <Send size={13} />
                         ชุดประกาศจริง (จริง)
@@ -524,14 +440,13 @@ export default function AnnouncementPrintModal({
                       <button
                         type="button"
                         onClick={() => handleApplyPreset('all')}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition ${
-                          isAllPresetActive
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition ${isAllPresetActive
                             ? 'bg-indigo-600 text-white shadow-xs'
                             : 'bg-indigo-50 text-indigo-900 border border-indigo-200 hover:bg-indigo-100'
-                        }`}
+                          }`}
                       >
                         <Layers size={13} />
-                        พิมพ์ทั้งหมด ({isBatchLevel ? '5' : '4'} ฉบับ)
+                        พิมพ์ทั้งหมด (4 ฉบับ)
                       </button>
                     </div>
 
@@ -545,11 +460,10 @@ export default function AnnouncementPrintModal({
                             key={doc.id}
                             type="button"
                             onClick={() => toggleDoc(doc.id)}
-                            className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium border transition ${
-                              isChecked
+                            className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium border transition ${isChecked
                                 ? 'bg-blue-50 border-blue-300 text-blue-800 font-semibold'
                                 : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
-                            }`}
+                              }`}
                           >
                             {isChecked ? (
                               <CheckSquare size={13} className="text-blue-600" />
@@ -572,11 +486,10 @@ export default function AnnouncementPrintModal({
                           key={key}
                           type="button"
                           onClick={() => setActiveTab(key)}
-                          className={`flex items-center gap-1 px-3 py-1 text-[11px] font-bold rounded-md transition ${
-                            activeTab === key
+                          className={`flex items-center gap-1 px-3 py-1 text-[11px] font-bold rounded-md transition ${activeTab === key
                               ? 'bg-blue-600 text-white shadow-xs'
                               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-                          }`}
+                            }`}
                         >
                           <Icon size={12} />
                           {label}
@@ -591,22 +504,20 @@ export default function AnnouncementPrintModal({
                         <button
                           type="button"
                           onClick={() => setIsDraft(true)}
-                          className={`rounded px-2 py-0.5 transition ${
-                            isDraft
+                          className={`rounded px-2 py-0.5 transition ${isDraft
                               ? 'bg-amber-100 text-amber-800 font-bold border border-amber-300'
                               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
+                            }`}
                         >
                           ร่าง
                         </button>
                         <button
                           type="button"
                           onClick={() => setIsDraft(false)}
-                          className={`rounded px-2 py-0.5 transition ${
-                            !isDraft
+                          className={`rounded px-2 py-0.5 transition ${!isDraft
                               ? 'bg-emerald-100 text-emerald-800 font-bold border border-emerald-300'
                               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
+                            }`}
                         >
                           จริง
                         </button>
@@ -639,16 +550,6 @@ export default function AnnouncementPrintModal({
                     {activeTab === 'announcement' && (
                       <CollegeAnnouncementPrint
                         ref={previewPrintRef}
-                        data={memoData}
-                        isDraft={isDraft}
-                        useThaiDigits={useThaiDigits}
-                      />
-                    )}
-                    {activeTab === 'course_table' && (
-                      <CourseScheduleTablePrint
-                        ref={previewPrintRef}
-                        batch={batch}
-                        groups={memoData.groups}
                         data={memoData}
                         isDraft={isDraft}
                         useThaiDigits={useThaiDigits}
@@ -704,18 +605,6 @@ export default function AnnouncementPrintModal({
                       }}
                     >
                       <CollegeAnnouncementPrint data={memoData} isDraft={false} useThaiDigits={useThaiDigits} />
-                    </div>
-                  )}
-
-                  {selectedDocs.includes('schedule_table') && isBatchLevel && (
-                    <div className="print-page-wrapper">
-                      <CourseScheduleTablePrint
-                        batch={batch}
-                        groups={resolvedGroupsForPrint}
-                        data={memoData}
-                        isDraft={isDraft}
-                        useThaiDigits={useThaiDigits}
-                      />
                     </div>
                   )}
                 </div>
@@ -785,16 +674,15 @@ export default function AnnouncementPrintModal({
                               <button
                                 type="button"
                                 onClick={() => handleQuickPresetPrint('draft')}
-                                className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-xs font-semibold transition ${
-                                  active ? 'bg-amber-50 text-amber-900' : 'text-slate-700'
-                                }`}
+                                className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-xs font-semibold transition ${active ? 'bg-amber-50 text-amber-900' : 'text-slate-700'
+                                  }`}
                               >
                                 <span className="flex items-center gap-1.5">
                                   <FileCheck2 size={14} className="text-amber-600" />
                                   ชุดเสนอลงนาม (ร่าง)
                                 </span>
                                 <span className="text-[10px] text-amber-700 font-bold bg-amber-100 rounded px-1.5 py-0.5">
-                                  {isBatchLevel ? '3 ฉบับ' : '2 ฉบับ'}
+                                  2 ฉบับ
                                 </span>
                               </button>
                             )}
@@ -805,16 +693,15 @@ export default function AnnouncementPrintModal({
                               <button
                                 type="button"
                                 onClick={() => handleQuickPresetPrint('final')}
-                                className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-xs font-semibold transition ${
-                                  active ? 'bg-emerald-50 text-emerald-900' : 'text-slate-700'
-                                }`}
+                                className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-xs font-semibold transition ${active ? 'bg-emerald-50 text-emerald-900' : 'text-slate-700'
+                                  }`}
                               >
                                 <span className="flex items-center gap-1.5">
                                   <Send size={14} className="text-emerald-600" />
                                   ชุดประกาศจริง (จริง)
                                 </span>
                                 <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 rounded px-1.5 py-0.5">
-                                  {isBatchLevel ? '3 ฉบับ' : '2 ฉบับ'}
+                                  2 ฉบับ
                                 </span>
                               </button>
                             )}
@@ -825,16 +712,15 @@ export default function AnnouncementPrintModal({
                               <button
                                 type="button"
                                 onClick={() => handleQuickPresetPrint('all')}
-                                className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-xs font-semibold transition ${
-                                  active ? 'bg-indigo-50 text-indigo-900' : 'text-slate-700'
-                                }`}
+                                className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-xs font-semibold transition ${active ? 'bg-indigo-50 text-indigo-900' : 'text-slate-700'
+                                  }`}
                               >
                                 <span className="flex items-center gap-1.5">
                                   <Layers size={14} className="text-indigo-600" />
                                   พิมพ์ทั้งหมดครบชุด
                                 </span>
                                 <span className="text-[10px] text-indigo-700 font-bold bg-indigo-100 rounded px-1.5 py-0.5">
-                                  {isBatchLevel ? '5 ฉบับ' : '4 ฉบับ'}
+                                  4 ฉบับ
                                 </span>
                               </button>
                             )}
@@ -848,11 +734,10 @@ export default function AnnouncementPrintModal({
                       type="button"
                       disabled={selectedDocs.length === 0}
                       onClick={() => triggerMultiPrint()}
-                      className={`inline-flex items-center gap-1.5 rounded px-4 py-1.5 text-xs font-bold text-white shadow-xs transition active:scale-[0.98] ${
-                        selectedDocs.length === 0
+                      className={`inline-flex items-center gap-1.5 rounded px-4 py-1.5 text-xs font-bold text-white shadow-xs transition active:scale-[0.98] ${selectedDocs.length === 0
                           ? 'bg-slate-300 cursor-not-allowed text-slate-500'
                           : 'bg-blue-600 hover:bg-blue-700'
-                      }`}
+                        }`}
                     >
                       <Printer size={14} />
                       <span>สั่งพิมพ์ ({selectedDocs.length} ฉบับ)</span>
@@ -875,4 +760,4 @@ function Field({ label, children }) {
       {children}
     </div>
   );
-}
+}

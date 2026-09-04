@@ -16,7 +16,7 @@ import { supabase } from '../../config/supabase.js';
 const SELECT_WITH_JOINS = `
   *,
   academic_majors:major_id ( id, name_th, short_name_th, full_major_code, department_id, level_id, subject_type_id ),
-  teachers:teacher_id ( id, first_name_th, last_name_th, prefixes:prefix_id (short_name) ),
+  teachers:teacher_id ( id, first_name_th, last_name_th, phone, prefixes:prefix_id (short_name) ),
   locations:joint_location_id ( id, name ),
   time_slots:time_slot_id ( id, time_code, time_name, time_range ),
   study_group_subjects (
@@ -74,6 +74,8 @@ const flatten = (row) => {
         teacher_name: teacher
             ? `${teacher.prefixes?.short_name || ''}${teacher.first_name_th} ${teacher.last_name_th}`.trim()
             : '',
+        teacher_first_name: teacher?.first_name_th || '',
+        teacher_phone: teacher?.phone || '',
         location_name: location?.name || '',
         time_slot_id: row.time_slot_id || null,
         time_slot_name: timeSlot?.time_name || '',
@@ -319,7 +321,7 @@ export const getStudyGroupRosterBySubjectService = async (groupId) => {
             start_date,
             end_date,
             batches:batch_id ( id, batch_name, academic_year, term, batch_no, study_open_date, study_close_date ),
-            teachers:teacher_id ( id, first_name_th, last_name_th, prefixes:prefix_id ( short_name ) ),
+            teachers:teacher_id ( id, first_name_th, last_name_th, phone, prefixes:prefix_id ( short_name ) ),
             study_group_subjects (
                 id,
                 subject_id,

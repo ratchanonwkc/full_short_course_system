@@ -25,40 +25,15 @@ export function toThaiDigits(val) {
   return String(val).replace(/[0-9]/g, (d) => thaiDigits[Number(d)]);
 }
 
-function formatThaiDateFull(rawDate, useThaiDigits = true) {
-  if (!rawDate) return '';
-  const num = (v) => (useThaiDigits ? toThaiDigits(v) : v);
-
-  if (
-    typeof rawDate === 'string' &&
-    (rawDate.includes('มกราคม') ||
-      rawDate.includes('กุมภาพันธ์') ||
-      rawDate.includes('มีนาคม') ||
-      rawDate.includes('เมษายน') ||
-      rawDate.includes('พฤษภาคม') ||
-      rawDate.includes('มิถุนายน') ||
-      rawDate.includes('กรกฎาคม') ||
-      rawDate.includes('สิงหาคม') ||
-      rawDate.includes('กันยายน') ||
-      rawDate.includes('ตุลาคม') ||
-      rawDate.includes('พฤศจิกายน') ||
-      rawDate.includes('ธันวาคม'))
-  ) {
-    const cleaned = rawDate.replace(/^วันที่\s*/, '').replace(/พ\.ศ\.\s*/, '');
-    return num(cleaned);
-  }
-
-  const date = new Date(rawDate);
-  if (isNaN(date.getTime())) return num(rawDate);
-
+function formatThaiDateFull(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return '';
   const thaiMonths = [
     'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
   ];
-  const day = num(date.getDate());
-  const month = thaiMonths[date.getMonth()];
-  const year = num(date.getFullYear() > 2500 ? date.getFullYear() : date.getFullYear() + 543);
-  return `${day} ${month} ${year}`;
+  return `${toThaiDigits(date.getDate())} ${thaiMonths[date.getMonth()]} ${toThaiDigits(date.getFullYear() + 543)}`;
 }
 
 const OfficialMemoPrint = forwardRef(function OfficialMemoPrint(
@@ -68,59 +43,29 @@ const OfficialMemoPrint = forwardRef(function OfficialMemoPrint(
   const d = data;
   const num = (v) => (useThaiDigits ? toThaiDigits(v) : v);
 
-  const rawType = d.type || 'regular';
-  const isRegular = rawType === 'regular' || rawType === 'normal' || rawType === 'ปกติ';
   const term = num(d.term || '1');
   const academicYear = num(d.academic_year || '2569');
   const batchDisplay = num(d.batch_display || `${d.batch_no || '1'}/${d.academic_year || '2569'}`);
   const courseCount = num(d.course_count || '1');
-  const docDate = d.doc_date
-    ? formatThaiDateFull(d.doc_date, useThaiDigits)
-    : d.doc_date_display
-    ? formatThaiDateFull(d.doc_date_display, useThaiDigits)
-    : '';
+  const docDate = d.doc_date ? formatThaiDateFull(d.doc_date) : (d.doc_date_display || '');
   const docNo = d.doc_no ? num(d.doc_no) : '';
   const groupTypeLabel = resolveGroupTypeLabel(d.group_type_label || d.group_type || d.type);
   const rawDepartmentName = d.department_name || 'อาหาร - ขนม';
   const cleanDepartmentName = rawDepartmentName.replace(/^แผนกวิชา\s*/, '');
 
-  // ── Construct Subject, Paragraphs & Proposal Items ──
-  let subject = '';
-  let paragraph1 = '';
-  let paragraph2 = '';
-  let proposalItems = [];
-
-  if (isRegular) {
-    subject = `ประกาศรับสมัครนักศึกษาหลักสูตรวิชาชีพระยะสั้น ภาคเรียนที่ ${term} ปีการศึกษา ${academicYear} (รุ่นที่ ${batchDisplay})`;
-    paragraph1 = `ตามที่ งานทะเบียน ได้สำรวจความประสงค์ในการเปิดทำการเรียนการสอนหลักสูตรวิชาชีพระยะสั้น ภาคเรียนที่ ${term} ปีการศึกษา ${academicYear} (รุ่นที่ ${batchDisplay}) จากครูผู้สอนเป็นที่เรียบร้อยแล้วนั้น แผนกวิชาต่าง ๆ มีความประสงค์จะขอเปิดทำการเรียนการสอน จำนวน ${courseCount} รายวิชา ตามรายละเอียดในประกาศรับสมัครฯ ที่แนบมาพร้อมนี้`;
-    paragraph2 = `ดังนั้น งานทะเบียน จึงได้ดำเนินการจัดทำประกาศรับสมัครนักศึกษาหลักสูตรวิชาชีพระยะสั้น (ปกติ) ภาคเรียนที่ ${term} ปีการศึกษา ${academicYear} (รุ่นที่ ${batchDisplay}) เพื่อประกาศให้ทราบโดยทั่วกัน`;
-    proposalItems = [
-      `${num('1')}. ทราบ`,
-      `${num('2')}. พิจารณาอนุญาต`,
-      `${num('3')}. แจ้งฝ่ายวิชาการ งานประชาสัมพันธ์ และงานการเงิน ดำเนินการต่อไป`,
-    ];
-  } else {
-    subject = `ขออนุญาตประกาศรับสมัครนักศึกษาหลักสูตรวิชาชีพระยะสั้น (${groupTypeLabel}) ภาคเรียนที่ ${term} ปีการศึกษา ${academicYear} (รุ่นที่ ${batchDisplay}) แผนกวิชา${cleanDepartmentName}`;
-    paragraph1 = `ตามที่ งานพัฒนาหลักสูตรการเรียนการสอน ได้สำรวจความประสงค์ในการเปิดทำการเรียนการสอนหลักสูตรวิชาชีพระยะสั้น (${groupTypeLabel}) ภาคเรียนที่ ${term} ปีการศึกษา ${academicYear} (รุ่นที่ ${batchDisplay}) จากครูผู้สอนเป็นที่เรียบร้อย แผนกวิชา${cleanDepartmentName} มีความประสงค์จะขอเปิดทำการเรียนการสอน จำนวน ${courseCount} รายวิชา ตามรายละเอียดในประกาศรับสมัครฯ ที่แนบมาพร้อมนี้`;
-    paragraph2 = `ดังนั้น งานทะเบียน จึงได้ดำเนินการจัดทำประกาศรับสมัครนักศึกษาหลักสูตรวิชาชีพระยะสั้น (${groupTypeLabel}) ภาคเรียนที่ ${term} ปีการศึกษา ${academicYear} (รุ่นที่ ${batchDisplay}) แผนกวิชา${cleanDepartmentName} เพื่อประกาศให้ทราบโดยทั่วกัน`;
-    proposalItems = [
-      `${num('1')}. ทราบ/ พิจารณาอนุญาต`,
-      `${num('2')}. แจ้งฝ่ายวิชาการ งานศูนย์ดิจิทัลและสื่อสารองค์กร`,
-    ];
-  }
-
-  // Ensure all texts undergo Thai digit conversion if useThaiDigits is active
-  if (useThaiDigits) {
-    subject = toThaiDigits(subject);
-    paragraph1 = toThaiDigits(paragraph1);
-    paragraph2 = toThaiDigits(paragraph2);
-    proposalItems = proposalItems.map((item) => toThaiDigits(item));
-  }
+  // ── Unified Paragraphs & Proposal Items for All Memorandums ──
+  const paragraph1 = `ตามที่ งานพัฒนาหลักสูตรการเรียนการสอน ได้สำรวจความประสงค์ในการเปิดทำการเรียนการสอนหลักสูตรวิชาชีพระยะสั้น (${groupTypeLabel}) ภาคเรียนที่ ${term} ปีการศึกษา ${academicYear} (รุ่นที่ ${batchDisplay}) จากครูผู้สอนเป็นที่เรียบร้อย แผนกวิชา${cleanDepartmentName} มีความประสงค์จะขอเปิดทำการเรียนการสอน จำนวน ${courseCount} รายวิชา ตามรายละเอียดในประกาศรับสมัครฯ ที่แนบมาพร้อมนี้`;
+  const paragraph2 = `ดังนั้น งานทะเบียน จึงได้ดำเนินการจัดทำประกาศรับสมัครนักศึกษาหลักสูตรวิชาชีพระยะสั้น (${groupTypeLabel}) ภาคเรียนที่ ${term} ปีการศึกษา ${academicYear} (รุ่นที่ ${batchDisplay}) แผนกวิชา${cleanDepartmentName} เพื่อประกาศให้ทราบโดยทั่วกัน`;
+  const proposalItems = [
+    `${num('1')}. ทราบ/ พิจารณาอนุญาต`,
+    `${num('2')}. แจ้งฝ่ายวิชาการ งานศูนย์ดิจิทัลและสื่อสารองค์กร`,
+  ];
 
   return (
     <div
       ref={ref}
-      className="official-memo-print-page bg-white text-black select-text"
+      lang="th"
+      className="memo-print-root bg-white text-black font-['TH_Sarabun_PSK','THSarabunPSK',sans-serif] select-text"
       style={{
         width: '210mm',
         minHeight: '297mm',
@@ -128,34 +73,37 @@ const OfficialMemoPrint = forwardRef(function OfficialMemoPrint(
         padding: '1.5cm 2.0cm 2.0cm 3.0cm',
         margin: '0 auto',
         fontSize: '16pt',
-        lineHeight: 1.25,
-        color: '#000000',
-        backgroundColor: '#ffffff',
-        fontFamily: "'TH Sarabun PSK', 'TH Sarabun New', sans-serif",
+        lineHeight: '1',
+        color: '#000',
+        backgroundColor: '#fff',
+        fontFamily: "'TH Sarabun PSK', 'THSarabunPSK', sans-serif",
       }}
     >
-      <style>{`
-        @font-face {
-          font-family: 'TH Sarabun PSK';
-          font-style: normal;
-          font-weight: 400;
-          src: url('/fonts/THSARABUN.TTF') format('truetype'),
-               local('TH Sarabun PSK'),
-               local('TH Sarabun New');
-        }
-
-        @font-face {
-          font-family: 'TH Sarabun PSK';
-          font-style: normal;
-          font-weight: 700;
-          src: url('/fonts/THSARABUN BOLD.TTF') format('truetype'),
-               local('TH Sarabun PSK Bold'),
-               local('TH Sarabun New Bold');
-        }
-
+      <style orientation="portrait">{`
         @page {
           size: A4 portrait;
           margin: 0;
+        }
+
+        html, body {
+          font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif;
+        }
+
+        .memo-print-root,
+        .memo-print-root * {
+          font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
+        }
+
+        .thai-distributed {
+          text-align: justify;
+          text-justify: distribute;
+          text-justify: inter-character;
+          text-justify: inter-cluster;
+          text-align-last: left;
+          -webkit-hyphens: none;
+          hyphens: none;
+          word-break: normal;
+          overflow-wrap: break-word;
         }
 
         @media print {
@@ -165,320 +113,130 @@ const OfficialMemoPrint = forwardRef(function OfficialMemoPrint(
             margin: 0 !important;
             padding: 0 !important;
             background: #fff !important;
+            font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          .official-memo-print-page {
+          .memo-print-root {
             width: 210mm !important;
             min-height: 297mm !important;
             padding: 1.5cm 2.0cm 2.0cm 3.0cm !important;
             box-sizing: border-box !important;
-            font-family: 'TH Sarabun PSK', 'TH Sarabun New', sans-serif !important;
+            font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
+          }
+          .thai-distributed {
+            text-align: justify !important;
+            text-justify: distribute !important;
+            text-justify: inter-character !important;
+            text-justify: inter-cluster !important;
+            text-align-last: left !important;
+            -webkit-hyphens: none !important;
+            hyphens: none !important;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
           }
         }
       `}</style>
 
-      {/* ── 1. Header Zone: Garuda Emblem (Left) & Memo Title (Center) ── */}
-      <div
-        style={{
-          position: 'relative',
-          minHeight: '1.5cm',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
+      {/* ── Header Zone: Garuda + Title ── */}
+      <div className="relative mb-2 flex items-start">
         <img
           src={garudaLogo}
-          alt="Garuda Emblem"
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            height: '1.5cm',
-            width: 'auto',
-          }}
+          alt="Garuda"
+          style={{ width: '1.5cm', height: '1.5cm' }}
+          className="shrink-0 object-contain"
         />
-        <h1
-          style={{
-            fontSize: '29pt',
-            fontWeight: 700,
-            textAlign: 'center',
-            lineHeight: 1,
-            margin: 0,
-            fontFamily: "'TH Sarabun PSK', 'TH Sarabun New', sans-serif",
-          }}
-        >
-          บันทึกข้อความ
-        </h1>
-      </div>
-
-      {/* ── 2. Metadata Header Rows (Gaps: margin-top: 22pt) ── */}
-      {/* Row 1: ส่วนราชการ */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          marginTop: '22pt',
-          lineHeight: 1.25,
-        }}
-      >
-        <span
-          style={{
-            fontSize: '20pt',
-            fontWeight: 700,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          ส่วนราชการ
-        </span>
-        <span
-          style={{
-            fontSize: '16pt',
-            fontWeight: 'normal',
-            marginLeft: '0.3cm',
-            flex: 1,
-          }}
-        >
-          {d.department_agency || 'งานทะเบียน วิทยาลัยสารพัดช่างอุดรธานี'}
-        </span>
-      </div>
-
-      {/* Row 2: ที่ + วันที่ */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          marginTop: '22pt',
-          lineHeight: 1.25,
-        }}
-      >
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'baseline',
-          }}
-        >
-          <span
-            style={{
-              fontSize: '20pt',
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            ที่
-          </span>
-          <span
-            style={{
-              fontSize: '16pt',
-              fontWeight: 'normal',
-              marginLeft: '0.3cm',
-            }}
-          >
-            {docNo}
-          </span>
-        </div>
-
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'baseline',
-          }}
-        >
-          <span
-            style={{
-              fontSize: '20pt',
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            วันที่
-          </span>
-          <span
-            style={{
-              fontSize: '16pt',
-              fontWeight: 'normal',
-              marginLeft: '0.3cm',
-            }}
-          >
-            {docDate}
-          </span>
+        <div className="absolute inset-x-0 text-center" style={{ top: '0.15cm' }}>
+          <h1 className="text-[29pt] font-bold text-black tracking-tight leading-none">บันทึกข้อความ</h1>
         </div>
       </div>
 
-      {/* Row 3: เรื่อง */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          marginTop: '22pt',
-          lineHeight: 1.25,
-        }}
-      >
-        <span
-          style={{
-            fontSize: '20pt',
-            fontWeight: 700,
-            whiteSpace: 'nowrap',
-            lineHeight: 1.25,
-          }}
-        >
-          เรื่อง
-        </span>
-        <span
-          style={{
-            fontSize: '16pt',
-            fontWeight: 'normal',
-            marginLeft: '0.3cm',
-            flex: 1,
-            lineHeight: 1.25,
-            paddingTop: '2pt',
-            wordBreak: 'break-word',
-          }}
-        >
-          {subject}
-        </span>
+      {/* ── Metadata Header Rows ── */}
+      <div className="mt-2.5 space-y-1.5 text-[16pt]">
+        {/* Row 1: ส่วนราชการ */}
+        <div className="flex items-baseline w-full">
+          <span className="text-[20pt] font-bold shrink-0">ส่วนราชการ</span>
+          <span className="ml-2 flex-1 border-b border-dotted border-black pb-[1px] pl-1 text-[16pt] font-normal">
+            {d.department_agency || 'งานทะเบียน วิทยาลัยสารพัดช่างอุดรธานี'}
+          </span>
+        </div>
+
+        {/* Row 2: ที่ + วันที่ */}
+        <div className="flex items-baseline w-full">
+          <div className="flex flex-1 items-baseline">
+            <span className="text-[20pt] font-bold shrink-0">ที่</span>
+            <span className="ml-2 flex-1 border-b border-dotted border-black pb-[1px] pl-1 text-[16pt] font-normal">
+              {docNo || <span className="invisible">-</span>}
+            </span>
+          </div>
+          <div className="flex flex-1 items-baseline ml-6">
+            <span className="text-[20pt] font-bold shrink-0">วันที่</span>
+            <span className="ml-2 flex-1 border-b border-dotted border-black pb-[1px] pl-1 text-left text-[16pt] font-normal">
+              {docDate || <span className="invisible">-</span>}
+            </span>
+          </div>
+        </div>
+
+        {/* Row 3: เรื่อง (Split into 2 neat rows with dotted underlines) */}
+        <div className="flex items-start w-full">
+          <span className="text-[20pt] font-bold shrink-0 pt-0.5">เรื่อง</span>
+          <div className="ml-2 flex-1 space-y-1 pl-1 leading-snug text-[16pt] font-normal">
+            <div className="border-b border-dotted border-black pb-[1px] text-[16pt] font-normal">
+              ขออนุญาตประกาศรับสมัครนักศึกษาหลักสูตรวิชาชีพระยะสั้น ({groupTypeLabel})
+            </div>
+            <div className="border-b border-dotted border-black pb-[1px] text-[16pt] font-normal">
+              ภาคเรียนที่ {term} ปีการศึกษา {academicYear} (รุ่นที่ {batchDisplay}) แผนกวิชา{cleanDepartmentName}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* ── Solid Horizontal Line Below Header ── */}
-      <div
-        style={{
-          marginTop: '8pt',
-          borderBottom: '1.5pt solid #000000',
-        }}
-      />
+      {/* ── Solid Horizontal Divider Line ── */}
+      <div className="mt-2 border-b-2 border-black" />
 
-      {/* ── 3. Salutation: เรียน (Gap: margin-top: 22pt) ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          marginTop: '22pt',
-          lineHeight: 1.25,
-        }}
-      >
-        <span
-          style={{
-            fontSize: '16pt',
-            fontWeight: 'normal',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          เรียน
-        </span>
-        <span
-          style={{
-            fontSize: '16pt',
-            fontWeight: 'normal',
-            marginLeft: '0.5cm',
-          }}
-        >
-          ผู้อำนวยการวิทยาลัยสารพัดช่างอุดรธานี
-        </span>
-      </div>
+      {/* ── Salutation & Paragraphs ── */}
+      <div className="mt-3.5 space-y-3 text-[16pt] font-normal leading-relaxed">
+        <div className="flex items-baseline text-[16pt]">
+          <span className="text-[16pt] font-normal">เรียน</span>
+          <span className="ml-4 text-[16pt] font-normal">ผู้อำนวยการวิทยาลัยสารพัดช่างอุดรธานี</span>
+        </div>
 
-      {/* ── 4. Body Paragraphs (Indent: 2.5cm, Gap: margin-top: 22pt, Justified) ── */}
-      {/* ภาคเหตุ (Paragraph 1) */}
-      <p
-        style={{
-          marginTop: '22pt',
-          marginBottom: 0,
-          textIndent: '2.5cm',
-          textAlign: 'justify',
-          textJustify: 'inter-cluster',
-          lineHeight: 1.25,
-          fontSize: '16pt',
-          fontWeight: 'normal',
-          wordBreak: 'break-word',
-        }}
-      >
-        {paragraph1}
-      </p>
-
-      {/* ภาคความประสงค์ (Paragraph 2) */}
-      <p
-        style={{
-          marginTop: '22pt',
-          marginBottom: 0,
-          textIndent: '2.5cm',
-          textAlign: 'justify',
-          textJustify: 'inter-cluster',
-          lineHeight: 1.25,
-          fontSize: '16pt',
-          fontWeight: 'normal',
-          wordBreak: 'break-word',
-        }}
-      >
-        {paragraph2}
-      </p>
-
-      {/* ภาคสรุป (Conclusion) */}
-      <div style={{ marginTop: '22pt' }}>
-        <p
-          style={{
-            margin: 0,
-            textIndent: '2.5cm',
-            textAlign: 'justify',
-            textJustify: 'inter-cluster',
-            lineHeight: 1.25,
-            fontSize: '16pt',
-            fontWeight: 'normal',
-          }}
-        >
-          จึงเรียนมาเพื่อโปรด
+        {/* Paragraph 1: First-line indent only */}
+        <p style={{ textIndent: '1.5cm' }} className="text-[16pt] font-normal thai-distributed">
+          {paragraph1}
         </p>
-        <div style={{ paddingLeft: '3.5cm', marginTop: '4pt' }}>
-          {proposalItems.map((item, idx) => (
-            <p
-              key={idx}
-              style={{
-                margin: 0,
-                lineHeight: 1.25,
-                fontSize: '16pt',
-                fontWeight: 'normal',
-              }}
-            >
-              {item}
-            </p>
-          ))}
+
+        {/* Paragraph 2: First-line indent only */}
+        <p style={{ textIndent: '1.5cm' }} className="text-[16pt] font-normal thai-distributed">
+          {paragraph2}
+        </p>
+
+        {/* Request Block */}
+        <div className="text-[16pt] font-normal">
+          <p style={{ textIndent: '1.5cm' }} className="text-[16pt] font-normal">จึงเรียนมาเพื่อโปรด</p>
+          <div className="pl-[2.5cm] space-y-0.5 mt-1 text-[16pt] font-normal">
+            {proposalItems.map((item, idx) => (
+              <p key={idx} className="text-[16pt] font-normal">{item}</p>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ── 5. Signature Block (4 Enter = margin-top: 64pt, Right-of-center) ── */}
-      <div
-        style={{
-          marginTop: '64pt',
-          marginLeft: '8.0cm',
-          width: '8.0cm',
-          textAlign: 'center',
-          fontSize: '16pt',
-          fontWeight: 'normal',
-          lineHeight: 1.25,
-        }}
-      >
-        <p style={{ margin: 0 }}>
-          ({d.head_registration_name || 'นายอัคเดช พิสัยสวัสดิ์'})
-        </p>
-        <p style={{ margin: '4pt 0 0 0' }}>หัวหน้างานทะเบียน</p>
+      {/* ── Sign-Off Section ── */}
+      <div className="mt-10 flex justify-end pr-6 text-[16pt] font-normal">
+        <div className="text-center" style={{ minWidth: '220px' }}>
+          <p className="mb-1 text-[16pt] font-normal">({d.head_registration_name || 'นายอัคเดช พิสัยสวัสดิ์'})</p>
+          <p className="text-[16pt] font-normal">หัวหน้างานทะเบียน</p>
+        </div>
       </div>
 
-      {/* ── 6. Draft Lines (Bottom Right for Draft Mode) ── */}
+      {/* ── Draft Lines (Bottom Right) ── */}
       {isDraft && (
-        <div
-          style={{
-            marginTop: '36pt',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            fontSize: '14pt',
-            lineHeight: 1.25,
-          }}
-        >
-          <div style={{ textAlign: 'left', width: '2.5cm' }}>
-            <p style={{ margin: 0 }}>/ร่าง</p>
-            <p style={{ margin: 0 }}>/พิมพ์</p>
-            <p style={{ margin: 0 }}>/ตรวจ</p>
+        <div className="mt-60 flex justify-end text-[11.5px] leading-snug">
+          <div className="text-left w-20">
+            <p>/ร่าง</p>
+            <p>/พิมพ์</p>
+            <p>/ตรวจ</p>
           </div>
         </div>
       )}

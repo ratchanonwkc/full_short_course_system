@@ -228,8 +228,8 @@ export default function StudyGroupsPage() {
                 ? Array.isArray(subjectsRes.value?.data)
                     ? subjectsRes.value.data
                     : Array.isArray(subjectsRes.value)
-                    ? subjectsRes.value
-                    : []
+                        ? subjectsRes.value
+                        : []
                 : []
         );
         setTeachers(teachersRes.status === "fulfilled" ? (Array.isArray(teachersRes.value) ? teachersRes.value : []) : []);
@@ -434,14 +434,6 @@ export default function StudyGroupsPage() {
 
                     {/* Top Action Buttons (Pure Blank Form, Premium Announcement & Batch Selector) */}
                     <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                        <button
-                            type="button"
-                            onClick={() => handlePrintAnnouncement(null)}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 transition shadow-2xs"
-                        >
-                            <FileText size={14} className="text-amber-700" />
-                            <span>พิมพ์ประกาศเปิดกลุ่มเรียน</span>
-                        </button>
                         <button
                             type="button"
                             onClick={handlePrintPureBlank}

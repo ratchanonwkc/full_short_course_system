@@ -5,7 +5,6 @@ import Swal from "sweetalert2";
 import BatchTable from "../components/BatchTable";
 import BatchFormModal from "../components/BatchFormModal";
 import SummaryCard from "../../../components/common/SummaryCard";
-import AnnouncementPrintModal from "../../../components/modals/AnnouncementPrintModal";
 import { getBatches, deleteBatch } from "../services/batchApi";
 import { getTeachers } from "../../teachers/services/teacherApi";
 import { getStudyGroups, getBlankPrintTemplate } from "../../study-groups/services/studyGroupApi";
@@ -39,37 +38,6 @@ export default function BatchesPage() {
     const [academicYearFilter, setAcademicYearFilter] = useState(String(CURRENT_BE_YEAR));
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingBatch, setEditingBatch] = useState(null);
-
-    // Announcement Print Modal state
-    const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
-    const [announcementBatch, setAnnouncementBatch] = useState(null);
-
-    const handlePrintAnnouncement = (batch) => {
-        setAnnouncementBatch(batch);
-        setIsAnnouncementModalOpen(true);
-    };
-
-    const handlePrintRegularMemo = () => {
-        const targetBatch =
-            batches.find((b) => b.status === "admitting") ||
-            batches.find((b) => b.status === "studying") ||
-            filteredBatches[0] ||
-            batches[0] ||
-            null;
-
-        if (!targetBatch && batches.length === 0) {
-            Swal.fire({
-                icon: "warning",
-                title: "ไม่พบข้อมูลรุ่นการเรียน",
-                text: "กรุณาสร้างรุ่นการเรียนก่อนสั่งพิมพ์บันทึกข้อความ",
-                confirmButtonColor: "#0270c7",
-            });
-            return;
-        }
-
-        setAnnouncementBatch(targetBatch);
-        setIsAnnouncementModalOpen(true);
-    };
 
     // Blank Application Printing state
     const [blankPrintData, setBlankPrintData] = useState(null);
@@ -322,14 +290,6 @@ export default function BatchesPage() {
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
-                        onClick={handlePrintRegularMemo}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 shadow-2xs transition hover:bg-blue-100 hover:text-blue-800 active:scale-[0.98]"
-                    >
-                        <Printer size={16} />
-                        พิมพ์บันทึกข้อความ (รอบปกติ)
-                    </button>
-                    <button
-                        type="button"
                         onClick={handlePrintPureBlank}
                         className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-blue-600 active:scale-[0.98]"
                     >
@@ -358,7 +318,6 @@ export default function BatchesPage() {
                 loading={loading}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
-                onPrintAnnouncement={handlePrintAnnouncement}
             />
 
             <BatchFormModal
@@ -368,18 +327,6 @@ export default function BatchesPage() {
                 onSaved={handleSaved}
                 teachers={teachers}
                 teachersLoading={teachersLoading}
-            />
-
-            {/* ── Official Announcement Print Configuration Modal ──────── */}
-            <AnnouncementPrintModal
-                isOpen={isAnnouncementModalOpen}
-                onClose={() => setIsAnnouncementModalOpen(false)}
-                batch={announcementBatch}
-                groups={studyGroups}
-                mode="batch"
-                initialType="regular"
-                initialDepartment="งานทะเบียน วิทยาลัยสารพัดช่างอุดรธานี"
-                defaultSignatory="นายอัศเดช ทิสัยสวัสดิ์"
             />
 
             {/* ── Hidden Print Component for Blank Application ──────── */}

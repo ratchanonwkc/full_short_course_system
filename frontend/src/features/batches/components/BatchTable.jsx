@@ -2,7 +2,7 @@ import { useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
-import { Pencil, Trash2, Layers, Printer } from "lucide-react";
+import { Pencil, Trash2, Layers } from "lucide-react";
 import Swal from "sweetalert2";
 import { thaiDateValueFormatter } from "../../../utils/dateUtils";
 import { buildBatchDisplayName } from "../../../utils/batchName";
@@ -34,7 +34,6 @@ function StatusBadgeRenderer({ value }) {
  * - loading: boolean
  * - onEdit: (batch) => void
  * - onDelete: (batch) => void         -> called only after confirm
- * - onPrintAnnouncement: (batch) => void -> opens announcement print modal
  *
  * ชื่อรุ่นที่แสดง (คอลัมน์แรก) ใช้สูตร legacy ตาม utils/batchName.js เสมอ:
  *   "รุ่นที่ {sequence} ครั้งที่ {iteration} ปีการศึกษา {year} ภาคเรียนที่ {term}"
@@ -44,7 +43,7 @@ function StatusBadgeRenderer({ value }) {
  * - ปุ่ม "จัดการกลุ่มเรียน" ในคอลัมน์ "จัดการ" -> ไป /batches/:batchId/groups
  * - ดับเบิ้ลคลิกที่ Row ใดก็ได้ (นอกเหนือจากคอลัมน์ปุ่ม) -> ไปหน้าเดียวกัน
  */
-export default function BatchTable({ rowData = [], loading = false, onEdit, onDelete, onPrintAnnouncement }) {
+export default function BatchTable({ rowData = [], loading = false, onEdit, onDelete }) {
     const gridRef = useRef(null);
     const navigate = useNavigate();
 
@@ -90,17 +89,6 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
                 className="rounded-md p-1.5 text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-600"
             >
                 <Layers size={15} />
-            </button>
-            <button
-                type="button"
-                title="พิมพ์เอกสารประกาศรับสมัคร"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onPrintAnnouncement?.(params.data);
-                }}
-                className="rounded-md p-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
-            >
-                <Printer size={15} />
             </button>
             <button
                 type="button"
@@ -207,7 +195,7 @@ export default function BatchTable({ rowData = [], loading = false, onEdit, onDe
                 cellRenderer: ActionsRenderer,
             },
         ],
-        [onEdit, onPrintAnnouncement]
+        [onEdit]
     );
 
     const defaultColDef = useMemo(

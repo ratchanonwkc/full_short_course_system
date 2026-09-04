@@ -6,7 +6,7 @@
   font-weight: 400;
   src: url('/fonts/THSARABUN.TTF') format('truetype'),
        local('TH Sarabun PSK'),
-       local('TH Sarabun New');
+       local('THSarabunPSK');
 }
 
 @font-face {
@@ -15,7 +15,38 @@
   font-weight: 700;
   src: url('/fonts/THSARABUN BOLD.TTF') format('truetype'),
        local('TH Sarabun PSK Bold'),
-       local('TH Sarabun New Bold');
+       local('THSarabunPSK Bold');
+}
+
+@font-face {
+  font-family: 'THSarabunPSK';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/fonts/THSARABUN.TTF') format('truetype'),
+       local('TH Sarabun PSK'),
+       local('THSarabunPSK');
+}
+
+@font-face {
+  font-family: 'THSarabunPSK';
+  font-style: normal;
+  font-weight: 700;
+  src: url('/fonts/THSARABUN BOLD.TTF') format('truetype'),
+       local('TH Sarabun PSK Bold'),
+       local('THSarabunPSK Bold');
+}
+
+/* Thai Distributed alignment rules to emulate Microsoft Word กระจายแบบไทย */
+.thai-distributed {
+  text-align: justify;
+  text-justify: distribute;
+  text-justify: inter-character;
+  text-justify: inter-cluster;
+  text-align-last: left;
+  -webkit-hyphens: none;
+  hyphens: none;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 @theme {
