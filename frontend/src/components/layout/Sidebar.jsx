@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '../../features/auth/context/AuthContext';
 import { normalizeRole } from '../auth/ProtectedRoute';
@@ -44,7 +45,7 @@ const menuSections = [
     roles: ['admin', 'registrar', 'planning'],
     items: [
       { name: 'รายชื่อผู้สมัครและจัดกลุ่ม', to: '/registrar/enrollments', icon: UserCheck, roles: ['admin', 'registrar', 'planning'] },
-      // { name: 'รับสมัครหน้าเคาน์เตอร์ (Walk-in)', to: '/registrar/enrollments', icon: UserPlus, roles: ['admin', 'registrar', 'planning'] },
+      { name: 'รายงานรายวิชาที่เปิดสอน', to: '/reports/offered-courses', icon: FileSpreadsheet, roles: ['admin', 'registrar', 'planning'] },
     ],
   },
   {

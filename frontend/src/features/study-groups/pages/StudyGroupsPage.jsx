@@ -344,6 +344,14 @@ export default function StudyGroupsPage() {
                     </select>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Link
+                        to={selectedBatchId ? `/reports/offered-courses?batchId=${selectedBatchId}` : "/reports/offered-courses"}
+                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-blue-700"
+                        title="ดูและพิมพ์แบบรายงานรายวิชาที่เปิดสอน"
+                    >
+                        <FileText size={14} className="text-blue-600" />
+                        รายงานวิชาที่เปิดสอน
+                    </Link>
 
                     <button
                         type="button"

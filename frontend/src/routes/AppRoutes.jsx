@@ -27,6 +27,7 @@ import StudyGroupsPage from '../features/study-groups/pages/StudyGroupsPage';
 
 // Registrar Pages
 import RegistrarEnrollmentsPage from '../features/registrar/pages/RegistrarEnrollmentsPage';
+import OfferedCoursesReportPage from '../features/reports/pages/OfferedCoursesReportPage';
 
 // Finance Pages
 import FinanceVerificationPage from '../features/finance/pages/FinanceVerificationPage';
@@ -70,6 +71,8 @@ export default function AppRoutes() {
                     {/* 📋 Registrar Module (Admin + Registrar + Planning) */}
                     <Route element={<ProtectedRoute allowedRoles={['admin', 'registrar', 'planning']} />}>
                         <Route path="/registrar/enrollments" element={<RegistrarEnrollmentsPage />} />
+                        <Route path="/reports/offered-courses" element={<OfferedCoursesReportPage />} />
+                        <Route path="/registrar/reports/offered-courses" element={<OfferedCoursesReportPage />} />
                     </Route>
 
                     {/* 💰 Finance Module (Admin + Finance) */}

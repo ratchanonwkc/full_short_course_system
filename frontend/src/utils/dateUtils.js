@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
-import buddhistEra from "dayjs/plugin/buddhistEra";
-import customParseFormat from "dayjs/plugin/customParseFormat";
-import "dayjs/locale/th";
+import buddhistEra from "dayjs/plugin/buddhistEra.js";
+import customParseFormat from "dayjs/plugin/customParseFormat.js";
+import "dayjs/locale/th.js";
 
 // ตั้งค่า dayjs ให้รองรับปี พ.ศ. (BBBB) และภาษาไทย (ชื่อเดือน/วัน)
 dayjs.extend(buddhistEra);
