@@ -336,46 +336,68 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
     return (
         <div
             ref={ref}
-            className="application-print-root bg-white text-black font-['Sarabun',sans-serif] select-text"
+            className="application-print-root bg-white text-black font-['TH_Sarabun_PSK','THSarabunPSK',sans-serif] select-text"
             style={{
                 width: "210mm",
                 minHeight: "297mm",
                 boxSizing: "border-box",
-                padding: "8mm 12mm",
+                padding: "5mm 12mm 5mm 12mm",
                 margin: "0 auto",
-                fontSize: "14px",
-                lineHeight: "1.5",
+                fontSize: "15pt",
+                lineHeight: "1.35",
                 color: "#000",
                 backgroundColor: "#fff",
+                fontFamily: "'TH Sarabun PSK', 'THSarabunPSK', sans-serif",
             }}
         >
             <style orientation="portrait">{`
                 @page { size: A4 portrait; margin: 0; }
+                html, body {
+                    font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif;
+                }
+                .application-print-root,
+                .application-print-root * {
+                    font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
+                }
                 @media print {
                     html, body {
-                        width: 210mm; height: 297mm;
-                        margin: 0 !important; padding: 0 !important;
+                        width: 210mm;
+                        height: 297mm;
+                        margin: 0 !important;
+                        padding: 0 !important;
                         background: #fff !important;
+                        font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                     }
                     .application-print-root {
-                        width: 210mm !important; min-height: 297mm !important;
-                        padding: 8mm 12mm !important; box-sizing: border-box !important;
+                        width: 210mm !important;
+                        height: 297mm !important;
+                        max-height: 297mm !important;
+                        padding: 5mm 12mm 5mm 12mm !important;
+                        box-sizing: border-box !important;
+                        font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
+                        overflow: hidden !important;
+                        page-break-after: avoid !important;
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                    }
+                    table, th, td {
+                        font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
                     }
                 }
             `}</style>
 
             {/* ════════ HEADER ZONE ════════ */}
-            <div className="relative mb-2">
-                <div className="flex items-start pr-[3.5cm]">
-                    <div className="w-[3cm] h-[3cm] shrink-0">
+            <div className="relative mb-1">
+                <div className="flex items-start pr-[3.3cm]">
+                    <div className="w-[2.7cm] h-[2.7cm] shrink-0">
                         <img src={logo} alt="logo" className="w-full h-full object-contain" />
                     </div>
-                    <div className="flex-1 flex flex-col items-center justify-start pt-2">
-                        <h1 className="text-[20px] font-bold text-black leading-tight">ใบสมัครเข้าเรียนหลักสูตรวิชาชีพระยะสั้น</h1>
-                        <h2 className="text-[18px] font-bold text-black leading-snug">วิทยาลัยสารพัดช่างอุดรธานี</h2>
-                        <div className="mt-2 flex items-baseline gap-4 text-[14px]">
+                    <div className="flex-1 flex flex-col items-center justify-start pt-0.5">
+                        <h1 className="text-[18pt] font-bold text-black leading-tight">ใบสมัครเข้าเรียนหลักสูตรวิชาชีพระยะสั้น</h1>
+                        <h2 className="text-[16pt] font-bold text-black leading-snug">วิทยาลัยสารพัดช่างอุดรธานี</h2>
+                        <div className="mt-0.5 flex items-baseline gap-4 text-[15pt]">
                             <span>ภาคเรียนที่ <Blank width="30px">{term}</Blank></span>
                             <span>ปีการศึกษา <Blank width="50px">{academicYear}</Blank></span>
                             <span>รุ่นที่ <Blank width="60px">{batchDisplay}</Blank></span>
@@ -384,31 +406,31 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
                 </div>
 
                 {/* Photo Box */}
-                <div className="absolute top-0 right-0 w-[3cm] h-[4cm] border border-black flex flex-col items-center justify-center text-[12px] text-black bg-white">
+                <div className="absolute top-0 right-0 w-[2.8cm] h-[3.6cm] border border-black flex flex-col items-center justify-center text-[13pt] text-black bg-white">
                     <span>รูปถ่าย</span>
                     <span>ขนาด 3 x 4 ซม.</span>
                 </div>
 
-                <div className="flex items-baseline justify-between text-[14px] mt-1 pr-[3.5cm]">
+                <div className="flex items-baseline justify-between text-[15pt] mt-0.5 pr-[3.1cm]">
                     <span>ใบสมัครเลขที่ <Blank width="60px">{applicationNo}</Blank></span>
-                    <span>เริ่มเรียนวันที่ <Blank width="110px">{startDateDisplay}</Blank></span>
+                    <span>เริ่มเรียนวันที่ <Blank width="115px">{startDateDisplay}</Blank></span>
                     <span>เลขที่ <Blank width="50px">{studentNoDisplay}</Blank></span>
                 </div>
             </div>
 
             {/* ════════ COURSE TABLE (EXACTLY 5 ROWS) ════════ */}
-            <div className="mb-2 mt-3">
-                <table className="w-full border border-black text-[13px] text-center table-fixed">
+            <div className="mb-1 mt-1">
+                <table className="w-full border border-black text-[14pt] text-center table-fixed leading-tight">
                     <thead>
-                        <tr className="border-b border-black text-[13px]">
-                            <th className="border-r border-black font-normal py-1 w-[5%]">ที่</th>
-                            <th className="border-r border-black font-normal py-1 w-[14%]">รหัสวิชา</th>
-                            <th className="border-r border-black font-normal py-1 w-[33%] text-center">ชื่อวิชา</th>
-                            <th className="border-r border-black font-normal py-1 w-[11%]">จำนวนชั่วโมง</th>
-                            <th className="border-r border-black font-normal py-1 w-[12%]">ค่าบำรุงการศึกษา</th>
-                            <th className="border-r border-black font-normal py-1 w-[8%]">ค่าสมัคร</th>
-                            <th className="border-r border-black font-normal py-1 w-[12%]">ค่าห้องปรับอากาศ</th>
-                            <th className="font-normal py-1 w-[11%]">รวม (บาท)</th>
+                        <tr className="border-b border-black text-[14pt]">
+                            <th className="border-r border-black font-bold py-0.5 w-[5%]">ที่</th>
+                            <th className="border-r border-black font-bold py-0.5 w-[14%]">รหัสวิชา</th>
+                            <th className="border-r border-black font-bold py-0.5 w-[33%] text-center">ชื่อวิชา</th>
+                            <th className="border-r border-black font-bold py-0.5 w-[11%]">จำนวนชั่วโมง</th>
+                            <th className="border-r border-black font-bold py-0.5 w-[12%]">ค่าบำรุงการศึกษา</th>
+                            <th className="border-r border-black font-bold py-0.5 w-[8%]">ค่าสมัคร</th>
+                            <th className="border-r border-black font-bold py-0.5 w-[12%]">ค่าห้องปรับอากาศ</th>
+                            <th className="font-bold py-0.5 w-[11%]">รวม (บาท)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -421,14 +443,14 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
 
                             return (
                                 <tr key={idx} className="border-b border-dashed border-gray-400">
-                                    <td className="border-r border-black py-1 px-1">{idx + 1}</td>
-                                    <td className="border-r border-black py-1 px-1 truncate font-mono text-[12px]">{sub.subject_code || "-"}</td>
-                                    <td className="border-r border-black py-1 px-2 text-left truncate">{sub.subject_name || "-"}</td>
-                                    <td className="border-r border-black py-1 px-1 truncate">{sub.total_hours || "-"}</td>
-                                    <td className="border-r border-black py-1 px-1 truncate">{tuitionText}</td>
-                                    <td className="border-r border-black py-1 px-1 truncate">{regText}</td>
-                                    <td className="border-r border-black py-1 px-1 truncate">{acText}</td>
-                                    <td className="py-1 px-1 truncate">{totalText}</td>
+                                    <td className="border-r border-black py-0.5 px-1">{idx + 1}</td>
+                                    <td className="border-r border-black py-0.5 px-1 truncate font-mono text-[13pt]">{sub.subject_code || "-"}</td>
+                                    <td className="border-r border-black py-0.5 px-1.5 text-left truncate">{sub.subject_name || "-"}</td>
+                                    <td className="border-r border-black py-0.5 px-1 truncate">{sub.total_hours || "-"}</td>
+                                    <td className="border-r border-black py-0.5 px-1 truncate">{tuitionText}</td>
+                                    <td className="border-r border-black py-0.5 px-1 truncate">{regText}</td>
+                                    <td className="border-r border-black py-0.5 px-1 truncate">{acText}</td>
+                                    <td className="py-0.5 px-1 truncate">{totalText}</td>
                                 </tr>
                             );
                         })}
@@ -437,7 +459,7 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
                         {[...Array(Math.max(0, 5 - activeSubjects.length))].map((_, i) => {
                             const isLast = i === Math.max(0, 5 - activeSubjects.length) - 1;
                             return (
-                                <tr key={`empty-${i}`} className={!isLast ? "border-b border-dashed border-gray-400 h-7" : "h-7"}>
+                                <tr key={`empty-${i}`} className={!isLast ? "border-b border-dashed border-gray-400 h-[21px]" : "h-[21px]"}>
                                     <td className="border-r border-black">&nbsp;</td>
                                     <td className="border-r border-black">&nbsp;</td>
                                     <td className="border-r border-black">&nbsp;</td>
@@ -452,24 +474,24 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
 
                         {/* Summary Row */}
                         <tr className="border-t border-black font-normal">
-                            <td className="border-r border-black py-1 text-center font-bold">รวม</td>
-                            <td className="border-r border-black py-1 text-center"></td>
-                            <td className="border-r border-black py-1 text-center">
+                            <td className="border-r border-black py-0.5 text-center font-bold">รวม</td>
+                            <td className="border-r border-black py-0.5 text-center"></td>
+                            <td className="border-r border-black py-0.5 text-center">
                                 {isPureBlank ? "" : (activeSubjects.length > 0 ? `${activeSubjects.length} รายวิชา` : "")}
                             </td>
-                            <td className="border-r border-black py-1">
+                            <td className="border-r border-black py-0.5">
                                 {isPureBlank ? "" : (summaryCalculations.totalHours !== "" ? `${summaryCalculations.totalHours}` : "")}
                             </td>
-                            <td className="border-r border-black py-1">
+                            <td className="border-r border-black py-0.5">
                                 {isPureBlank ? "" : summaryCalculations.totalTuition}
                             </td>
-                            <td className="border-r border-black py-1">
+                            <td className="border-r border-black py-0.5">
                                 {isPureBlank ? "" : summaryCalculations.totalReg}
                             </td>
-                            <td className="border-r border-black py-1">
+                            <td className="border-r border-black py-0.5">
                                 {isPureBlank ? "" : summaryCalculations.totalAc}
                             </td>
-                            <td className="py-1 font-semibold">
+                            <td className="py-0.5 font-semibold">
                                 {isPureBlank ? "" : summaryCalculations.grandTotal}
                             </td>
                         </tr>
@@ -478,21 +500,21 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
             </div>
 
             {/* ════════ FOREIGNER NOTE ════════ */}
-            <div className="text-[13px] mb-1.5 flex items-baseline">
+            <div className="text-[13pt] mb-0.5 flex items-baseline leading-tight">
                 <span>หมายเหตุ :</span>
-                <span className="flex items-center justify-center w-[14px] h-[14px] rounded-full border border-black mx-2 translate-y-[2px] text-[12px] font-bold leading-none shrink-0 pb-[1px]">
+                <span className="flex items-center justify-center w-[13px] h-[13px] rounded-full border border-black mx-2 translate-y-[2px] text-[11pt] font-bold leading-none shrink-0 pb-[1px]">
                     {isForeigner ? "✓" : ""}
                 </span>
                 <span>เป็นคนซึ่งไม่มีสัญชาติไทย หนังสือเดินทางเลขที่</span>
                 <Blank width="150px" className="mx-1">{passportNo}</Blank>
                 <span>หลักสูตรปกติ ชำระค่าเล่าเรียน</span>
             </div>
-            <div className="text-[13px] ml-16 -mt-1.5 mb-2">
+            <div className="text-[13pt] ml-16 -mt-0.5 mb-1 leading-tight">
                 ชั่วโมงละ 30 บาท + ค่าสมัคร 10 บาท ส่วนหลักสูตรพิเศษชำระค่าเล่าเรียน 2 เท่าของคนซึ่งมีสัญชาติไทย
             </div>
 
             {/* ════════ APPLICANT INFO (100% Blank on Pure Blank / Group Blank) ════════ */}
-            <div className="space-y-1.5 text-[14px]">
+            <div className="space-y-1 text-[15pt] leading-snug">
                 {/* 1. */}
                 <div className="flex items-baseline w-full">
                     <span>1. สมัครเรียนวันที่</span><Blank width="40px" className="mx-1">{applyDate.d}</Blank>
@@ -553,30 +575,30 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
                 </div>
 
                 {/* Citizen ID Grid */}
-                <div className="flex items-center my-1.5 w-full">
+                <div className="flex items-center my-0.5 w-full">
                     <span className="mr-2">เลขประจำตัวประชาชน</span>
                     <div className="flex items-center shrink-0">
-                        <span className="w-[18px] h-[22px] border border-black flex items-center justify-center text-[12px] font-mono">{digits[0]}</span>
+                        <span className="w-[18px] h-[22px] border border-black flex items-center justify-center text-[13pt] font-mono">{digits[0]}</span>
                         <span className="w-1.5 text-center">-</span>
                         <div className="flex">
                             {digits.slice(1, 5).map((d, i) => (
-                                <span key={i} className="w-[18px] h-[22px] border border-black -ml-px first:ml-0 flex items-center justify-center text-[12px] font-mono">{d}</span>
+                                <span key={i} className="w-[18px] h-[22px] border border-black -ml-px first:ml-0 flex items-center justify-center text-[13pt] font-mono">{d}</span>
                             ))}
                         </div>
                         <span className="w-1.5 text-center">-</span>
                         <div className="flex">
                             {digits.slice(5, 10).map((d, i) => (
-                                <span key={i} className="w-[18px] h-[22px] border border-black -ml-px first:ml-0 flex items-center justify-center text-[12px] font-mono">{d}</span>
+                                <span key={i} className="w-[18px] h-[22px] border border-black -ml-px first:ml-0 flex items-center justify-center text-[13pt] font-mono">{d}</span>
                             ))}
                         </div>
                         <span className="w-1.5 text-center">-</span>
                         <div className="flex">
                             {digits.slice(10, 12).map((d, i) => (
-                                <span key={i} className="w-[18px] h-[22px] border border-black -ml-px first:ml-0 flex items-center justify-center text-[12px] font-mono">{d}</span>
+                                <span key={i} className="w-[18px] h-[22px] border border-black -ml-px first:ml-0 flex items-center justify-center text-[13pt] font-mono">{d}</span>
                             ))}
                         </div>
                         <span className="w-1.5 text-center">-</span>
-                        <span className="w-[18px] h-[22px] border border-black flex items-center justify-center text-[12px] font-mono">{digits[12]}</span>
+                        <span className="w-[18px] h-[22px] border border-black flex items-center justify-center text-[13pt] font-mono">{digits[12]}</span>
                     </div>
 
                     <span className="ml-auto flex items-baseline">สัญชาติ<Blank width="60px" className="ml-1">{isFilled ? (profile.nationality || "") : ""}</Blank></span>
@@ -638,15 +660,15 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
                 </div>
 
                 {/* 6. Certification */}
-                <div className="pt-2 flex items-start gap-1">
+                <div className="pt-0.5 flex items-start gap-1">
                     <span>6.</span>
-                    <span className="leading-relaxed">
+                    <span className="leading-tight text-[14.5pt]">
                         ข้าพเจ้าขอรับรองว่า ข้อความข้างต้นนี้เป็นความจริงทุกประการ และได้ทราบระเบียบของวิทยาลัยเป็นอย่างดีแล้ว
                         และจะปฏิบัติตามโดยเคร่งครัด
                     </span>
                 </div>
 
-                <div className="flex justify-end pt-3 pr-8 pb-1">
+                <div className="flex justify-end pt-0.5 pr-8">
                     <div className="text-center">
                         <div className="flex items-baseline">(ลงชื่อ) <Blank width="220px" className="mx-1"></Blank> ผู้สมัคร</div>
                     </div>
@@ -654,12 +676,12 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
             </div>
 
             {/* ════════ STAFF SIGN-OFF ZONE (ONE UNIFIED BOX) ════════ */}
-            <div className="border border-black flex text-[13px] mt-2 mb-2">
+            <div className="border border-black flex text-[13.5pt] mt-1 mb-1 p-2 leading-snug">
                 {/* Left: Registrar */}
-                <div className="w-1/2 border-r border-black p-2 flex flex-col justify-between">
+                <div className="w-1/2 border-r border-black pr-2 flex flex-col justify-between">
                     <div>
-                        <p className="font-bold mb-2 pl-1">เจ้าหน้าที่รับสมัคร</p>
-                        <div className="grid grid-cols-2 gap-y-2 gap-x-1 pl-1">
+                        <p className="font-bold mb-1 pl-1 text-[14pt]">เจ้าหน้าที่รับสมัคร</p>
+                        <div className="grid grid-cols-2 gap-y-1 gap-x-1 pl-1 text-[13pt]">
                             <CircleCheck
                                 checked={isFilled && Boolean(enrollment?.id_card_url || profile?.id_card_url)}
                                 label="สำเนาบัตรประชาชน"
@@ -670,42 +692,42 @@ const ApplicationFormPrint = forwardRef(function ApplicationFormPrint(
                             <CircleCheck checked={false} label="รูปถ่าย 3 x 4 ซม." className="" />
                         </div>
                     </div>
-                    <div className="text-center mt-5">
+                    <div className="text-center mt-2">
                         <div className="flex items-baseline justify-center">(ลงชื่อ) <Blank width="140px" className="mx-1"></Blank> เจ้าหน้าที่รับสมัคร</div>
-                        <div className="mt-1 text-slate-700">........ / ........ / ........</div>
+                        <div className="mt-0.5 text-black text-[13pt]">........ / ........ / ........</div>
                     </div>
                 </div>
 
                 {/* Right: Finance */}
-                <div className="w-1/2 p-2 flex flex-col justify-between">
+                <div className="w-1/2 pl-2 flex flex-col justify-between">
                     <div>
-                        <p className="font-bold mb-2 pl-1">เจ้าหน้าที่การเงิน</p>
+                        <p className="font-bold mb-1 pl-1 text-[14pt]">เจ้าหน้าที่การเงิน</p>
                         <div className="flex items-baseline pl-1">
                             <span>ใบเสร็จรับเงิน เล่มที่</span><Blank width="60px" className="mx-1 font-mono">{receiptBook}</Blank>
                             <span className="ml-2">เลขที่</span><Blank width="60px" className="mx-1 font-mono">{receiptNum}</Blank>
                         </div>
                     </div>
-                    <div className="text-center mt-5">
+                    <div className="text-center mt-2">
                         <div className="flex items-baseline justify-center">(ลงชื่อ) <Blank width="140px" className="mx-1"></Blank> เจ้าหน้าที่การเงิน</div>
-                        <div className="mt-1 text-slate-700">........ / ........ / ........</div>
+                        <div className="mt-0.5 text-black text-[13pt]">........ / ........ / ........</div>
                     </div>
                 </div>
             </div>
 
             {/* ════════ GUARDIAN CONSENT ════════ */}
-            <div className="text-[13px]">
-                <p className="font-bold mb-2">หนังสือให้ความยินยอมของผู้ปกครอง (สำหรับผู้สมัครที่อายุยังไม่ครบ 20 ปีบริบูรณ์)</p>
-                <div className="flex items-baseline mb-1">
+            <div className="text-[13.5pt] leading-snug">
+                <p className="font-bold mb-0.5 text-[14pt]">หนังสือให้ความยินยอมของผู้ปกครอง (สำหรับผู้สมัครที่อายุยังไม่ครบ 20 ปีบริบูรณ์)</p>
+                <div className="flex items-baseline mb-0.5">
                     <span className="ml-10">ข้าพเจ้า</span><Blank width="220px" className="mx-1"></Blank>
                     <span className="ml-2">เกี่ยวข้องเป็น</span><Blank width="50px" className="mx-1"></Blank>
                     <span className="ml-2">ของ</span><Blank width="200px" className="mx-1"></Blank>
                 </div>
-                <span className="ml-2 mb-1">ซึ่งเป็นผู้สมัครเรียน ข้าพเจ้าขอรับรองว่าจะควบคุมดูแลผู้สมัคร ให้อยู่ในระเบียบวินัยของวิทยาลัยทุกประการ</span>
+                <span className="ml-2">ซึ่งเป็นผู้สมัครเรียน ข้าพเจ้าขอรับรองว่าจะควบคุมดูแลผู้สมัคร ให้อยู่ในระเบียบวินัยของวิทยาลัยทุกประการ</span>
 
-                <div className="flex justify-end pr-8 pt-1 mt-2">
+                <div className="flex justify-end pr-8 pt-0.5 mt-0.5">
                     <div className="text-center">
                         <div className="flex items-baseline">(ลงชื่อ) <Blank width="200px" className="mx-1"></Blank> ผู้ปกครอง</div>
-                        <div className="mt-1 flex justify-center">( <Blank width="180px" className="mx-1"></Blank> )</div>
+                        <div className="mt-0.5 flex justify-center">( <Blank width="180px" className="mx-1"></Blank> )</div>
                     </div>
                 </div>
             </div>

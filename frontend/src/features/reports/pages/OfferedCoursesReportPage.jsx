@@ -19,11 +19,12 @@ import { getIteration, getTerm } from "../../../utils/batchName";
 import { flattenStudyGroupsToSubjects } from "../../../utils/reportFormatters";
 
 const GROUP_TYPE_FILTERS = [
-    { key: "all", label: "ทั้งหมด (All)", shortLabel: "ทั้งหมด" },
-    { key: "special", label: "พิเศษ (Special)", shortLabel: "พิเศษ" },
-    { key: "project", label: "โครงการ (Project)", shortLabel: "โครงการ" },
-    { key: "extra", label: "เพิ่มเติม (Additional)", shortLabel: "เพิ่มเติม" },
-    { key: "vocational", label: "ห้องเรียนอาชีพ (Vocational Classroom)", shortLabel: "ห้องเรียนอาชีพ" },
+    { id: "all", key: "all", label: "ทั้งหมด (All)", shortLabel: "ทั้งหมด" },
+    { id: "ปกติ", key: "ปกติ", label: "ปกติ (Regular)", shortLabel: "ปกติ" },
+    { id: "special", key: "special", label: "พิเศษ (Special)", shortLabel: "พิเศษ" },
+    { id: "project", key: "project", label: "โครงการ (Project)", shortLabel: "โครงการ" },
+    { id: "extra", key: "extra", label: "เพิ่มเติม (Additional)", shortLabel: "เพิ่มเติม" },
+    { id: "vocational", key: "vocational", label: "ห้องเรียนอาชีพ (Vocational Classroom)", shortLabel: "ห้องเรียนอาชีพ" },
 ];
 
 export default function OfferedCoursesReportPage() {
@@ -141,7 +142,7 @@ export default function OfferedCoursesReportPage() {
         if (!selectedTypes.includes("all")) {
             const labels = selectedTypes
                 .map((key) => {
-                    const match = GROUP_TYPE_FILTERS.find((f) => f.key === key);
+                    const match = GROUP_TYPE_FILTERS.find((f) => f.id === key || f.key === key);
                     return match ? match.shortLabel : key;
                 })
                 .filter(Boolean);
@@ -201,66 +202,175 @@ export default function OfferedCoursesReportPage() {
             {/* ── Print Specific Styles ──────────────────────────────────────── */}
             <style>{`
                 @media print {
+                    /* 1. Force strict A4 Portrait page setup with compact margins */
                     @page {
-                        size: A4 landscape;
-                        margin: 10mm 15mm 10mm 15mm;
+                        size: A4 portrait;
+                        margin: 8mm 10mm 8mm 10mm;
                     }
-                    body, html, #root {
-                        background: #ffffff !important;
-                        color: #000000 !important;
-                        font-family: 'TH Sarabun New', 'TH Sarabun PSK', 'THSarabunPSK', 'Sarabun', sans-serif !important;
-                        font-size: 14pt !important;
+
+                    /* 2. Reset html/body to 100% of printable area (190mm) so right margins & borders are preserved */
+                    html, body {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        height: auto !important;
+                        min-height: 100% !important;
                         margin: 0 !important;
                         padding: 0 !important;
-                        width: 100% !important;
-                        height: auto !important;
+                        background: #fff !important;
+                        color: #000 !important;
+                        font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                         overflow: visible !important;
                     }
-                    /* Hide everything with .no-print, sidebar, and layout header */
-                    .no-print,
-                    aside,
-                    header,
-                    nav {
-                        display: none !important;
-                    }
-                    /* Main container for print */
-                    .print-container {
-                        box-shadow: none !important;
-                        border: none !important;
+
+                    /* 3. Neutralize all application shell containers for multi-page pagination */
+                    #root,
+                    #root > div,
+                    main,
+                    .min-h-screen,
+                    div:has(> .printable-report-container) {
+                        height: auto !important;
+                        min-height: 0 !important;
+                        max-height: none !important;
+                        overflow: visible !important;
+                        display: block !important;
+                        position: static !important;
                         padding: 0 !important;
                         margin: 0 !important;
-                        width: 100% !important;
-                        background: #ffffff !important;
+                        background: transparent !important;
                     }
+
+                    /* 4. Hide all non-printable application shells */
+                    nav, aside, header, footer,
+                    .no-print,
+                    button,
+                    .filter-toolbar {
+                        display: none !important;
+                    }
+
+                    /* 5. Ensure print container occupies full printable width without clipping */
+                    .printable-report-container,
+                    .printable-report-container * {
+                        font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
+                    }
+
+                    .printable-report-container {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        display: block !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                        background: #ffffff !important;
+                        overflow: visible !important;
+                        box-sizing: border-box !important;
+                    }
+
+                    /* 6. Table Layout Geometry - Fixed Budget */
                     table {
                         width: 100% !important;
+                        max-width: 100% !important;
+                        table-layout: fixed !important;
                         border-collapse: collapse !important;
-                        margin-top: 6px !important;
+                        border: 1px solid #000000 !important;
+                        border-right: 1px solid #000000 !important;
+                        box-sizing: border-box !important;
+                        page-break-inside: auto !important;
+                        break-inside: auto !important;
+                        font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
                     }
-                    th, td {
-                        border: 1px solid #333333 !important;
-                        padding: 4px 6px !important;
-                        color: #000000 !important;
-                        font-size: 13pt !important;
-                    }
+
                     thead {
-                        display: table-header-group;
+                        display: table-header-group !important; /* Repeat header row on every page overflow */
+                        break-inside: avoid !important;
+                        page-break-inside: avoid !important;
                     }
+
+                    tbody {
+                        display: table-row-group !important;
+                    }
+
                     tr {
-                        page-break-inside: avoid;
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
                     }
+
+                    /* 7. Official Announcement Typography & Tight Cell Padding */
+                    th, td {
+                        border: 1px solid #000000 !important;
+                        box-sizing: border-box !important;
+                        padding: 2px 4px !important;
+                        font-size: 15pt !important;
+                        line-height: 1.25 !important;
+                        vertical-align: middle !important;
+                        color: #000000 !important;
+                        font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
+                    }
+
+                    /* Explicitly enforce outer borders on rightmost and bottom cells */
+                    th:last-child,
+                    td:last-child {
+                        border-right: 1px solid #000000 !important;
+                    }
+
+                    th {
+                        font-weight: bold !important;
+                        font-size: 15pt !important;
+                        background-color: #f8fafc !important;
+                    }
+
+                    /* 8. Prevent wrapping on short metadata columns and adjust font size */
+                    td:nth-child(1),
+                    th:nth-child(1) {
+                        white-space: nowrap !important;
+                        font-size: 15pt !important;
+                    }
+
+                    td:nth-child(2),
+                    th:nth-child(2) {
+                        white-space: nowrap !important;
+                        font-size: 14pt !important;
+                    }
+
+                    td:nth-child(4),
+                    td:nth-child(5),
+                    th:nth-child(4),
+                    th:nth-child(5) {
+                        white-space: nowrap !important;
+                        font-size: 13.5pt !important;
+                    }
+
+                    td:nth-child(6),
+                    th:nth-child(6) {
+                        white-space: nowrap !important;
+                        font-size: 15pt !important;
+                    }
+
+                    /* 9. Allow course name to utilize tight single-line spacing */
+                    td:nth-child(3) {
+                        word-break: break-word;
+                        overflow: hidden;
+                        font-size: 15pt !important;
+                    }
+
                     .print-header-title {
                         font-size: 18pt !important;
                         font-weight: bold !important;
                         margin-bottom: 8px !important;
                         text-align: center !important;
                         color: #000000 !important;
+                        line-height: 1.3 !important;
+                        font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
                     }
+
                     .print-meta-sub {
-                        font-size: 13pt !important;
-                        margin-bottom: 12px !important;
+                        font-size: 14pt !important;
+                        margin-bottom: 6px !important;
                         text-align: center !important;
-                        color: #222222 !important;
+                        color: #000000 !important;
+                        font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
                     }
                 }
             `}</style>
@@ -283,7 +393,7 @@ export default function OfferedCoursesReportPage() {
                                     แบบรายงานรายวิชาที่เปิดสอน
                                 </h1>
                                 <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200">
-                                    A4 แนวนอน
+                                    A4 แนวตั้ง
                                 </span>
                             </div>
                             <p className="text-xs text-slate-500">
@@ -332,19 +442,19 @@ export default function OfferedCoursesReportPage() {
             </div>
 
             {/* ── Filter Toolbar (Hidden on Print) ──────────────────────────── */}
-            <div className="no-print bg-white/90 backdrop-blur-xs border-b border-slate-200/80 px-4 py-3">
-                <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="no-print filter-toolbar bg-white/90 backdrop-blur-xs border-b border-slate-200/80 px-4 py-3">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-start justify-between gap-4">
                     {/* 1. Batch Selector */}
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs font-bold text-slate-700 shrink-0 flex items-center gap-1">
-                            <Filter size={14} className="text-slate-400" />
-                            เลือกรุ่นการเรียน:
+                    <div className="flex flex-col gap-1.5 min-w-[240px] sm:min-w-[280px]">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <Filter size={14} className="text-blue-600" />
+                            <span>เลือกรุ่นการเรียน:</span>
                         </label>
                         <select
                             value={selectedBatchId}
                             onChange={(e) => handleBatchChange(e.target.value)}
                             disabled={loadingBatches}
-                            className="rounded-lg border border-slate-300 bg-white py-1.5 px-3 text-xs font-medium text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 max-w-sm sm:max-w-md truncate"
+                            className="w-full rounded-lg border border-slate-300 bg-white py-1.5 px-3 text-xs font-medium text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 truncate shadow-2xs"
                         >
                             {batches.map((b) => {
                                 const seq = b.batch_sequence ?? b.batch_no ?? "-";
@@ -361,30 +471,34 @@ export default function OfferedCoursesReportPage() {
                     </div>
 
                     {/* 2. Group Type Checkboxes */}
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-                        <span className="font-semibold text-slate-600 shrink-0">ประเภทกลุ่มเรียน:</span>
-                        {GROUP_TYPE_FILTERS.map((filter) => {
-                            const isChecked = selectedTypes.includes(filter.key);
-                            return (
-                                <button
-                                    key={filter.key}
-                                    type="button"
-                                    onClick={() => handleTypeToggle(filter.key)}
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md transition text-xs font-medium border ${
-                                        isChecked
+                    <div className="flex flex-col gap-1.5 flex-1 md:pl-4">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <span>ประเภทกลุ่มเรียน:</span>
+                        </label>
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                            {GROUP_TYPE_FILTERS.map((filter) => {
+                                const filterId = filter.id || filter.key;
+                                const isChecked = selectedTypes.includes(filterId);
+                                return (
+                                    <button
+                                        key={filterId}
+                                        type="button"
+                                        onClick={() => handleTypeToggle(filterId)}
+                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition text-xs font-medium border ${isChecked
                                             ? "bg-blue-50 border-blue-300 text-blue-800 font-semibold shadow-2xs"
                                             : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                                    }`}
-                                >
-                                    {isChecked ? (
-                                        <CheckSquare size={14} className="text-blue-600" />
-                                    ) : (
-                                        <Square size={14} className="text-slate-400" />
-                                    )}
-                                    <span>{filter.label}</span>
-                                </button>
-                            );
-                        })}
+                                            }`}
+                                    >
+                                        {isChecked ? (
+                                            <CheckSquare size={14} className="text-blue-600" />
+                                        ) : (
+                                            <Square size={14} className="text-slate-400" />
+                                        )}
+                                        <span>{filter.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -416,11 +530,14 @@ export default function OfferedCoursesReportPage() {
             </div>
 
             {/* ── Printable Report Document Container ──────────────────────── */}
-            <div className="flex-1 p-3 sm:p-6 overflow-x-auto">
-                <div className="print-container max-w-[297mm] mx-auto bg-white border border-slate-300 shadow-md p-6 sm:p-10 rounded-sm">
+            <div className="flex-1 p-3 sm:p-6 overflow-x-auto print:p-0 print:m-0 print:overflow-visible print:block">
+                <div
+                    className="printable-report-container print-container max-w-[210mm] mx-auto bg-white border border-slate-300 shadow-md p-4 sm:p-6 rounded-sm print:border-none print:shadow-none print:p-0 print:m-0 print:w-full font-['TH_Sarabun_PSK','THSarabunPSK',sans-serif] text-black"
+                    style={{ fontFamily: "'TH Sarabun PSK', 'THSarabunPSK', sans-serif" }}
+                >
                     {/* Dynamic Document Header */}
-                    <div className="text-center mb-4">
-                        <h2 className="print-header-title text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-snug">
+                    <div className="text-center mb-3">
+                        <h2 className="print-header-title text-[18pt] font-bold text-black tracking-tight leading-snug">
                             {dynamicTitle}
                         </h2>
                     </div>
@@ -445,28 +562,36 @@ export default function OfferedCoursesReportPage() {
                         </div>
                     )}
 
-                    {/* Table Layout for A4 Landscape (Exact 6 Columns) */}
+                    {/* Table Layout for A4 Portrait (Fixed Column Budget & Ultra Compact Rows) */}
                     {!loadingGroups && displayRows.length > 0 && (
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse border border-slate-700 text-slate-900 text-xs sm:text-sm">
+                        <div className="overflow-x-auto print:overflow-visible pr-0.5">
+                            <table className="w-full border-collapse border border-black text-black text-[15pt] table-fixed box-border">
+                                <colgroup>
+                                    <col style={{ width: "5%" }} />
+                                    <col style={{ width: "13%" }} />
+                                    <col style={{ width: "52%" }} />
+                                    <col style={{ width: "10%" }} />
+                                    <col style={{ width: "10%" }} />
+                                    <col style={{ width: "10%" }} />
+                                </colgroup>
                                 <thead>
-                                    <tr className="bg-slate-100 text-slate-900 font-bold text-center">
-                                        <th className="border border-slate-700 px-2 py-2 w-12 text-center">
+                                    <tr className="bg-slate-100 text-black font-bold text-center text-[15pt]">
+                                        <th className="border border-black px-1 py-1 w-[5%] text-center whitespace-nowrap font-bold text-[15pt]">
                                             ที่
                                         </th>
-                                        <th className="border border-slate-700 px-3 py-2 w-32 text-center">
+                                        <th className="border border-black px-1 py-1 w-[10%] text-center whitespace-nowrap font-bold text-[15pt]">
                                             รหัสกลุ่มวิชา
                                         </th>
-                                        <th className="border border-slate-700 px-3 py-2 text-left">
+                                        <th className="border border-black px-1.5 py-1 w-[55%] text-left font-bold text-[15pt]">
                                             ชื่อรายวิชา
                                         </th>
-                                        <th className="border border-slate-700 px-2.5 py-2 w-28 text-center">
+                                        <th className="border border-black px-1 py-1 w-[10%] text-center whitespace-nowrap font-bold text-[15pt]">
                                             เรียนวันที่
                                         </th>
-                                        <th className="border border-slate-700 px-2.5 py-2 w-28 text-center">
+                                        <th className="border border-black px-1 py-1 w-[10%] text-center whitespace-nowrap font-bold text-[15pt]">
                                             จบวันที่
                                         </th>
-                                        <th className="border border-slate-700 px-3 py-2 w-32 text-center">
+                                        <th className="border border-black px-1 py-1 w-[10%] text-center whitespace-nowrap font-bold text-[15pt]">
                                             ผู้สอน
                                         </th>
                                     </tr>
@@ -478,32 +603,32 @@ export default function OfferedCoursesReportPage() {
                                             className="hover:bg-blue-50/40 transition-colors"
                                         >
                                             {/* 1. ที่ (No.) */}
-                                            <td className="border border-slate-700 px-2 py-1.5 text-center font-medium">
+                                            <td className="border border-black px-1 py-0.5 text-center font-normal whitespace-nowrap text-[15pt]">
                                                 {row.rowNo}
                                             </td>
 
                                             {/* 2. รหัสกลุ่มวิชา (MOE Code) */}
-                                            <td className="border border-slate-700 px-3 py-1.5 text-center font-mono text-xs sm:text-sm font-semibold tracking-wider text-slate-800">
+                                            <td className="border border-black px-1 py-0.5 text-center font-mono text-[14pt] font-semibold tracking-tight text-black whitespace-nowrap">
                                                 {row.moeCode || "-"}
                                             </td>
 
                                             {/* 3. ชื่อรายวิชา (Subject & Group String) */}
-                                            <td className="border border-slate-700 px-3 py-1.5 text-left font-normal text-slate-900 leading-relaxed">
+                                            <td className="border border-black px-1.5 py-0.5 text-left font-normal text-black leading-snug break-words text-[15pt]">
                                                 {row.courseString}
                                             </td>
 
                                             {/* 4. เรียนวันที่ (Start Date) */}
-                                            <td className="border border-slate-700 px-2.5 py-1.5 text-center whitespace-nowrap">
+                                            <td className="border border-black px-1 py-0.5 text-center whitespace-nowrap text-[13.5pt]">
                                                 {row.formattedStartDate || "-"}
                                             </td>
 
                                             {/* 5. จบวันที่ (End Date) */}
-                                            <td className="border border-slate-700 px-2.5 py-1.5 text-center whitespace-nowrap">
+                                            <td className="border border-black px-1 py-0.5 text-center whitespace-nowrap text-[13.5pt]">
                                                 {row.formattedEndDate || "-"}
                                             </td>
 
                                             {/* 6. ผู้สอน (Teacher's First Name Only) */}
-                                            <td className="border border-slate-700 px-3 py-1.5 text-center font-medium text-slate-800">
+                                            <td className="border border-black px-1 py-0.5 text-center font-normal text-black whitespace-nowrap text-[15pt]">
                                                 {row.teacherFirstName || "-"}
                                             </td>
                                         </tr>

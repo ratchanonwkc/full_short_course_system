@@ -141,4 +141,34 @@ select {
   justify-content: center !important;
   text-align: center !important;
 }
+
+/* Universal Print Typography: Strictly enforce TH Sarabun PSK across all print layouts (screen & print) */
+.announcement-print-root,
+.announcement-print-root *,
+.memo-print-root,
+.memo-print-root *,
+.printable-report-container,
+.printable-report-container *,
+.roster-print-root,
+.roster-print-root *,
+.application-print-root,
+.application-print-root * {
+  font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
+}
+
+@media print {
+  .announcement-print-root,
+  .announcement-print-root *,
+  .memo-print-root,
+  .memo-print-root *,
+  .printable-report-container,
+  .printable-report-container *,
+  .roster-print-root,
+  .roster-print-root *,
+  .application-print-root,
+  .application-print-root * {
+    font-family: 'TH Sarabun PSK', 'THSarabunPSK', sans-serif !important;
+  }
+}
+
 

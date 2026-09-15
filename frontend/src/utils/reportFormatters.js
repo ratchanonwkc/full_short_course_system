@@ -201,15 +201,7 @@ export function buildOfferedCourseString({
     const typeLabel = getGroupTypeDisplay(group_type);
     const teacherStr = teacher_firstname && teacher_firstname !== "-" ? `อ.${teacher_firstname}` : "";
 
-    const parts = [
-        subject_name,
-        typeLabel,
-        `${study_days_short}(${shift_label})`,
-        teacherStr,
-        `${total_hours || 0} ชม.`,
-    ].filter(Boolean);
-
-    const rawString = `${subject_name} ${typeLabel} ${study_days_short}(${shift_label}) ${teacherStr} ${total_hours || 0} ชม.`;
+    const rawString = `${subject_name} ${typeLabel ? typeLabel + " " : ""}${study_days_short}(${shift_label}) ${teacherStr ? teacherStr + " " : ""}${total_hours || 0} ชม.`;
     return rawString.replace(/\s+/g, " ").trim();
 }
 
@@ -226,12 +218,23 @@ export function matchesGroupTypeFilter(group, selectedTypes = ["all"]) {
     const rawType = (group?.group_type || "normal").toLowerCase();
 
     return selectedTypes.some((selected) => {
-        if (selected === "special") return rawType === "special" || rawType === "พิเศษ";
-        if (selected === "project") return rawType === "project" || rawType === "โครงการ";
-        if (selected === "extra") return rawType === "extra" || rawType === "เพิ่มเติม";
-        if (selected === "vocational") return rawType === "vocational" || rawType === "ห้องเรียนอาชีพ";
-        if (selected === "normal") return rawType === "normal" || rawType === "ปกติ";
-        return rawType === selected.toLowerCase();
+        const s = String(selected).toLowerCase();
+        if (s === "normal" || s === "ปกติ" || s === "regular") {
+            return !group?.group_type || rawType === "normal" || rawType === "ปกติ" || rawType === "regular";
+        }
+        if (s === "special" || s === "พิเศษ") {
+            return rawType === "special" || rawType === "พิเศษ" || rawType === "แบบพิเศษ";
+        }
+        if (s === "project" || s === "โครงการ") {
+            return rawType === "project" || rawType === "โครงการ";
+        }
+        if (s === "extra" || s === "เพิ่มเติม") {
+            return rawType === "extra" || rawType === "เพิ่มเติม";
+        }
+        if (s === "vocational" || s === "ห้องเรียนอาชีพ") {
+            return rawType === "vocational" || rawType === "ห้องเรียนอาชีพ";
+        }
+        return rawType === s;
     });
 }
 
