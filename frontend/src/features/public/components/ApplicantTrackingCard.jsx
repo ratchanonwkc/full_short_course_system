@@ -12,6 +12,7 @@ import BirthDateField from "./BirthDateField";
 import ApplicationFormPrint from "../../../components/print/ApplicationFormPrint";
 import DocumentPreviewModal from "./DocumentPreviewModal";
 import { uploadSlip, updateApplicantEnrollment } from "../services/publicApi";
+import { resolveStorageUrl } from "../../../utils/storageHelper";
 
 const STATUS_META = {
     pending_payment: { label: "รอการชำระเงิน", color: "text-amber-700 bg-amber-50 border-amber-200", icon: Clock },
@@ -229,7 +230,7 @@ export default function ApplicantTrackingCard({ applicant, enrollment, onUpdated
                     {applicant?.id_card_url ? (
                         <button
                             type="button"
-                            onClick={() => setPreviewDoc({ url: applicant.id_card_url, title: "บัตรประจำตัวประชาชนที่แนบ" })}
+                            onClick={() => setPreviewDoc({ url: resolveStorageUrl(applicant.id_card_url), title: "บัตรประจำตัวประชาชนที่แนบ" })}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition shadow-2xs"
                         >
                             <IdCard size={14} className="text-blue-600" />
@@ -245,7 +246,7 @@ export default function ApplicantTrackingCard({ applicant, enrollment, onUpdated
                     {enrollment.slip_url ? (
                         <button
                             type="button"
-                            onClick={() => setPreviewDoc({ url: enrollment.slip_url, title: "สลิปหลักฐานการโอนเงิน" })}
+                            onClick={() => setPreviewDoc({ url: resolveStorageUrl(enrollment.slip_url), title: "สลิปหลักฐานการโอนเงิน" })}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition shadow-2xs"
                         >
                             <Receipt size={14} className="text-emerald-600" />

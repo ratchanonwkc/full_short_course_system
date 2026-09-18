@@ -41,11 +41,12 @@ export const uploadSlipMemory = multer({
 const BUCKET = 'slips';
 
 /**
- * Uploads a buffer to the Supabase Storage "slips" bucket and returns its public URL.
+ * Uploads a buffer to the Supabase Storage "slips" bucket and returns its relative storage path.
  * @param {Buffer} buffer
  * @param {string} originalName
  * @param {string} mimetype
- * @param {string} prefix - e.g. 'slip' or 'qr'
+ * @param {string} prefix - e.g. 'slip', 'idcard', or 'qr'
+ * @returns {Promise<string>} Relative path (e.g. 'slips/slip_123.jpg')
  */
 export const uploadToSupabaseStorage = async (buffer, originalName, mimetype, prefix = 'slip') => {
     const ext = originalName.split('.').pop().toLowerCase();
@@ -57,6 +58,6 @@ export const uploadToSupabaseStorage = async (buffer, originalName, mimetype, pr
 
     if (uploadError) throw uploadError;
 
-    const { data: publicUrlData } = supabase.storage.from(BUCKET).getPublicUrl(filename);
-    return publicUrlData.publicUrl;
+    // Return relative storage path (e.g. 'slips/slip_xxx.png')
+    return `${BUCKET}/${filename}`;
 };

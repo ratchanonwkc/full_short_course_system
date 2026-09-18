@@ -8,6 +8,7 @@ import Swal from "sweetalert2";
 import { confirmPayment, rejectPayment } from "../../enrollments/services/enrollmentApi";
 import { formatCompactSchedule } from "../../../utils/groupCode";
 import { formatThaiDate, formatThaiFullDate } from "../../../utils/dateUtils";
+import { resolveStorageUrl } from "../../../utils/storageHelper";
 
 const PAYMENT_TYPE_LABELS = {
     online_transfer: "โอนเงินออนไลน์ (แนบสลิป)",
@@ -393,7 +394,7 @@ export default function FinanceVerificationModal({ enrollment, onClose, onResolv
                                             <RotateCw size={14} />
                                         </button>
                                         <a
-                                            href={enrollment.slip_url}
+                                            href={resolveStorageUrl(enrollment.slip_url)}
                                             target="_blank"
                                             rel="noreferrer"
                                             className="rounded-md p-1 text-blue-600 hover:bg-blue-50"
@@ -417,7 +418,7 @@ export default function FinanceVerificationModal({ enrollment, onClose, onResolv
                                     </div>
                                 ) : enrollment.slip_url ? (
                                     <img
-                                        src={enrollment.slip_url}
+                                        src={resolveStorageUrl(enrollment.slip_url)}
                                         alt="สลิปการโอนเงิน"
                                         style={{
                                             transform: `scale(${zoom}) rotate(${rotation}deg)`,

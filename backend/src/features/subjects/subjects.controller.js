@@ -47,9 +47,22 @@ export const getNextSequence = async (req, res, next) => {
     }
 };
 
+const sanitizeSubjectBody = (body) => {
+    if (!body || typeof body !== 'object') return body;
+    const sanitized = { ...body };
+    if (!sanitized.minor_id || sanitized.minor_id === '' || sanitized.minor_id === 0 || sanitized.minor_id === '0') {
+        sanitized.minor_id = null;
+    }
+    if (!sanitized.major_id || sanitized.major_id === '' || sanitized.major_id === 0 || sanitized.major_id === '0') {
+        sanitized.major_id = null;
+    }
+    return sanitized;
+};
+
 export const createSubject = async (req, res, next) => {
     try {
-        const subject = await createSubjectService(req.body);
+        const payload = sanitizeSubjectBody(req.body);
+        const subject = await createSubjectService(payload);
         res.status(201).json(subject);
     } catch (error) {
         if (error.code === '23505') {
@@ -62,7 +75,8 @@ export const createSubject = async (req, res, next) => {
 export const updateSubject = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const subject = await updateSubjectService(id, req.body);
+        const payload = sanitizeSubjectBody(req.body);
+        const subject = await updateSubjectService(id, payload);
         res.json(subject);
     } catch (error) {
         if (error.code === '23505') {

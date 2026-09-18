@@ -156,7 +156,7 @@ export default function SubjectFormDrawer({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!form.level_id || !form.subject_type_id || !form.major_id || !form.minor_id || !form.duration_group) {
+        if (!form.level_id || !form.subject_type_id || !form.major_id || !form.duration_group) {
             Swal.fire({ icon: "warning", title: "กรุณาเลือกข้อมูลโครงสร้างวิชาให้ครบ", confirmButtonColor: "#0270c7" });
             return;
         }
@@ -171,12 +171,17 @@ export default function SubjectFormDrawer({
 
         setIsSubmitting(true);
         try {
+            const sanitizedMinorId =
+                !form.minor_id || form.minor_id === "0" || form.minor_id === 0
+                    ? null
+                    : Number(form.minor_id) || null;
+
             const payload = {
-                level_id: form.level_id,
-                curriculum_id: form.curriculum_id || null,
-                subject_type_id: form.subject_type_id,
-                major_id: form.major_id,
-                minor_id: form.minor_id,
+                level_id: form.level_id ? Number(form.level_id) : null,
+                curriculum_id: form.curriculum_id ? Number(form.curriculum_id) : null,
+                subject_type_id: form.subject_type_id ? Number(form.subject_type_id) : null,
+                major_id: form.major_id ? Number(form.major_id) : null,
+                minor_id: sanitizedMinorId,
                 duration_group: form.duration_group,
                 name_th: form.name_th.trim(),
                 name_en: form.name_en?.trim() || null,

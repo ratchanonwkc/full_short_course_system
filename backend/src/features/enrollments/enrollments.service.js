@@ -321,7 +321,7 @@ const ensureNoDuplicateEnrollment = async (applicantId, studyGroupId) => {
         .maybeSingle();
     if (error) throw error;
     if (data) {
-        const err = new Error('ผู้สมัครรายนี้ลงทะเบียนกลุ่มเรียนนี้ไปแล้ว');
+        const err = new Error('ผู้สมัครท่านนี้ได้ลงทะเบียนในกลุ่มเรียนนี้เรียบร้อยแล้ว ไม่สามารถสมัครซ้ำได้');
         err.status = 409;
         throw err;
     }

@@ -1,0 +1,5 @@
+id,email,full_name,role,status,created_at,updated_at
+46ff010d-52f9-488a-af7a-5ded2420f56f,test_finance_9595@uptech.ac.th,[TEST-1789635419595] เจ้าหน้าที่การเงิน,finance,active,2026-09-17 08:57:52.594+00,2026-09-17 08:57:52.594+00
+82ec627a-0686-4562-bd01-4f52c2951885,test_finance_0785@uptech.ac.th,[TEST-1789635000785] เจ้าหน้าที่การเงิน,finance,active,2026-09-17 08:50:37.199+00,2026-09-17 08:50:37.199+00
+c8e9c108-5985-4cff-8405-4044023358c2,jantapa.satha@gmail.com,Sathaporn,admin,active,2026-08-25 02:46:58.374+00,2026-08-25 02:46:58.374+00
+f26e046a-a4ec-46ce-bfa3-d071e01ed451,admin@gmail.com,แอดมิน,admin,active,2026-09-01 08:17:43.836+00,2026-09-01 08:17:43.837+00

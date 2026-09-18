@@ -83,6 +83,18 @@ app.use('/api', masterDataRoutes); // รองรับ /api/prefixes, /api/pos
 // Centralized Error Handler Middleware
 app.use((err, req, res, next) => {
     console.error('🔥 Server Error:', err);
+    if (err.code === '23505') {
+        const str = `${err.message || ''} ${err.details || ''} ${err.hint || ''} ${err.constraint || ''}`;
+        const isDuplicateEnrollment =
+            err.constraint === 'enrollments_applicant_group_unique' ||
+            str.includes('enrollments_applicant_group_unique') ||
+            (str.includes('applicant_id') && str.includes('study_group_id'));
+        if (isDuplicateEnrollment) {
+            return res.status(400).json({
+                message: 'ผู้สมัครท่านนี้ได้ลงทะเบียนในกลุ่มเรียนนี้เรียบร้อยแล้ว ไม่สามารถสมัครซ้ำได้'
+            });
+        }
+    }
     res.status(err.status || 500).json({
         message: err.message || 'Internal Server Error'
     });

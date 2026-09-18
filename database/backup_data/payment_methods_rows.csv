@@ -1,0 +1,2 @@
+id,bank_name,account_name,account_number,qr_code_url,is_active,updated_at
+1,ธนาคารกรุงไทย,วิทยาลัยสารพัดช่างอุดรธานี,4016035961,https://vnhtjgalgkquscotrznq.supabase.co/storage/v1/object/public/slips/qr_1788336774626_448535054.jpg,true,2026-09-02 08:12:56.33+00

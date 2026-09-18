@@ -132,7 +132,15 @@ export default function RegistrationPage() {
                 confirmButtonColor: "#0270c7",
             }).then(() => navigate("/"));
         } catch (error) {
-            Swal.fire("เกิดข้อผิดพลาด", error.response?.data?.message || "ไม่สามารถส่งใบสมัครได้ โปรดตรวจสอบข้อมูลอีกครั้ง", "error");
+            const errorMsg = error.response?.data?.message || error.message || "";
+            const isDuplicateEnrollment =
+                errorMsg.includes("enrollments_applicant_group_unique") ||
+                errorMsg.includes("23505") ||
+                (errorMsg.includes("applicant_id") && errorMsg.includes("study_group_id"));
+            const displayMsg = isDuplicateEnrollment
+                ? "ผู้สมัครท่านนี้ได้ลงทะเบียนในกลุ่มเรียนนี้เรียบร้อยแล้ว ไม่สามารถสมัครซ้ำได้"
+                : error.response?.data?.message || "ไม่สามารถส่งใบสมัครได้ โปรดตรวจสอบข้อมูลอีกครั้ง";
+            Swal.fire("เกิดข้อผิดพลาด", displayMsg, "error");
         } finally {
             setSubmitting(false);
         }

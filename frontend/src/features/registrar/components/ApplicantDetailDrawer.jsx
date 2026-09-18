@@ -13,6 +13,7 @@ import { formatReceiptCode } from "../../../utils/receiptFormat";
 import { updateApplicantDetails, sendConfirmationEmail, getEnrollmentById } from "../services/registrarApi";
 import ApplicantFormFields, { EMPTY_APPLICANT } from "./ApplicantFormFields";
 import ApplicationFormPrint from "../../../components/print/ApplicationFormPrint";
+import { resolveStorageUrl } from "../../../utils/storageHelper";
 
 const STATUS_META = {
     pending_payment: { label: "รอชำระเงิน", className: "bg-amber-100 text-amber-700" },
@@ -258,7 +259,7 @@ export default function ApplicantDetailDrawer({
                                                                 </div>
                                                                 <p className="text-xs font-semibold text-slate-700 mb-2">เอกสารสำเนาบัตรประชาชน (PDF)</p>
                                                                 <a
-                                                                    href={activeEnrollment.id_card_url}
+                                                                    href={resolveStorageUrl(activeEnrollment.id_card_url)}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                     className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition shadow-2xs"
@@ -281,7 +282,7 @@ export default function ApplicantDetailDrawer({
                                                                 </div>
                                                                 <div className="flex max-h-72 items-center justify-center overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
                                                                     <img
-                                                                        src={activeEnrollment.id_card_url}
+                                                                        src={resolveStorageUrl(activeEnrollment.id_card_url)}
                                                                         alt="บัตรประชาชน"
                                                                         style={{ transform: `scale(${zoom}) rotate(${rotation}deg)`, transition: "transform 0.15s ease" }}
                                                                         className="max-h-64 object-contain"
@@ -328,7 +329,7 @@ export default function ApplicantDetailDrawer({
                                                     {activeEnrollment.slip_url && activeEnrollment.payment_method !== "counter_cash" && (
                                                         <div>
                                                             <label className="mb-1.5 block text-xs font-semibold text-slate-500">หลักฐานการโอนเงิน</label>
-                                                            <img src={activeEnrollment.slip_url} alt="สลิป" className="max-h-56 rounded-lg border border-slate-200 object-contain" />
+                                                            <img src={resolveStorageUrl(activeEnrollment.slip_url)} alt="สลิป" className="max-h-56 rounded-lg border border-slate-200 object-contain" />
                                                         </div>
                                                     )}
                                                 </Section>

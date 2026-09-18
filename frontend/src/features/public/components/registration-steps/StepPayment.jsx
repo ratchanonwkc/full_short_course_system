@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Landmark, Wallet, Building2, Upload, CheckCircle2, Image as ImageIcon, Copy, Check } from "lucide-react";
 import { getActivePaymentMethods } from "../../services/publicApi";
+import { resolveStorageUrl } from "../../../../utils/storageHelper";
 
 export default function StepPayment({ amount, paymentMethod, setPaymentMethod, slipFile, setSlipFile }) {
     const [methods, setMethods] = useState([]);
@@ -70,7 +71,7 @@ export default function StepPayment({ amount, paymentMethod, setPaymentMethod, s
                         {methods.map((m) => (
                             <div key={m.id} className="flex w-full max-w-xs flex-col items-center gap-3 rounded-2xl border border-slate-200 p-5 text-center shadow-sm">
                                 {m.qr_code_url ? (
-                                    <img src={m.qr_code_url} alt="QR Code พร้อมเพย์" className="mx-auto h-48 w-48 rounded-xl border border-slate-100 object-contain shadow-sm" />
+                                    <img src={resolveStorageUrl(m.qr_code_url)} alt="QR Code พร้อมเพย์" className="mx-auto h-48 w-48 rounded-xl border border-slate-100 object-contain shadow-sm" />
                                 ) : (
                                     <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-xl bg-slate-100 text-slate-300">
                                         <ImageIcon size={32} />

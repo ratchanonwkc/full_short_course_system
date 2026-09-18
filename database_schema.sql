@@ -117,7 +117,9 @@ CREATE TABLE public.subjects (
   CONSTRAINT subjects_pkey PRIMARY KEY (id),
   CONSTRAINT subjects_level_id_fkey FOREIGN KEY (level_id) REFERENCES public.academic_levels(id),
   CONSTRAINT subjects_curriculum_id_fkey FOREIGN KEY (curriculum_id) REFERENCES public.curriculums(id),
-  CONSTRAINT subjects_subject_type_id_fkey FOREIGN KEY (subject_type_id) REFERENCES public.subject_types(id)
+  CONSTRAINT subjects_subject_type_id_fkey FOREIGN KEY (subject_type_id) REFERENCES public.subject_types(id),
+  CONSTRAINT subjects_major_id_fkey FOREIGN KEY (major_id) REFERENCES public.academic_majors(id),
+  CONSTRAINT subjects_minor_id_fkey FOREIGN KEY (minor_id) REFERENCES public.academic_minors(id)
 );
 CREATE TABLE public.academic_majors (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -238,14 +240,14 @@ CREATE TABLE public.applicants (
   gender character varying NOT NULL,
   birth_date date NOT NULL,
   marital_status character varying DEFAULT 'โสด'::character varying,
-  registered_address text NOT NULL,
+  registered_address text DEFAULT ''::text,
   occupation character varying,
   nationality character varying DEFAULT 'ไทย'::character varying,
   religion character varying DEFAULT 'พุทธ'::character varying,
   highest_education character varying,
   previous_school character varying,
   school_province character varying,
-  current_address text NOT NULL,
+  current_address text DEFAULT ''::text,
   phone character varying NOT NULL,
   postal_code character varying,
   subdistrict character varying,
@@ -291,7 +293,8 @@ CREATE TABLE public.enrollments (
   CONSTRAINT enrollments_pkey PRIMARY KEY (id),
   CONSTRAINT enrollments_applicant_id_fkey FOREIGN KEY (applicant_id) REFERENCES public.applicants(id),
   CONSTRAINT enrollments_study_group_id_fkey FOREIGN KEY (study_group_id) REFERENCES public.study_groups(id),
-  CONSTRAINT enrollments_payment_method_id_fkey FOREIGN KEY (payment_method_id) REFERENCES public.payment_methods(id)
+  CONSTRAINT enrollments_payment_method_id_fkey FOREIGN KEY (payment_method_id) REFERENCES public.payment_methods(id),
+  CONSTRAINT enrollments_applicant_group_unique UNIQUE (applicant_id, study_group_id)
 );
 CREATE TABLE public.users (
   id uuid NOT NULL,
@@ -305,7 +308,7 @@ CREATE TABLE public.users (
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.audit_logs (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
   actor_id uuid,
   action_type text NOT NULL,
   target_table text,
@@ -317,5 +320,5 @@ CREATE TABLE public.audit_logs (
   user_agent text,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT audit_logs_pkey PRIMARY KEY (id),
-  CONSTRAINT audit_logs_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.users(id)
+  CONSTRAINT audit_logs_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.users(id) ON DELETE SET NULL
 );

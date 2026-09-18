@@ -139,9 +139,16 @@ export const getSubjectByIdService = async (id) => {
 };
 
 export const createSubjectService = async (payload) => {
+    const dataToInsert = { ...payload };
+    if (!dataToInsert.minor_id || dataToInsert.minor_id === '0' || dataToInsert.minor_id === 0 || dataToInsert.minor_id === '') {
+        dataToInsert.minor_id = null;
+    }
+    if (!dataToInsert.major_id || dataToInsert.major_id === '0' || dataToInsert.major_id === 0 || dataToInsert.major_id === '') {
+        dataToInsert.major_id = null;
+    }
     const { data, error } = await supabase
         .from('subjects')
-        .insert([payload])
+        .insert([dataToInsert])
         .select()
         .single();
 
@@ -150,9 +157,16 @@ export const createSubjectService = async (payload) => {
 };
 
 export const updateSubjectService = async (id, payload) => {
+    const dataToUpdate = { ...payload };
+    if ('minor_id' in dataToUpdate && (!dataToUpdate.minor_id || dataToUpdate.minor_id === '0' || dataToUpdate.minor_id === 0 || dataToUpdate.minor_id === '')) {
+        dataToUpdate.minor_id = null;
+    }
+    if ('major_id' in dataToUpdate && (!dataToUpdate.major_id || dataToUpdate.major_id === '0' || dataToUpdate.major_id === 0 || dataToUpdate.major_id === '')) {
+        dataToUpdate.major_id = null;
+    }
     const { data, error } = await supabase
         .from('subjects')
-        .update(payload)
+        .update(dataToUpdate)
         .eq('id', id)
         .select()
         .single();

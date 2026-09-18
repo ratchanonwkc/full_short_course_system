@@ -1,9 +1,11 @@
 import { Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { X, ExternalLink, Download, FileText, Image as ImageIcon } from "lucide-react";
+import { resolveStorageUrl } from "../../../utils/storageHelper";
 
-export default function DocumentPreviewModal({ isOpen, onClose, title = "ดูเอกสาร", url, isPdf = false }) {
-    if (!url) return null;
+export default function DocumentPreviewModal({ isOpen, onClose, title = "ดูเอกสาร", url: rawUrl, isPdf = false }) {
+    if (!rawUrl) return null;
+    const url = resolveStorageUrl(rawUrl);
 
     const isPdfFile = isPdf || url.toLowerCase().endsWith(".pdf");
 

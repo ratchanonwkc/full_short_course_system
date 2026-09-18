@@ -76,6 +76,14 @@ export const createOnlineApplication = async (req, res, next) => {
     } catch (error) {
         if (error.status) return res.status(error.status).json({ message: error.message });
         if (error.code === '23505') {
+            const str = `${error.message || ''} ${error.details || ''} ${error.hint || ''} ${error.constraint || ''}`;
+            const isDuplicate =
+                error.constraint === 'enrollments_applicant_group_unique' ||
+                str.includes('enrollments_applicant_group_unique') ||
+                (str.includes('applicant_id') && str.includes('study_group_id'));
+            if (isDuplicate) {
+                return res.status(400).json({ message: 'ผู้สมัครท่านนี้ได้ลงทะเบียนในกลุ่มเรียนนี้เรียบร้อยแล้ว ไม่สามารถสมัครซ้ำได้' });
+            }
             return res.status(400).json({ message: 'เลขประจำตัวประชาชนนี้มีอยู่แล้วในระบบ' });
         }
         next(error);

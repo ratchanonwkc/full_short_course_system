@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Landmark, Upload, CheckCircle2, Image as ImageIcon, Copy, Check } from "lucide-react";
 import Swal from "sweetalert2";
 import { getActivePaymentMethods } from "../services/publicApi";
+import { resolveStorageUrl } from "../../../utils/storageHelper";
 
 /**
  * PaymentStep — แสดงรายละเอียดบัญชีธนาคาร/QR + ช่องอัปโหลดสลิปการโอนเงิน
@@ -81,7 +82,7 @@ export default function PaymentStep({ amount, slipFile, setSlipFile }) {
                             <div key={m.id} className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 p-5 text-center">
                                 {m.qr_code_url ? (
                                     <img
-                                        src={m.qr_code_url}
+                                        src={resolveStorageUrl(m.qr_code_url)}
                                         alt="QR Code"
                                         className="h-40 w-40 rounded-xl border border-slate-100 object-contain shadow-sm sm:h-48 sm:w-48"
                                     />
