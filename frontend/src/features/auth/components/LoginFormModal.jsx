@@ -26,8 +26,9 @@ export default function LoginFormModal({ isOpen, onClose, onLoginSuccess }) {
 
     const validate = () => {
         const next = {};
-        if (!form.email.trim()) next.email = "กรุณากรอกอีเมล";
-        else if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "รูปแบบอีเมลไม่ถูกต้อง";
+        const trimmedEmail = form.email.trim();
+        if (!trimmedEmail) next.email = "กรุณากรอกอีเมล";
+        else if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) next.email = "รูปแบบอีเมลไม่ถูกต้อง";
         if (!form.password) next.password = "กรุณากรอกรหัสผ่าน";
         setErrors(next);
         return Object.keys(next).length === 0;
@@ -40,7 +41,7 @@ export default function LoginFormModal({ isOpen, onClose, onLoginSuccess }) {
         setIsSubmitting(true);
         try {
             // เรียกเข้าสู่ระบบด้วย Supabase Auth
-            const authData = await loginWithEmail(form.email, form.password);
+            const authData = await loginWithEmail(form.email.trim(), form.password);
 
             onLoginSuccess?.(authData?.user);
             setForm({ email: "", password: "" });

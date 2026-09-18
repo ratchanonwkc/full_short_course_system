@@ -151,7 +151,10 @@ export default function BatchesPage() {
     const filteredBatches = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
         return batches.filter((b) => {
-            const matchesSearch = !term || b.batch_name.toLowerCase().includes(term);
+            const matchesSearch =
+                !term ||
+                (b.batch_name && b.batch_name.toLowerCase().includes(term)) ||
+                String(b.batch_sequence || "").includes(term);
             const matchesStatus = statusFilter === "all" || b.status === statusFilter;
             const matchesYear =
                 isQuickSearching ||
@@ -192,6 +195,7 @@ export default function BatchesPage() {
                 ? prev.map((b) => (b.id === savedBatch.id ? savedBatch : b))
                 : [{ ...savedBatch, id: savedBatch.id ?? Date.now() }, ...prev];
         });
+        setIsFormOpen(false);
     };
 
     const handleFormClose = () => {

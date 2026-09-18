@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
     const loginWithEmail = async (email, password) => {
         try {
             const { data } = await axiosInstance.post('/auth/login', {
-                email,
+                email: email ? String(email).trim().toLowerCase() : '',
                 password
             });
 

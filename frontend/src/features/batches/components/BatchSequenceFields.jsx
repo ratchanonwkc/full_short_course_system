@@ -33,17 +33,28 @@ export default function BatchSequenceFields({ value, onChange, isEditMode = fals
         getNextBatchDefaults()
             .then((defaults) => {
                 if (cancelled) return;
-                onChange({
-                    batch_sequence: defaults.batch_sequence,
-                    iteration: defaults.iteration,
-                    academic_year: String(defaults.academic_year),
-                    term: defaults.semester,
+                onChange((prev) => {
+                    const current = typeof prev === "object" && prev !== null ? prev : value;
+                    return {
+                        batch_sequence: current.batch_sequence || defaults.batch_sequence,
+                        iteration: current.iteration ?? defaults.iteration,
+                        academic_year: current.academic_year || String(defaults.academic_year),
+                        term: current.term ?? defaults.semester,
+                    };
                 });
             })
             .catch(() => {
                 // Fallback silently to hardcoded defaults if the endpoint fails
                 if (cancelled) return;
-                onChange({ batch_sequence: 139, iteration: 1, academic_year: "2569", term: 1 });
+                onChange((prev) => {
+                    const current = typeof prev === "object" && prev !== null ? prev : value;
+                    return {
+                        batch_sequence: current.batch_sequence || 139,
+                        iteration: current.iteration ?? 1,
+                        academic_year: current.academic_year || "2569",
+                        term: current.term ?? 1,
+                    };
+                });
             })
             .finally(() => {
                 if (!cancelled) setIsFetchingDefaults(false);

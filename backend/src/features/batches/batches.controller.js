@@ -41,6 +41,19 @@ export const getLatestPersonnel = async (req, res, next) => {
     }
 };
 
+const sanitizeBatchData = (data) => {
+    const cleaned = { ...data };
+    for (const key of Object.keys(cleaned)) {
+        if (cleaned[key] === '') {
+            cleaned[key] = null;
+        }
+    }
+    if (cleaned.batch_name && typeof cleaned.batch_name === 'string' && cleaned.batch_name.length > 50) {
+        cleaned.batch_name = cleaned.batch_name.slice(0, 50);
+    }
+    return cleaned;
+};
+
 export const createBatch = async (req, res, next) => {
     try {
         const {
@@ -52,7 +65,7 @@ export const createBatch = async (req, res, next) => {
             director_name,
             ...insertData
         } = req.body;
-        const batch = await createBatchService(insertData);
+        const batch = await createBatchService(sanitizeBatchData(insertData));
         res.status(201).json(batch);
     } catch (error) {
         next(error);
@@ -87,7 +100,7 @@ export const updateBatch = async (req, res, next) => {
             director_name,
             ...updateData
         } = req.body;
-        const batch = await updateBatchService(id, updateData);
+        const batch = await updateBatchService(id, sanitizeBatchData(updateData));
         res.json(batch);
     } catch (error) {
         next(error);

@@ -42,9 +42,11 @@ const OPS_ROLES = [
 
 const ALL_ROLES = [...EXEC_ROLES, ...OPS_ROLES];
 
+const CURRENT_BE_YEAR = String(new Date().getFullYear() + 543);
+
 const EMPTY_FORM = {
     // Tab 1
-    academic_year: "",
+    academic_year: CURRENT_BE_YEAR,
     term: 1,
     batch_sequence: "",
     iteration: 1,
@@ -62,8 +64,6 @@ const EMPTY_FORM = {
     // Tab 3
     ...Object.fromEntries(ALL_ROLES.map((r) => [r.key, ""])),
 };
-
-const CURRENT_BE_YEAR = String(new Date().getFullYear() + 543);
 
 const EMPTY_BULK_COMMON = {
     batch_sequence: "",
@@ -262,18 +262,25 @@ export default function BatchFormModal({
             const derivedBatchNo = Number(sanitizedForm.batch_no) || getBatchNo(sanitizedForm.term, form.iteration);
             const derivedTerm = Number(sanitizedForm.term) || getTerm(derivedBatchNo);
 
+            const cleaned = {};
+            for (const [k, v] of Object.entries(sanitizedForm)) {
+                cleaned[k] = v === "" ? null : v;
+            }
+
+            const rawBatchName = (cleaned.batch_name || buildBatchDisplayName({
+                batch_sequence: cleaned.batch_sequence,
+                batch_no: derivedBatchNo,
+                academic_year: cleaned.academic_year,
+            })).slice(0, 50);
+
             const payload = {
-                ...sanitizedForm,
-                batch_sequence: sanitizedForm.batch_sequence ? Number(sanitizedForm.batch_sequence) : null,
+                ...cleaned,
+                batch_sequence: cleaned.batch_sequence ? Number(cleaned.batch_sequence) : null,
                 batch_no: derivedBatchNo,
                 term: derivedTerm,
-                academic_year: String(sanitizedForm.academic_year || ""),
-                batch_name: sanitizedForm.batch_name || buildBatchDisplayName({
-                    batch_sequence: sanitizedForm.batch_sequence,
-                    batch_no: derivedBatchNo,
-                    academic_year: sanitizedForm.academic_year,
-                }),
-                total_hours: sanitizedForm.total_hours ? Number(sanitizedForm.total_hours) : 0,
+                academic_year: String(cleaned.academic_year || ""),
+                batch_name: rawBatchName,
+                total_hours: cleaned.total_hours ? Number(cleaned.total_hours) : 0,
             };
 
             // โหมดแก้ไข -> PUT /batches/:id, โหมดสร้างใหม่ -> POST /batches
@@ -482,17 +489,20 @@ export default function BatchFormModal({
                                                             term: form.term,
                                                         }}
                                                         onChange={(next) => {
-                                                            const nextTerm = Number(next.term) || 1;
-                                                            const nextIteration = Number(next.iteration) || 1;
-                                                            const derivedBatchNo = getBatchNo(nextTerm, nextIteration);
-                                                            setForm((prev) => ({
-                                                                ...prev,
-                                                                batch_sequence: next.batch_sequence,
-                                                                iteration: nextIteration,
-                                                                academic_year: next.academic_year,
-                                                                term: nextTerm,
-                                                                batch_no: derivedBatchNo,
-                                                            }));
+                                                            setForm((prev) => {
+                                                                const resolved = typeof next === "function" ? next(prev) : next;
+                                                                const nextTerm = Number(resolved.term) || 1;
+                                                                const nextIteration = Number(resolved.iteration) || 1;
+                                                                const derivedBatchNo = getBatchNo(nextTerm, nextIteration);
+                                                                return {
+                                                                    ...prev,
+                                                                    batch_sequence: resolved.batch_sequence,
+                                                                    iteration: nextIteration,
+                                                                    academic_year: resolved.academic_year,
+                                                                    term: nextTerm,
+                                                                    batch_no: derivedBatchNo,
+                                                                };
+                                                            });
                                                         }}
                                                         isEditMode={isEditMode}
                                                     />

@@ -1,0 +1,26 @@
+{
+  "name": "full-short-course-system-e2e",
+  "version": "1.0.0",
+  "description": "Playwright E2E Automation Framework for Short Course ERP",
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:part1": "playwright test tests/e2e/suite-part1.spec.js",
+    "test:e2e:headed": "playwright test tests/e2e/suite-part1.spec.js --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:teardown": "node tests/helpers/teardown.js"
+  },
+  "keywords": [
+    "playwright",
+    "e2e",
+    "testing",
+    "erp"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@supabase/supabase-js": "^2.48.1",
+    "dotenv": "^16.4.7"
+  }
+}

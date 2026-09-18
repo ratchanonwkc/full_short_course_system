@@ -14,12 +14,18 @@ dotenv.config();
  */
 const authClient = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+        }
+    }
 );
 
 export const loginService = async (email, password) => {
     const { data, error } = await authClient.auth.signInWithPassword({
-        email,
+        email: email ? String(email).trim().toLowerCase() : email,
         password
     });
 
@@ -36,7 +42,9 @@ export const loginService = async (email, password) => {
 
     // หากบัญชีถูกปิดการใช้งาน ให้ปฏิเสธการเข้าสู่ระบบ
     if (profile && profile.status === 'inactive') {
-        throw new Error('บัญชีนี้ถูกระงับการใช้งานชั่วคราว กรุณาติดต่อผู้ดูแลระบบ');
+        const inactiveErr = new Error('บัญชีนี้ถูกระงับการใช้งานชั่วคราว กรุณาติดต่อผู้ดูแลระบบ');
+        inactiveErr.status = 403;
+        throw inactiveErr;
     }
 
     const name = profile?.full_name || 
