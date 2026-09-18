@@ -32,4 +32,19 @@ tests/.auth/
 
 # Environment variables
 .env
+.env.*
+!.env.example
 .env.local
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Sensitive Database Dumps & Student CSVs (Preventing PII Leaks)
+*.csv
+*.dump
+*.sql.gz
+*.tar.gz
+!database/backup_data/*.csv

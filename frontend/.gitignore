@@ -32,4 +32,6 @@ tests/.auth/
 
 # Environment variables
 .env
+.env.*
+!.env.example
 .env.local
